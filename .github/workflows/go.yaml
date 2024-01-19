@@ -39,7 +39,7 @@ jobs:
         run: go version && go mod download
 
       - name: Run tests
-        run: make test
+        run: make test-no-gui
 
       - name: Run linter
         run: make lint
