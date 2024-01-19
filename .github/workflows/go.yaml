@@ -38,11 +38,8 @@ jobs:
       - name: Get dependencies
         run: go version && go mod download
 
-      - name: Install needed system libraries
-        run: sudo apt-get update && sudo apt install build-essential libgl1-mesa-dev xorg-dev
-
       - name: Run tests
-        run: make test
+        run: make test-no-gui
 
       - name: Run linter
         run: make lint

@@ -6,8 +6,6 @@ builds:
   - id: nesgoemu
     binary: nesgoemu
     dir: .
-    env:
-      - CGO_ENABLED=0
     targets:
       - go_first_class
     flags:

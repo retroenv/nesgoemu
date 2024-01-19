@@ -18,6 +18,8 @@ jobs:
         with:
           go-version: '1.21'
           check-latest: true
+      - name: Install needed system libraries
+        run: sudo apt-get update && sudo apt install build-essential libgl1-mesa-dev xorg-dev
       -
         name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v5

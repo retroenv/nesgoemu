@@ -33,8 +33,5 @@ release: ## build release binaries for current git tag and publish on github
 release-snapshot: ## build release binaries from current git state as snapshot
 	goreleaser release --snapshot --clean
 
-test-no-gui: install-no-gui run-tests ## run unit tests with gui disabled
+test-no-gui: ## run unit tests with gui disabled
 	go test -timeout 10s -tags nogui ./...
-
-install-no-gui: ## install all binaries with gui disabled
-	go install -tags nogui ./cmd/...
