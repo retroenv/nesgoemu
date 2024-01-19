@@ -38,6 +38,9 @@ jobs:
       - name: Get dependencies
         run: go version && go mod download
 
+      - name: Install UI libraries
+        run: apt install build-essential libgl1-mesa-dev xorg-dev
+
       - name: Run tests
         run: make test
 
