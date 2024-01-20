@@ -3,6 +3,7 @@ package cpu
 
 import (
 	"io"
+	"os"
 	"sync"
 
 	"github.com/retroenv/nesgoemu/pkg/bus"
@@ -44,7 +45,6 @@ type CPU struct {
 	tracing       TracingMode
 	tracingTarget io.Writer
 	TraceStep     TraceStep
-	lastFunction  string
 }
 
 // New creates a new CPU.
@@ -66,8 +66,11 @@ func New(bus *bus.Bus, nmiHandler, irqHandler *func()) *CPU {
 	return c
 }
 
-// SetTracing sets the CPU tracing options.
+// SetTracing sets the CPU tracing options, if target is nil it will default to os.Stdout.
 func (c *CPU) SetTracing(mode TracingMode, target io.Writer) {
+	if target == nil {
+		target = os.Stdout
+	}
 	c.tracing = mode
 	c.tracingTarget = target
 }

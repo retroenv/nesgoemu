@@ -2,8 +2,6 @@ package cpu
 
 import (
 	"fmt"
-	"reflect"
-	"runtime"
 	"strings"
 
 	. "github.com/retroenv/retrogolib/addressing"
@@ -14,7 +12,7 @@ import (
 // TracingMode defines a tracing mode.
 type TracingMode int
 
-// tracing modes, either disabled, in Go mode or emulator mode.
+// tracing modes, either disabled or in emulator mode.
 const (
 	NoTracing TracingMode = iota
 	EmulatorTracing
@@ -52,11 +50,7 @@ func (t TraceStep) print(cpu *CPU) {
 	s := fmt.Sprintf("%04X  %s %s %s %s%-31s A:%02X X:%02X Y:%02X P:%02X SP:%02X CYC:%d\n",
 		t.PC, opcodes[0], opcodes[1], opcodes[2], unofficial, t.Instruction,
 		cpu.A, cpu.X, cpu.Y, cpu.GetFlags(), cpu.SP, cpu.cycles)
-	if cpu.tracingTarget != nil {
-		_, _ = fmt.Fprint(cpu.tracingTarget, s)
-	} else {
-		fmt.Print(s)
-	}
+	_, _ = fmt.Fprint(cpu.tracingTarget, s)
 }
 
 // Trace logs the trace information of the passed instruction and its parameters.
@@ -70,13 +64,6 @@ func (c *CPU) trace(instruction *cpu.Instruction, params ...any) {
 		c.TraceStep.Instruction += " " + paramsAsString
 	}
 	c.TraceStep.print(c)
-}
-
-// SetResetHandlerTraceInfo sets info about the reset handler function for Go mode execution.
-func (c *CPU) SetResetHandlerTraceInfo(resetHandlerParam func()) {
-	p := reflect.ValueOf(resetHandlerParam).Pointer()
-	funcDetails := runtime.FuncForPC(p)
-	c.lastFunction = funcDetails.Name()
 }
 
 func shouldOutputMemoryContent(address uint16) bool {
