@@ -33,7 +33,7 @@ type TraceStep struct {
 // print outputs current trace step in Nintendulator / nestest.log compatible format.
 func (t TraceStep) print(cpu *CPU) {
 	var opcodes [3]string
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		s := "  "
 		if i < len(t.Opcode) {
 			op := t.Opcode[i]

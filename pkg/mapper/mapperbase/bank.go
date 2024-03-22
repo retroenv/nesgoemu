@@ -24,7 +24,7 @@ func (b *Base) setWindows() {
 	windows := chrMemSize / b.chrWindowSize
 	b.chrWindows = make([]int, windows)
 	bank := 0
-	for i := 0; i < windows; i++ {
+	for i := range windows {
 		b.chrWindows[i] = bank
 
 		if bank+1 < len(b.chrBanks) {
@@ -37,7 +37,7 @@ func (b *Base) setWindows() {
 	windows = prgMemSize / b.prgWindowSize
 	b.prgWindows = make([]int, windows)
 	bank = 0
-	for i := 0; i < windows; i++ {
+	for i := range windows {
 		b.prgWindows[i] = bank
 
 		if bank+1 < len(b.prgBanks) {

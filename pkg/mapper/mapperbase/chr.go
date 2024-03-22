@@ -12,7 +12,7 @@ func (b *Base) setDefaultChrBankSizes() {
 	banks := chrSize / b.chrWindowSize
 	b.chrBanks = make([]bank, banks)
 
-	for i := 0; i < banks; i++ {
+	for i := range banks {
 		bank := &b.chrBanks[i]
 		bank.length = b.chrWindowSize
 	}
@@ -28,7 +28,7 @@ func (b *Base) setChrBanks() {
 
 	startOffset := 0
 
-	for i := 0; i < len(b.chrBanks); i++ {
+	for i := range len(b.chrBanks) {
 		bank := &b.chrBanks[i]
 		endOffset := startOffset + bank.length
 		bank.data = chr[startOffset:endOffset]

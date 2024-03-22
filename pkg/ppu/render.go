@@ -11,7 +11,7 @@ func (p *PPU) Image() *image.RGBA {
 
 // Step executes PPU cycles.
 func (p *PPU) Step(cycles int) {
-	for i := 0; i < cycles; i++ {
+	for range cycles {
 		p.step()
 	}
 }

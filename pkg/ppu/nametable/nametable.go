@@ -46,7 +46,7 @@ func (n *NameTable) Data() [4][]byte {
 	data := [4][]byte{}
 
 	n.mu.RLock()
-	for table := 0; table < 4; table++ {
+	for table := range 4 {
 		nameTableIndex := nameTableIndexes[table]
 		base := nameTableIndex * size
 		b := n.vram[base : base+size]

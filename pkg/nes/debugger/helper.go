@@ -78,9 +78,9 @@ func (h hexQword) MarshalJSON() ([]byte, error) {
 
 // nolint: unparam
 func bytesToSliceArrayCombined(data []byte, rows, width int) []hexArrayCombined {
-	var result []hexArrayCombined
+	result := make([]hexArrayCombined, 0, rows)
 
-	for row := 0; row < rows; row++ {
+	for row := range rows {
 		offset := row * width
 		result = append(result, data[offset:offset+width])
 	}

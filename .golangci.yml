@@ -33,6 +33,7 @@ linters:
     - govet # reports suspicious constructs, such as Printf calls with wrong arguments
     - grouper # An analyzer to analyze expression groups
     - ineffassign # Detects when assignments to existing variables are not used
+    - intrange # is a linter to find places where for loops could make use of an integer range
     - maintidx # measures the maintainability index of each function
     - makezero # Finds slice declarations with non-zero initial length
     - mirror # reports wrong mirror patterns of bytes/strings usage
@@ -68,6 +69,10 @@ linters-settings:
     checks: [ "all", "-SA5002" ]
   cyclop:
     max-complexity: 15
+  revive:
+    rules:
+      - name: dot-imports
+        disabled: true
 
 issues:
   exclude-use-default: false
@@ -75,9 +80,6 @@ issues:
     - linters:
         - goerr113
       text: "do not define dynamic errors"
-    - linters:
-        - revive
-      text: "dot-imports: should not use dot imports"
     - linters:
         - revive
       text: "var-naming: don't use underscores in Go names"

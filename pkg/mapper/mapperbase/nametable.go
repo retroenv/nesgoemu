@@ -14,7 +14,7 @@ type MirrorModeTranslation map[uint8]cartridge.MirrorMode
 func (b *Base) createNameTableBanks() {
 	b.nameTableBanks = make([]bank, b.nameTableCount)
 
-	for i := 0; i < b.nameTableCount; i++ {
+	for i := range b.nameTableCount {
 		bank := &b.nameTableBanks[i]
 		bank.length = nametable.VramSize
 		bank.data = make([]byte, bank.length)

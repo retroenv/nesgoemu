@@ -81,7 +81,7 @@ func (t *Tiles) fetchAttributeTableByte() {
 
 func (t *Tiles) storeTileData() {
 	var data uint32
-	for i := 0; i < 8; i++ {
+	for range 8 {
 		a := t.attribute
 		p1 := (t.lowByte & 0x80) >> 7
 		p2 := (t.highByte & 0x80) >> 6

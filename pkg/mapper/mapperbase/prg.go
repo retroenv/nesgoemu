@@ -8,7 +8,7 @@ func (b *Base) setDefaultPrgBankSizes() {
 	banks := prgSize / b.prgWindowSize
 	b.prgBanks = make([]bank, banks)
 
-	for i := 0; i < banks; i++ {
+	for i := range banks {
 		bank := &b.prgBanks[i]
 		bank.length = b.prgWindowSize
 	}
@@ -20,7 +20,7 @@ func (b *Base) setPrgBanks() {
 	prg := b.bus.Cartridge.PRG
 	startOffset := 0
 
-	for i := 0; i < len(b.prgBanks); i++ {
+	for i := range len(b.prgBanks) {
 		bank := &b.prgBanks[i]
 		endOffset := startOffset + bank.length
 		bank.data = prg[startOffset:endOffset]

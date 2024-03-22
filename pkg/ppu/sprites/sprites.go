@@ -95,7 +95,7 @@ func (s *Sprites) Write(value byte) {
 func (s *Sprites) WriteDMA(value byte) {
 	address := uint16(value) << 8
 
-	for i := 0; i < oamMemorySize; i++ {
+	for range oamMemorySize {
 		data := s.memory.Read(address)
 		s.Write(data)
 		address++
@@ -131,7 +131,7 @@ func (s *Sprites) Render() {
 func (s *Sprites) Pixel() (bool, bool, byte) {
 	cycle := s.renderState.Cycle() - 1
 
-	for i := 0; i < s.visibleSpriteCount; i++ {
+	for i := range s.visibleSpriteCount {
 		index := s.visibleSprites[i]
 		sprite := &s.sprites[index]
 
@@ -157,7 +157,7 @@ func (s *Sprites) Pixel() (bool, bool, byte) {
 func (s *Sprites) evaluate() {
 	s.visibleSpriteCount = 0
 
-	for i := 0; i < maxSprites; i++ {
+	for i := range maxSprites {
 		sprite := &s.sprites[i]
 		row := s.renderState.ScanLine() - int(sprite.y)
 		if row < 0 || row >= s.spriteSize {
@@ -204,7 +204,7 @@ func (s *Sprites) fetchSpritePattern(sprite *Sprite, row int) uint32 {
 	highTileByte := s.mapper.Read(address + 8)
 
 	var data uint32
-	for i := 0; i < maxSpritesOnScreen; i++ {
+	for range maxSpritesOnScreen {
 		var p1, p2 byte
 		if sprite.flipHorizontally() {
 			p1 = (lowTileByte & 1) << 0
