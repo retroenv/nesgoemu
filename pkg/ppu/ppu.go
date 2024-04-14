@@ -16,11 +16,7 @@ import (
 	"github.com/retroenv/nesgoemu/pkg/ppu/tiles"
 )
 
-const (
-	FPS    = 60
-	Height = screen.Height
-	Width  = screen.Width
-)
+const FPS = 60
 
 // PPU represents the Picture Processing Unit.
 type PPU struct {
