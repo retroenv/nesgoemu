@@ -19,7 +19,6 @@ func runCPUTest(t *testing.T, tests []cpuTest) {
 	t.Helper()
 
 	for _, test := range tests {
-		test := test
 		t.Run(test.Name, func(t *testing.T) {
 			t.Parallel()
 			sys := NewSystem(nil)
