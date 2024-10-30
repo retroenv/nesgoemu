@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/retroenv/nesgoemu/pkg/apu"
 	"github.com/retroenv/nesgoemu/pkg/bus"
 	"github.com/retroenv/nesgoemu/pkg/controller"
 	"github.com/retroenv/nesgoemu/pkg/cpu"
@@ -72,6 +73,8 @@ func NewSystem(opts *Options) *System {
 
 	sys.CPU = cpu.New(systemBus, &sys.NmiHandler, &sys.IrqHandler)
 	systemBus.CPU = sys.CPU
+
+	systemBus.APU = apu.New(systemBus)
 	systemBus.PPU = ppu.New(systemBus)
 	return sys
 }

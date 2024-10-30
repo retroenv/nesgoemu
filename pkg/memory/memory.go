@@ -6,6 +6,7 @@ import (
 
 	"github.com/retroenv/nesgoemu/pkg/bus"
 	"github.com/retroenv/nesgoemu/pkg/controller"
+	"github.com/retroenv/retrogolib/arch/nes/register"
 )
 
 // Memory represents the memory controller.
@@ -40,20 +41,25 @@ func (m *Memory) LinkRegisters(x *uint8, y *uint8, globalX *uint8, globalY *uint
 // Write a byte to a memory address.
 func (m *Memory) Write(address uint16, value byte) {
 	switch {
-	case address < 0x2000:
+	case address < register.PPU_CTRL:
 		m.ram.Write(address&0x07FF, value)
 
-	case address < 0x4000, address == 0x4014: // OAM_DMA
+	case address < register.APU_PL1_VOL:
 		m.bus.PPU.Write(address, value)
 
-	case address == controller.JOYPAD1:
+	case address == register.OAM_DMA:
+		m.bus.PPU.Write(address, value)
+
+	case address == register.JOYPAD1:
 		m.bus.Controller1.SetStrobeMode(value)
+
+	case address == register.JOYPAD2:
 		m.bus.Controller2.SetStrobeMode(value)
 
-	case address >= 0x4000 && address <= 0x4020:
-		return // TODO apu support
+	case address <= register.APU_FRAME:
+		m.bus.APU.Write(address, value)
 
-	case address >= 0x5000: // mappers like GTROM allow writes starting 0x5000
+	case address >= 0x4020: // mappers like GTROM allow writes starting 0x5000
 		m.bus.Mapper.Write(address, value)
 
 	default:
@@ -64,10 +70,10 @@ func (m *Memory) Write(address uint16, value byte) {
 // Read a byte from a memory address.
 func (m *Memory) Read(address uint16) byte {
 	switch {
-	case address < 0x2000:
+	case address < register.PPU_CTRL:
 		return m.ram.Read(address & 0x07FF)
 
-	case address < 0x4000:
+	case address < register.APU_PL1_VOL:
 		return m.bus.PPU.Read(address)
 
 	case address == controller.JOYPAD1:
@@ -76,10 +82,10 @@ func (m *Memory) Read(address uint16) byte {
 	case address == controller.JOYPAD2:
 		return m.bus.Controller2.Read()
 
-	case address >= 0x4000 && address <= 0x4020:
-		return 0xff // TODO apu support
+	case address <= register.APU_FRAME:
+		return m.bus.APU.Read(address)
 
-	case address >= 0x5000: // GTROM allow writes starting 0x5000, MMC1 has RAM starting at 0x6000
+	case address >= 0x4020: // GTROM allow writes starting 0x5000, MMC1 has RAM starting at 0x6000
 		return m.bus.Mapper.Read(address)
 
 	default:

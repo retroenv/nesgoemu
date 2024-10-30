@@ -10,6 +10,7 @@ import (
 // allows an easy access and reduces the import dependencies and
 // initialization order issues.
 type Bus struct {
+	APU         APU
 	Cartridge   *cartridge.Cartridge // used by Mapper
 	Controller1 Controller           // used by Memory
 	Controller2 Controller           // used by Memory

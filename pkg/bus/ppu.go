@@ -6,6 +6,11 @@ import (
 	"github.com/retroenv/retrogolib/arch/nes/cartridge"
 )
 
+// APU represents the Audio Processing Unit.
+type APU interface {
+	BasicMemory
+}
+
 // PPU represents the Picture Processing Unit.
 type PPU interface {
 	BasicMemory
