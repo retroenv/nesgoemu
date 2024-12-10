@@ -11,7 +11,6 @@ import (
 	"github.com/retroenv/nesgoemu/pkg/apu"
 	"github.com/retroenv/nesgoemu/pkg/bus"
 	"github.com/retroenv/nesgoemu/pkg/controller"
-	"github.com/retroenv/nesgoemu/pkg/cpu"
 	"github.com/retroenv/nesgoemu/pkg/mapper"
 	"github.com/retroenv/nesgoemu/pkg/memory"
 	"github.com/retroenv/nesgoemu/pkg/ppu"
@@ -19,19 +18,15 @@ import (
 	"github.com/retroenv/nesgoemu/pkg/ppu/screen"
 	"github.com/retroenv/retrogolib/arch/cpu/m6502"
 	"github.com/retroenv/retrogolib/arch/nes/cartridge"
-	cpulib "github.com/retroenv/retrogolib/cpu"
 	"github.com/retroenv/retrogolib/gui"
 )
 
 // System implements a NES system.
 type System struct {
-	*cpu.CPU
+	opts *Options
 
+	*m6502.CPU
 	Bus *bus.Bus
-
-	NmiHandler   func()
-	IrqHandler   func()
-	ResetHandler func()
 
 	dimensions gui.Dimensions
 }
@@ -52,7 +47,8 @@ func NewSystem(opts *Options) *System {
 		Controller2: controller.New(),
 		NameTable:   nametable.New(cart.Mirror),
 	}
-	systemBus.Memory = memory.New(systemBus)
+	mem := m6502.NewMemory(memory.New(systemBus))
+	systemBus.Memory = mem
 
 	var err error
 	systemBus.Mapper, err = mapper.New(systemBus)
@@ -61,9 +57,8 @@ func NewSystem(opts *Options) *System {
 	}
 
 	sys := &System{
-		Bus:        systemBus,
-		NmiHandler: nil,
-		IrqHandler: nil,
+		opts: opts,
+		Bus:  systemBus,
 		dimensions: gui.Dimensions{
 			ScaleFactor: 2.0,
 			Height:      screen.Height,
@@ -71,7 +66,11 @@ func NewSystem(opts *Options) *System {
 		},
 	}
 
-	sys.CPU = cpu.New(systemBus, &sys.NmiHandler, &sys.IrqHandler)
+	var cpuOpts []m6502.Option
+	if opts.tracing {
+		cpuOpts = append(cpuOpts, m6502.WithTracing(), m6502.WithPreExecutionHook(tracePreExecutionHook))
+	}
+	sys.CPU = m6502.New(mem, cpuOpts...)
 	systemBus.CPU = sys.CPU
 
 	systemBus.APU = apu.New(systemBus)
@@ -79,87 +78,37 @@ func NewSystem(opts *Options) *System {
 	return sys
 }
 
-// LinkAliases links the register and CPU instruction globals to the actual instance.
-// Can not be used in tests in combination with t.Parallel().
-func (sys *System) LinkAliases() {
-	setAliases(sys.CPU)
-	A = &sys.CPU.A
-	X = &sys.CPU.X
-	Y = &sys.CPU.Y
-	PC = &sys.CPU.PC
-	cpu.LinkInstructionFuncs(sys.CPU)
-	sys.Bus.Memory.LinkRegisters(&sys.CPU.X, &sys.CPU.Y, X, Y)
-}
-
-// DecodeInstructionAtPC decodes the current instruction at the program counter.
-func (sys *System) DecodeInstructionAtPC() (cpulib.Opcode, error) {
-	b := sys.Bus.Memory.Read(*PC)
-	opcode := m6502.Opcodes[b]
-	if opcode.Instruction == nil {
-		return cpulib.Opcode{}, fmt.Errorf("unsupported opcode %00x", b)
-	}
-
-	sys.TraceStep = cpu.TraceStep{
-		PC:             *PC,
-		Opcode:         []byte{b},
-		Addressing:     opcode.Addressing,
-		Timing:         opcode.Timing,
-		PageCrossCycle: opcode.PageCrossCycle,
-		PageCrossed:    false,
-	}
-	return opcode, nil
-}
-
 // runEmulatorSteps runs the emulator until it is quit or reaches the given stop address.
-func (sys *System) runEmulatorSteps(stopAt int) {
+func (sys *System) runEmulatorSteps(stopAt int) error {
+	var state cpuState
+
 	for {
 		if stopAt >= 0 && sys.PC == uint16(stopAt) {
-			return
+			return nil
 		}
 
-		sys.CPU.CheckInterrupts()
-		sys.runEmulatorStep()
-	}
-}
-
-func (sys *System) runEmulatorStep() {
-	oldPC := *PC
-	opcode, err := sys.DecodeInstructionAtPC()
-	if err != nil {
-		panic(err)
-	}
-
-	ins := opcode.Instruction
-	if ins.NoParamFunc != nil {
-		ins.NoParamFunc()
-		sys.updatePC(ins, oldPC, 1)
-		return
-	}
-
-	params, opcodes, pageCrossed := ReadOpParams(sys.Bus.Memory, opcode.Addressing, true)
-	sys.TraceStep.Opcode = append(sys.TraceStep.Opcode, opcodes...)
-	sys.TraceStep.PageCrossed = pageCrossed
-
-	ins.ParamFunc(params...)
-	sys.updatePC(ins, oldPC, len(sys.TraceStep.Opcode))
-}
-
-func (sys *System) updatePC(ins *cpulib.Instruction, oldPC uint16, amount int) {
-	// update PC only if the instruction execution did not change it
-	if oldPC == *PC {
-		if ins.Name == m6502.Jmp.Name {
-			return // endless loop detected
+		if sys.opts.tracing {
+			state.A = sys.CPU.A
+			state.X = sys.CPU.X
+			state.Y = sys.CPU.Y
+			state.SP = sys.CPU.SP
+			state.Flags = sys.CPU.GetFlags()
+			state.Cycles = sys.CPU.Cycles()
 		}
 
-		*PC += uint16(amount)
-	} else {
-		// page crossing is measured based on the start of the instruction that follows the
-		// current instruction
-		nextAddress := oldPC + uint16(len(sys.TraceStep.Opcode))
-		pageCrossed := *PC&0xff00 != nextAddress&0xff00
-		if pageCrossed {
-			sys.CPU.AccountBranchingPageCrossCycle(ins)
+		if !sys.CPU.CheckInterrupts() {
+			if err := sys.CPU.Step(); err != nil {
+				return fmt.Errorf("executing CPU step: %w", err)
+			}
+
+			if sys.opts.tracing {
+				sys.printTraceStep(state)
+			}
 		}
+
+		cpuCycles := sys.CPU.Cycles() - state.Cycles
+		ppuCycles := cpuCycles * 3
+		sys.Bus.PPU.Step(int(ppuCycles))
 	}
 }
 
@@ -173,7 +122,9 @@ func (sys *System) runRenderer(ctx context.Context, opts *Options, guiStarter gu
 
 	running := uint64(1)
 	go func() {
-		sys.ResetHandler()
+		if err := sys.runEmulatorSteps(opts.stopAt); err != nil {
+			panic(err)
+		}
 		if opts.stopAt >= 0 {
 			atomic.StoreUint64(&running, 0)
 			return

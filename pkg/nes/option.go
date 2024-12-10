@@ -3,7 +3,6 @@ package nes
 import (
 	"io"
 
-	"github.com/retroenv/nesgoemu/pkg/cpu"
 	"github.com/retroenv/retrogolib/arch/nes/cartridge"
 )
 
@@ -18,7 +17,7 @@ type Options struct {
 	noGui     bool
 	cartridge *cartridge.Cartridge
 
-	tracing       cpu.TracingMode
+	tracing       bool
 	tracingTarget io.Writer
 }
 
@@ -56,14 +55,14 @@ func WithDebug(debugAddress string) func(*Options) {
 // WithTracing enables tracing for the program.
 func WithTracing() func(*Options) {
 	return func(options *Options) {
-		options.tracing = cpu.EmulatorTracing
+		options.tracing = true
 	}
 }
 
 // WithTracingTarget set the tracing target io writer.
 func WithTracingTarget(target io.Writer) func(*Options) {
 	return func(options *Options) {
-		options.tracing = cpu.EmulatorTracing
+		options.tracing = true
 		options.tracingTarget = target
 	}
 }

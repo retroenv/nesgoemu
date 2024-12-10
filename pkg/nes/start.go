@@ -14,14 +14,6 @@ func Start(options ...Option) {
 		sys.PC = uint16(opts.entrypoint)
 	}
 
-	sys.LinkAliases()
-
-	sys.CPU.SetTracing(opts.tracing, opts.tracingTarget)
-
-	sys.ResetHandler = func() {
-		sys.runEmulatorSteps(opts.stopAt)
-	}
-
 	ctx := app.Context()
 	var debugServer *debugger.Debugger
 	if opts.debug {
