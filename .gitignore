@@ -15,6 +15,6 @@
 *.o
 *.dbg
 *.nes
-.testCoverage
+coverage.txt
 nesgoemu
 dist/
