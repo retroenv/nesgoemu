@@ -13,11 +13,6 @@ import (
 type Memory struct {
 	bus *bus.Bus
 	ram *RAM
-
-	// point to X/Y for comparison of indirect register
-	// parameters in unit tests.
-	x, globalX *uint8
-	y, globalY *uint8
 }
 
 // New returns a new memory instance, embedded it has
@@ -27,15 +22,6 @@ func New(bus *bus.Bus) *Memory {
 		bus: bus,
 		ram: NewRAM(0, 0x2000),
 	}
-}
-
-// LinkRegisters points the internal x/y registers for unit test usage
-// to the actual processor registers.
-func (m *Memory) LinkRegisters(x *uint8, y *uint8, globalX *uint8, globalY *uint8) {
-	m.x = x
-	m.globalX = globalX
-	m.y = y
-	m.globalY = globalY
 }
 
 // Write a byte to a memory address.
@@ -91,29 +77,4 @@ func (m *Memory) Read(address uint16) byte {
 	default:
 		panic(fmt.Sprintf("unhandled memory read at address: 0x%04X", address))
 	}
-}
-
-// ReadWord reads a word from a memory address.
-func (m *Memory) ReadWord(address uint16) uint16 {
-	low := uint16(m.Read(address))
-	high := uint16(m.Read(address + 1))
-	w := (high << 8) | low
-	return w
-}
-
-// ReadWordBug reads a word from a memory address
-// and emulates a 6502 bug that caused the low byte to wrap
-// without incrementing the high byte.
-func (m *Memory) ReadWordBug(address uint16) uint16 {
-	low := uint16(m.Read(address))
-	offset := (address & 0xFF00) | uint16(byte(address)+1)
-	high := uint16(m.Read(offset))
-	w := (high << 8) | low
-	return w
-}
-
-// WriteWord writes a word to a memory address.
-func (m *Memory) WriteWord(address, value uint16) {
-	m.Write(address, byte(value))
-	m.Write(address+1, byte(value>>8))
 }
