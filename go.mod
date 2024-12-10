@@ -2,7 +2,7 @@ module github.com/retroenv/nesgoemu
 
 go 1.22
 
-require github.com/retroenv/retrogolib v0.0.0-20241210185241-c226c3543993
+require github.com/retroenv/retrogolib v0.0.0-20241210234745-b3494fc2eae2
 
 require (
 	github.com/go-gl/gl v0.0.0-20231021071112-07e5d0ea2e71 // indirect

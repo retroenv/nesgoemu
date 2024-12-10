@@ -184,9 +184,9 @@ func paramConverterIndirectY(cpu *m6502.CPU, _ *m6502.Instruction, params ...any
 
 func traceShouldOutputMemoryContent(address uint16) bool {
 	switch {
-	case address < 0x0800:
+	case address <= nes.RAMEndAddress:
 		return true
-	case address >= 0x4000 && address <= 0x4020:
+	case address >= nes.IORegisterStartAddress && address <= nes.IORegisterEndAddress:
 		return true
 	case address >= nes.CodeBaseAddress:
 		return true

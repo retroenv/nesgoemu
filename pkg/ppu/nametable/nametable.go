@@ -4,18 +4,17 @@ package nametable
 import (
 	"sync"
 
+	"github.com/retroenv/retrogolib/arch/nes"
 	"github.com/retroenv/retrogolib/arch/nes/cartridge"
 )
 
 const (
 	baseAddress = 0x2000 // $2000 contains the nametables
-	count       = 4      // 4 nametables
-	size        = 0x0400 // 1024 byte per nametable
 	// VramSize is the size of the nametable buffer.
 	// It is normally mapped to the 2kB NES internal VRAM, providing 2 nametables with a mirroring configuration
 	// controlled by the cartridge, but it can be partly or fully remapped to RAM on the cartridge,
 	// allowing up to 4 simultaneous nametables
-	VramSize = count * size
+	VramSize = nes.NameTableCount * nes.NameTableSize
 )
 
 // NameTable implements PPU nametable support.
@@ -41,15 +40,15 @@ func New(mirrorMode cartridge.MirrorMode) *NameTable {
 }
 
 // Data returns the nametable data as byte arrays.
-func (n *NameTable) Data() [4][]byte {
+func (n *NameTable) Data() [nes.NameTableCount][]byte {
 	nameTableIndexes := n.mirrorMode.NametableIndexes()
-	data := [4][]byte{}
+	data := [nes.NameTableCount][]byte{}
 
 	n.mu.RLock()
-	for table := range 4 {
+	for table := range nes.NameTableCount {
 		nameTableIndex := nameTableIndexes[table]
-		base := nameTableIndex * size
-		b := n.vram[base : base+size]
+		base := nameTableIndex * nes.NameTableSize
+		b := n.vram[base : base+nes.NameTableSize]
 		data[table] = b
 	}
 	n.mu.RUnlock()
@@ -114,13 +113,13 @@ func (n *NameTable) Value() byte {
 }
 
 func (n *NameTable) mirroredNameTableAddressToBase(address uint16) uint16 {
-	address = (address - baseAddress) % (count * size)
-	table := address / size
-	offset := address % size
+	address = (address - baseAddress) % (nes.NameTableCount * nes.NameTableSize)
+	table := address / nes.NameTableSize
+	offset := address % nes.NameTableSize
 
 	nameTableIndexes := n.mirrorMode.NametableIndexes()
 	nameTableIndex := nameTableIndexes[table]
 
-	base := nameTableIndex*size + offset
+	base := nameTableIndex*nes.NameTableSize + offset
 	return base
 }

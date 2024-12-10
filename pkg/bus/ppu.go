@@ -3,6 +3,7 @@ package bus
 import (
 	"image"
 
+	"github.com/retroenv/retrogolib/arch/nes"
 	"github.com/retroenv/retrogolib/arch/nes/cartridge"
 )
 
@@ -24,14 +25,14 @@ type PPU interface {
 type Palette interface {
 	Memory
 
-	Data() [32]byte
+	Data() [nes.PaletteSize]byte
 }
 
 // NameTable represents a name table interface.
 type NameTable interface {
 	Memory
 
-	Data() [4][]byte
+	Data() [nes.NameTableCount][]byte
 	MirrorMode() cartridge.MirrorMode
 	SetMirrorMode(mirrorMode cartridge.MirrorMode)
 	SetVRAM(vram []byte)

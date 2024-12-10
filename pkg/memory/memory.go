@@ -6,6 +6,7 @@ import (
 
 	"github.com/retroenv/nesgoemu/pkg/bus"
 	"github.com/retroenv/nesgoemu/pkg/controller"
+	"github.com/retroenv/retrogolib/arch/nes"
 	"github.com/retroenv/retrogolib/arch/nes/register"
 )
 
@@ -28,7 +29,7 @@ func New(bus *bus.Bus) *Memory {
 func (m *Memory) Write(address uint16, value byte) {
 	switch {
 	case address < register.PPU_CTRL:
-		m.ram.Write(address&0x07FF, value)
+		m.ram.Write(address&nes.RAMEndAddress, value)
 
 	case address < register.APU_PL1_VOL:
 		m.bus.PPU.Write(address, value)
@@ -57,7 +58,7 @@ func (m *Memory) Write(address uint16, value byte) {
 func (m *Memory) Read(address uint16) byte {
 	switch {
 	case address < register.PPU_CTRL:
-		return m.ram.Read(address & 0x07FF)
+		return m.ram.Read(address & nes.RAMEndAddress)
 
 	case address < register.APU_PL1_VOL:
 		return m.bus.PPU.Read(address)

@@ -1,14 +1,16 @@
 // Package palette handles PPU palette support.
 package palette
 
-import "sync"
+import (
+	"sync"
 
-const size = 32
+	"github.com/retroenv/retrogolib/arch/nes"
+)
 
 // Palette implements PPU palette support.
 type Palette struct {
 	mu   sync.RWMutex
-	data [size]byte // contains color indexes
+	data [nes.PaletteSize]byte // contains color indexes
 }
 
 // New returns a new palette manager.
@@ -34,7 +36,7 @@ func (p *Palette) Write(address uint16, value byte) {
 }
 
 // Data returns the palette data as byte array.
-func (p *Palette) Data() [32]byte {
+func (p *Palette) Data() [nes.PaletteSize]byte {
 	p.mu.RLock()
 	data := p.data
 	p.mu.RUnlock()
@@ -43,7 +45,7 @@ func (p *Palette) Data() [32]byte {
 
 func mirroredPaletteAddressToBase(address uint16) uint16 {
 	// $3F20-$3FFF are mirrors of $3F00-$3F1F
-	address %= size
+	address %= nes.PaletteSize
 
 	// $3F10/$3F14/$3F18/$3F1C are mirrors of $3F00/$3F04/$3F08/$3F0C
 	if address >= 0x10 && address%4 == 0 {
