@@ -9,11 +9,11 @@ import (
 type Memory struct {
 	mapper    bus.Mapper
 	nametable bus.NameTable
-	palette   bus.BasicMemory
+	palette   bus.Memory
 }
 
 // New returns a new memory manager.
-func New(mapper bus.Mapper, nametable bus.NameTable, palette bus.BasicMemory) *Memory {
+func New(mapper bus.Mapper, nametable bus.NameTable, palette bus.Memory) *Memory {
 	return &Memory{
 		mapper:    mapper,
 		nametable: nametable,

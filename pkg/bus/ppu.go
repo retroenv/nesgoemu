@@ -8,12 +8,12 @@ import (
 
 // APU represents the Audio Processing Unit.
 type APU interface {
-	BasicMemory
+	Memory
 }
 
 // PPU represents the Picture Processing Unit.
 type PPU interface {
-	BasicMemory
+	Memory
 
 	Image() *image.RGBA
 	Palette() Palette
@@ -22,14 +22,14 @@ type PPU interface {
 
 // Palette represents the PPU palette.
 type Palette interface {
-	BasicMemory
+	Memory
 
 	Data() [32]byte
 }
 
 // NameTable represents a name table interface.
 type NameTable interface {
-	BasicMemory
+	Memory
 
 	Data() [4][]byte
 	MirrorMode() cartridge.MirrorMode

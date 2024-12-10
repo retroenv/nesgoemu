@@ -13,7 +13,7 @@ type MapperState struct {
 
 // Mapper represents a mapper memory access interface.
 type Mapper interface {
-	BasicMemory
+	Memory
 
 	MirrorMode() cartridge.MirrorMode
 	State() MapperState

@@ -2,8 +2,11 @@
 package bus
 
 import (
+	"github.com/retroenv/retrogolib/arch/cpu/m6502"
 	"github.com/retroenv/retrogolib/arch/nes/cartridge"
 )
+
+type Memory = m6502.BasicMemory
 
 // Bus contains all NES sub system components.
 // Since many components access other components, this structure

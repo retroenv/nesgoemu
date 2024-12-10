@@ -13,7 +13,7 @@ type addressing interface {
 // Tiles implements PPU tiles support.
 type Tiles struct {
 	addressing addressing
-	memory     bus.BasicMemory
+	memory     bus.Memory
 	nameTable  bus.NameTable
 
 	attribute              byte
@@ -24,7 +24,7 @@ type Tiles struct {
 }
 
 // New returns a new tiles manager.
-func New(addressing addressing, memory bus.BasicMemory, nameTable bus.NameTable) *Tiles {
+func New(addressing addressing, memory bus.Memory, nameTable bus.NameTable) *Tiles {
 	return &Tiles{
 		addressing: addressing,
 		memory:     memory,
