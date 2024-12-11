@@ -2,6 +2,7 @@ package nes
 
 import (
 	"io"
+	"os"
 
 	"github.com/retroenv/retrogolib/arch/nes/cartridge"
 )
@@ -32,6 +33,10 @@ func NewOptions(optionList ...Option) *Options {
 	}
 	for _, option := range optionList {
 		option(opts)
+	}
+
+	if opts.tracing && opts.tracingTarget == nil {
+		opts.tracingTarget = os.Stdout
 	}
 
 	return opts
