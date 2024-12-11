@@ -10,7 +10,7 @@ import (
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperdb"
 )
 
-type mapperInitializer func(base mapperdb.Base) bus.Mapper
+type mapperInitializer func(base mapperdb.Base) (bus.Mapper, error)
 
 var mappers = map[byte]mapperInitializer{
 	0:   mapperdb.NewNROM,
@@ -33,6 +33,9 @@ func New(bus *bus.Bus) (bus.Mapper, error) {
 	}
 
 	base := mapperbase.New(bus)
-	mapper := initializer(base)
+	mapper, err := initializer(base)
+	if err != nil {
+		return nil, err
+	}
 	return mapper, nil
 }

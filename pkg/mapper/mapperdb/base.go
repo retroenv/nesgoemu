@@ -24,12 +24,12 @@ type Base interface {
 	NameTable(bank int) []byte
 	SetMirrorModeTranslation(translation mapperbase.MirrorModeTranslation)
 	SetNameTableCount(count int)
-	SetNameTableMirrorMode(mirrorMode cartridge.MirrorMode)
-	SetNameTableMirrorModeIndex(index uint8)
+	SetNameTableMirrorMode(mirrorMode cartridge.MirrorMode) error
+	SetNameTableMirrorModeIndex(index uint8) error
 	SetNameTableWindow(bank int)
 
-	AddReadHook(startAddress, endAddress uint16, hookFunc func(address uint16) uint8) mapperbase.Hook
-	AddWriteHook(startAddress, endAddress uint16, hookFunc func(address uint16, value uint8)) mapperbase.Hook
+	AddReadHook(startAddress, endAddress uint16, hookFunc mapperbase.ReadHookFunc) mapperbase.Hook
+	AddWriteHook(startAddress, endAddress uint16, hookFunc mapperbase.WriteHookFunc) mapperbase.Hook
 	Cartridge() *cartridge.Cartridge
 	Initialize()
 	SetName(name string)

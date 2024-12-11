@@ -32,7 +32,7 @@ type System struct {
 }
 
 // NewSystem creates a new NES system.
-func NewSystem(opts *Options) *System {
+func NewSystem(opts *Options) (*System, error) {
 	if opts == nil {
 		opts = &Options{}
 	}
@@ -53,7 +53,7 @@ func NewSystem(opts *Options) *System {
 	var err error
 	systemBus.Mapper, err = mapper.New(systemBus)
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("creating mapper: %w", err)
 	}
 
 	sys := &System{
@@ -75,7 +75,7 @@ func NewSystem(opts *Options) *System {
 
 	systemBus.APU = apu.New(systemBus)
 	systemBus.PPU = ppu.New(systemBus)
-	return sys
+	return sys, nil
 }
 
 // runEmulatorSteps runs the emulator until it is quit or reaches the given stop address.

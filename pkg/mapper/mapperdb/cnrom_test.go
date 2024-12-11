@@ -20,7 +20,8 @@ func TestMapperCNROM(t *testing.T) {
 		},
 		NameTable: nametable.New(cartridge.MirrorHorizontal),
 	})
-	m := NewCNROM(base)
+	m, err := NewCNROM(base)
+	assert.NoError(t, err)
 
 	chr[0x0010] = 0x03 // bank 0
 	chr[0x2010] = 0x04 // bank 1

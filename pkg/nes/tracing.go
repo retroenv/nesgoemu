@@ -19,7 +19,10 @@ type cpuState struct {
 }
 
 func tracePreExecutionHook(cpu *m6502.CPU, ins *m6502.Instruction, params ...any) {
-	paramsAsString := traceCPUParamString(cpu, ins, params...)
+	paramsAsString, err := traceCPUParamString(cpu, ins, params...)
+	if err != nil {
+		panic(err)
+	}
 
 	cpu.TraceStep.CustomData = strings.ToUpper(ins.Name)
 	if paramsAsString != "" {
@@ -71,16 +74,15 @@ var paramConverter = map[Mode]paramConverterFunc{
 }
 
 // traceCPUParamString returns the instruction parameters formatted as string.
-func traceCPUParamString(cpu *m6502.CPU, ins *m6502.Instruction, params ...any) string {
+func traceCPUParamString(cpu *m6502.CPU, ins *m6502.Instruction, params ...any) (string, error) {
 	addressing := cpu.TraceStep.Opcode.Addressing
 	fun, ok := paramConverter[addressing]
 	if !ok {
-		err := fmt.Errorf("unsupported addressing mode %00x", addressing)
-		panic(err)
+		return "", fmt.Errorf("unsupported addressing mode %00x", addressing)
 	}
 
 	s := fun(cpu, ins, params...)
-	return s
+	return s, nil
 }
 
 func paramConverterImplied(_ *m6502.CPU, _ *m6502.Instruction, _ ...any) string {

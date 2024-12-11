@@ -7,9 +7,12 @@ import (
 )
 
 // Start is the main entrypoint for a NES program that starts the execution.
-func Start(options ...Option) {
+func Start(options ...Option) error {
 	opts := NewOptions(options...)
-	sys := NewSystem(opts)
+	sys, err := NewSystem(opts)
+	if err != nil {
+		return err
+	}
 	if opts.entrypoint >= 0 {
 		sys.PC = uint16(opts.entrypoint)
 	}
@@ -25,7 +28,5 @@ func Start(options ...Option) {
 	if gui.Setup != nil && !opts.noGui {
 		guiStarter = gui.Setup
 	}
-	if err := sys.runRenderer(ctx, opts, guiStarter); err != nil {
-		panic(err)
-	}
+	return sys.runRenderer(ctx, opts, guiStarter)
 }

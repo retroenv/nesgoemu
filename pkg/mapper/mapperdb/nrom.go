@@ -15,11 +15,11 @@ type mapperNROM struct {
 }
 
 // NewNROM returns a new mapper instance.
-func NewNROM(base Base) bus.Mapper {
+func NewNROM(base Base) (bus.Mapper, error) {
 	m := &mapperNROM{
 		Base: base,
 	}
 	m.SetName("NROM")
 	m.Initialize()
-	return m
+	return m, nil
 }

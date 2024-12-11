@@ -20,7 +20,8 @@ func TestMapperAxROM(t *testing.T) {
 		},
 		NameTable: nametable.New(cartridge.MirrorHorizontal),
 	})
-	m := NewAxROM(base)
+	m, err := NewAxROM(base)
+	assert.NoError(t, err)
 
 	prg[0x0010] = 0x03 // bank 0
 	prg[0x8010] = 0x04 // bank 1

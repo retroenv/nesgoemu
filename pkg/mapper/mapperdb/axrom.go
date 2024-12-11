@@ -18,7 +18,7 @@ type mapperAxROM struct {
 }
 
 // NewAxROM returns a new mapper instance.
-func NewAxROM(base Base) bus.Mapper {
+func NewAxROM(base Base) (bus.Mapper, error) {
 	m := &mapperAxROM{
 		Base: base,
 	}
@@ -33,13 +33,13 @@ func NewAxROM(base Base) bus.Mapper {
 	m.SetMirrorModeTranslation(translation)
 
 	m.AddWriteHook(0x8000, 0xFFFF, m.setPrgWindow)
-	return m
+	return m, nil
 }
 
-func (m *mapperAxROM) setPrgWindow(_ uint16, value uint8) {
+func (m *mapperAxROM) setPrgWindow(_ uint16, value uint8) error {
 	value &= 0b0000_0111
 	m.SetPrgWindow(0, int(value)) // select 32 KB PRG ROM bank for CPU $8000-$FFFF
 
 	mirrorMode := (value >> 4) & 1
-	m.SetNameTableMirrorModeIndex(mirrorMode)
+	return m.SetNameTableMirrorModeIndex(mirrorMode)
 }

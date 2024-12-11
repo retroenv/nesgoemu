@@ -19,7 +19,8 @@ func TestMapperUNROM512(t *testing.T) {
 		},
 		NameTable: nametable.New(cartridge.MirrorHorizontal),
 	})
-	m := NewUNROM512(base)
+	m, err := NewUNROM512(base)
+	assert.NoError(t, err)
 
 	chr := make([]byte, 0x8000)
 	base.SetChrRAM(chr)

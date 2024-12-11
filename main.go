@@ -101,6 +101,8 @@ func emulateFile(options optionFlags) error {
 		opts = append(opts, nes.WithDisabledGUI())
 	}
 
-	nes.Start(opts...)
+	if err := nes.Start(opts...); err != nil {
+		return fmt.Errorf("starting emulator: %w", err)
+	}
 	return nil
 }

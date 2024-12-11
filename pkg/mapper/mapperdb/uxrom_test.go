@@ -20,7 +20,8 @@ func TestMapperUxROMOr(t *testing.T) {
 		},
 		NameTable: nametable.New(cartridge.MirrorHorizontal),
 	})
-	m := NewUxROMOr(base)
+	m, err := NewUxROMOr(base)
+	assert.NoError(t, err)
 
 	prg[0x0010] = 0x03 // bank 0
 	prg[0x4010] = 0x04 // bank 1
@@ -42,7 +43,8 @@ func TestMapperUxROMAnd(t *testing.T) {
 		},
 		NameTable: nametable.New(cartridge.MirrorHorizontal),
 	})
-	m := NewUxROMAnd(base)
+	m, err := NewUxROMAnd(base)
+	assert.NoError(t, err)
 
 	prg[0x0010] = 0x03 // bank 0
 	prg[0x4010] = 0x04 // bank 1
@@ -64,7 +66,8 @@ func TestMapperUN1ROM(t *testing.T) {
 		},
 		NameTable: nametable.New(cartridge.MirrorHorizontal),
 	})
-	m := NewUN1ROM(base)
+	m, err := NewUN1ROM(base)
+	assert.NoError(t, err)
 
 	prg[0x0010] = 0x03 // bank 0
 	prg[0x4010] = 0x04 // bank 1

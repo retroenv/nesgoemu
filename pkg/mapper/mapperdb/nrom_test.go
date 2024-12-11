@@ -21,7 +21,8 @@ func TestMapperNROMPrg16k(t *testing.T) {
 		},
 		NameTable: nametable.New(cartridge.MirrorHorizontal),
 	})
-	m := NewNROM(base)
+	m, err := NewNROM(base)
+	assert.NoError(t, err)
 
 	chr[0x0001] = 0x02 // bank 0
 	assert.Equal(t, 0x02, m.Read(0x0001))
@@ -42,7 +43,8 @@ func TestMapperNROMPrg32k(t *testing.T) {
 		},
 		NameTable: nametable.New(cartridge.MirrorHorizontal),
 	})
-	m := NewNROM(base)
+	m, err := NewNROM(base)
+	assert.NoError(t, err)
 
 	chr[0x0001] = 0x02 // bank 0
 	assert.Equal(t, 0x02, m.Read(0x0001))

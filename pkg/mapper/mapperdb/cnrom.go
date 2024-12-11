@@ -16,7 +16,7 @@ type mapperCNROM struct {
 }
 
 // NewCNROM returns a new mapper instance.
-func NewCNROM(base Base) bus.Mapper {
+func NewCNROM(base Base) (bus.Mapper, error) {
 	m := &mapperCNROM{
 		Base: base,
 	}
@@ -24,9 +24,10 @@ func NewCNROM(base Base) bus.Mapper {
 	m.Initialize()
 
 	m.AddWriteHook(0x8000, 0xFFFF, m.setChrWindow)
-	return m
+	return m, nil
 }
 
-func (m *mapperCNROM) setChrWindow(_ uint16, value uint8) {
+func (m *mapperCNROM) setChrWindow(_ uint16, value uint8) error {
 	m.SetChrWindow(0, int(value)) // select 8 KB CHR ROM bank for PPU $0000-$1FFF
+	return nil
 }

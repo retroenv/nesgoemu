@@ -20,7 +20,8 @@ func TestMapperGTROM(t *testing.T) {
 		},
 		NameTable: nameTable,
 	})
-	m := NewGTROM(base)
+	m, err := NewGTROM(base)
+	assert.NoError(t, err)
 
 	chr := make([]byte, 0x4000)
 	base.SetChrRAM(chr)

@@ -92,7 +92,10 @@ func (b *Base) Read(address uint16) uint8 {
 
 	for _, hook := range b.readHooks {
 		if address >= hook.startAddress && address <= hook.endAddress {
-			value = hook.hookFunc(address)
+			value, err := hook.hookFunc(address)
+			if err != nil {
+				panic(fmt.Sprintf("read hook error: %v", err))
+			}
 			if !hook.onlyProxy {
 				return value
 			}
@@ -128,7 +131,9 @@ func (b *Base) Read(address uint16) uint8 {
 func (b *Base) Write(address uint16, value uint8) {
 	for _, hook := range b.writeHooks {
 		if address >= hook.startAddress && address <= hook.endAddress {
-			hook.hookFunc(address, value)
+			if err := hook.hookFunc(address, value); err != nil {
+				panic(fmt.Errorf("write hook error: %w", err))
+			}
 			if !hook.onlyProxy {
 				return
 			}

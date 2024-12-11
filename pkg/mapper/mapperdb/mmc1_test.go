@@ -21,7 +21,8 @@ func TestMapperMMC1(t *testing.T) {
 		},
 		NameTable: nametable.New(cartridge.MirrorHorizontal),
 	})
-	m := NewMMC1(base)
+	m, err := NewMMC1(base)
+	assert.NoError(t, err)
 
 	chr[0x0000] = 0x01
 	chr[0x2000] = 0x02

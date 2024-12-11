@@ -31,7 +31,7 @@ type mapperMMC1 struct {
 }
 
 // NewMMC1 returns a new mapper instance.
-func NewMMC1(base Base) bus.Mapper {
+func NewMMC1(base Base) (bus.Mapper, error) {
 	m := &mapperMMC1{
 		Base: base,
 		ram:  make([]byte, 0x8000), // 32K
@@ -55,20 +55,22 @@ func NewMMC1(base Base) bus.Mapper {
 
 	// TODO support mmc1 variants
 
-	return m
+	return m, nil
 }
 
-func (m *mapperMMC1) resetShift() {
+func (m *mapperMMC1) resetShift() error {
 	m.shiftCount = 0
 	m.shiftRegister = 0
-	m.applyControl()
+	if err := m.applyControl(); err != nil {
+		return err
+	}
 	m.control |= 0x0C
+	return nil
 }
 
-func (m *mapperMMC1) writeShiftBit(address uint16, value uint8) {
+func (m *mapperMMC1) writeShiftBit(address uint16, value uint8) error {
 	if value&0x80 != 0 {
-		m.resetShift()
-		return
+		return m.resetShift()
 	}
 
 	// the shift register gets written from lowest to highest bit
@@ -77,7 +79,7 @@ func (m *mapperMMC1) writeShiftBit(address uint16, value uint8) {
 
 	m.shiftCount++
 	if m.shiftCount < 5 {
-		return
+		return nil
 	}
 
 	switch {
@@ -94,12 +96,14 @@ func (m *mapperMMC1) writeShiftBit(address uint16, value uint8) {
 		m.prgBank = int(m.shiftRegister) & 0b0000_1111
 	}
 
-	m.resetShift()
+	return m.resetShift()
 }
 
-func (m *mapperMMC1) applyControl() {
+func (m *mapperMMC1) applyControl() error {
 	mirrorMode := m.control & 0b0000_0011
-	m.SetNameTableMirrorModeIndex(mirrorMode)
+	if err := m.SetNameTableMirrorModeIndex(mirrorMode); err != nil {
+		return err
+	}
 
 	prgMode := (m.control >> 2) & 0b0000_0011
 	switch prgMode {
@@ -129,4 +133,5 @@ func (m *mapperMMC1) applyControl() {
 		// switch two separate 4 KB banks
 		m.SetChrWindow(1, m.chrBank1)
 	}
+	return nil
 }

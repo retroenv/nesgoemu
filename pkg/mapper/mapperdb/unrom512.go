@@ -19,7 +19,7 @@ type mapperUNROM512 struct {
 }
 
 // NewUNROM512 returns a new mapper instance.
-func NewUNROM512(base Base) bus.Mapper {
+func NewUNROM512(base Base) (bus.Mapper, error) {
 	m := &mapperUNROM512{
 		Base: base,
 	}
@@ -38,13 +38,15 @@ func NewUNROM512(base Base) bus.Mapper {
 	m.SetMirrorModeTranslation(translation)
 
 	cart := m.Cartridge()
-	m.SetNameTableMirrorModeIndex(uint8(cart.Mirror))
+	if err := m.SetNameTableMirrorModeIndex(uint8(cart.Mirror)); err != nil {
+		return nil, err
+	}
 
 	m.SetPrgWindow(1, -1)
-	return m
+	return m, nil
 }
 
-func (m *mapperUNROM512) setBanks(_ uint16, value uint8) {
+func (m *mapperUNROM512) setBanks(_ uint16, value uint8) error {
 	prgBank := value & 0b0001_1111
 
 	m.SetPrgWindow(0, int(prgBank)) // select 16 KB PRG ROM bank at $8000
@@ -54,8 +56,7 @@ func (m *mapperUNROM512) setBanks(_ uint16, value uint8) {
 
 	screen := int(value>>7) & 1
 	if screen == 0 {
-		m.SetNameTableMirrorMode(cartridge.MirrorSingle0)
-	} else {
-		m.SetNameTableMirrorMode(cartridge.MirrorSingle1)
+		return m.SetNameTableMirrorMode(cartridge.MirrorSingle0)
 	}
+	return m.SetNameTableMirrorMode(cartridge.MirrorSingle1)
 }

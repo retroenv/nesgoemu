@@ -43,8 +43,9 @@ func (b *Base) NameTable(bank int) []byte {
 }
 
 // SetNameTableMirrorMode sets the nametable mirror mode.
-func (b *Base) SetNameTableMirrorMode(mirrorMode cartridge.MirrorMode) {
+func (b *Base) SetNameTableMirrorMode(mirrorMode cartridge.MirrorMode) error {
 	b.bus.NameTable.SetMirrorMode(mirrorMode)
+	return nil
 }
 
 // MirrorMode returns the set mirror mode.
@@ -59,10 +60,11 @@ func (b *Base) SetMirrorModeTranslation(translation MirrorModeTranslation) {
 
 // SetNameTableMirrorModeIndex sets the nametable mirror mode based on the value of the mapper based
 // translation map from index to mirror mode.
-func (b *Base) SetNameTableMirrorModeIndex(index uint8) {
+func (b *Base) SetNameTableMirrorModeIndex(index uint8) error {
 	mode, ok := b.mirrorModeTranslation[index]
 	if !ok {
-		panic(fmt.Sprintf("invalid nametable mirror mode index %d", index))
+		return fmt.Errorf("invalid nametable mirror mode index %d", index)
 	}
 	b.bus.NameTable.SetMirrorMode(mode)
+	return nil
 }
