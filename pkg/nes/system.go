@@ -87,13 +87,14 @@ func (sys *System) runEmulatorSteps(stopAt int) error {
 			return nil
 		}
 
+		cycles := sys.CPU.Cycles()
 		if sys.opts.tracing {
 			state.A = sys.CPU.A
 			state.X = sys.CPU.X
 			state.Y = sys.CPU.Y
 			state.SP = sys.CPU.SP
 			state.Flags = sys.CPU.GetFlags()
-			state.Cycles = sys.CPU.Cycles()
+			state.Cycles = cycles
 		}
 
 		if !sys.CPU.CheckInterrupts() {
@@ -106,7 +107,7 @@ func (sys *System) runEmulatorSteps(stopAt int) error {
 			}
 		}
 
-		cpuCycles := sys.CPU.Cycles() - state.Cycles
+		cpuCycles := sys.CPU.Cycles() - cycles
 		ppuCycles := cpuCycles * 3
 		sys.Bus.PPU.Step(int(ppuCycles))
 	}
