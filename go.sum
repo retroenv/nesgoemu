@@ -1,8 +1,4 @@
-github.com/go-gl/gl v0.0.0-20231021071112-07e5d0ea2e71 h1:5BVwOaUSBTlVZowGO6VZGw2H/zl9nrd3eCZfYV+NfQA=
-github.com/go-gl/gl v0.0.0-20231021071112-07e5d0ea2e71/go.mod h1:9YTyiznxEY1fVinfM7RvRcjRHbw2xLBJ3AAGIT0I4Nw=
-github.com/go-gl/glfw/v3.3/glfw v0.0.0-20240506104042-037f3cc74f2a h1:vxnBhFDDT+xzxf1jTJKMKZw3H0swfWk9RpWbBbDK5+0=
-github.com/go-gl/glfw/v3.3/glfw v0.0.0-20240506104042-037f3cc74f2a/go.mod h1:tQ2UAYgL5IevRw8kRxooKSPJfGvJ9fJQFa0TUsXzTg8=
-github.com/retroenv/retrogolib v0.0.0-20241210234745-b3494fc2eae2 h1:SpmS85EPvgEDSBJBlBEG/u/vEl/AJAzDT2fICM6k6MU=
-github.com/retroenv/retrogolib v0.0.0-20241210234745-b3494fc2eae2/go.mod h1:8pe9mEjbKL9Z5L4FFzYGSk1Ovhrq1LR6ucwRFj5CIXs=
-github.com/veandco/go-sdl2 v0.4.40 h1:fZv6wC3zz1Xt167P09gazawnpa0KY5LM7JAvKpX9d/U=
-github.com/veandco/go-sdl2 v0.4.40/go.mod h1:OROqMhHD43nT4/i9crJukyVecjPNYYuCofep6SNiAjY=
+github.com/ebitengine/purego v0.8.1 h1:sdRKd6plj7KYW33EH5As6YKfe8m9zbN9JMrOjNVF/BE=
+github.com/ebitengine/purego v0.8.1/go.mod h1:iIjxzd6CiRiOG0UyXP+V1+jWqUXVjPKLAI0mRfJZTmQ=
+github.com/retroenv/retrogolib v0.0.0-20241216054541-4179da0ea31d h1:E1Vfnu7LIP6OUpCBr5b4qOd+kYLglXQVg+DbLAhZ0wE=
+github.com/retroenv/retrogolib v0.0.0-20241216054541-4179da0ea31d/go.mod h1:zyJCaDI509lBE90xkZJxc0vGZGK5MnY9NIL3ckK2MEE=

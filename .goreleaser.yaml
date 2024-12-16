@@ -5,9 +5,16 @@ before:
 builds:
   - id: nesgoemu
     binary: nesgoemu
+    env:
+      - CGO_ENABLED=0
     dir: .
     targets:
-      - go_first_class
+      - darwin_amd64
+      - darwin_arm64
+      - linux_amd64
+      - linux_arm64
+      - windows_386
+      - windows_amd64
     flags:
       - -trimpath
     ldflags:
@@ -38,4 +45,4 @@ snapshot:
   name_template: "{{ .Tag }}-snapshot"
 
 changelog:
-  skip: true
+  disable: true

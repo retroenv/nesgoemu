@@ -1,4 +1,4 @@
-# nesgoemu - Emulator for NES ROMs
+# nesgoemu - a pure Golang NES Emulator
 
 [![Build status](https://github.com/retroenv/nesgoemu/actions/workflows/go.yaml/badge.svg?branch=main)](https://github.com/retroenv/nesgoemu/actions)
 [![go.dev reference](https://img.shields.io/badge/go.dev-reference-007d9c?logo=go&logoColor=white&style=flat-square)](https://pkg.go.dev/github.com/retroenv/nesgoemu)
@@ -6,14 +6,15 @@
 [![codecov](https://codecov.io/gh/retroenv/nesgoemu/branch/main/graph/badge.svg?token=NS5UY28V3A)](https://codecov.io/gh/retroenv/nesgoemu)
 
 
-nesgoemu allows you to emulate ROMs for the Nintendo Entertainment System (NES).
+nesgoemu is a Nintendo Entertainment System (NES) emulator.
+It allows you to play your favorite classic NES games directly on your computer.
 
 ## Features
 
-* Offers the GUI in SDL or OpenGL mode
-* Can be used headless without a GUI
-* Supports outputting of CPU traces
-* Supports undocumented 6502 CPU opcodes
+* Native Golang: Built entirely in Golang, ensuring a clean and maintainable codebase and making it easy to build and portable across platforms.
+* Lightweight: No CGO dependency, resulting in a smaller binary size and faster build times.
+* Flexible Interface: Runs without or with a SDL based user interface for streamlined usage.
+* Advanced Debugging: Supports outputting of CPU traces and undocumented 6502 CPU opcodes for in-depth analysis.
 
 ## Installation
 
@@ -21,28 +22,34 @@ Your system needs to have a recent [Golang](https://go.dev/) version installed.
 
 Check [GUI installation](https://github.com/retroenv/nesgoemu/blob/main/docs/gui.md) to set up the GUI dependencies.
 
-Install the latest stable version by running:
+Installation Options:
+
+1. Stable Version:
 
 ```
 go install github.com/retroenv/nesgoemu@latest
 ```
+
+This installs the latest stable version and places the `nesgoemu` binary in your system's GOPATH/bin directory.
+
+2. Development Version:
 
 The latest development version can be installed using:
 
 ```
 git clone https://github.com/retroenv/nesgoemu.git
 cd nesgoemu
-go build .
-# use the dev version:
-./nesgoemu  
+go install .
 ```
+
+This builds and install the emulator from the latest code in the development branch.
 
 ## Usage
 
 Emulate a ROM:
 
 ```
-nesgoemu example.nes
+nesgoemu <your_rom_file.nes>
 ```
 
 ## Options
