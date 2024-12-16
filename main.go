@@ -9,6 +9,8 @@ import (
 	"github.com/retroenv/nesgoemu/pkg/nes"
 	"github.com/retroenv/retrogolib/arch/nes/cartridge"
 	"github.com/retroenv/retrogolib/buildinfo"
+	"github.com/retroenv/retrogolib/gui"
+	"github.com/retroenv/retrogolib/gui/sdl"
 )
 
 type optionFlags struct {
@@ -99,6 +101,8 @@ func emulateFile(options optionFlags) error {
 	}
 	if options.noGui {
 		opts = append(opts, nes.WithDisabledGUI())
+	} else {
+		gui.Setup = sdl.Setup
 	}
 
 	if err := nes.Start(opts...); err != nil {
