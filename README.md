@@ -6,64 +6,89 @@
 [![codecov](https://codecov.io/gh/retroenv/nesgoemu/branch/main/graph/badge.svg?token=NS5UY28V3A)](https://codecov.io/gh/retroenv/nesgoemu)
 
 
-nesgoemu is a Nintendo Entertainment System (NES) emulator.
-It allows you to play your favorite classic NES games directly on your computer.
+nesgoemu is a Nintendo Entertainment System (NES) emulator written in Go. It aims for accurate hardware emulation while maintaining clean, maintainable code.
+
+The emulator runs NES ROMs and includes debugging tools for development work. It can run in console mode with no external dependencies, or with a SDL-based GUI for full gaming experience.
 
 ## Features
 
-* Native Golang: Built entirely in Golang, ensuring a clean and maintainable codebase and making it easy to build and portable across platforms.
-* Lightweight: No CGO dependency, resulting in a smaller binary size and faster build times.
-* Flexible Interface: Runs without or with a SDL based user interface for streamlined usage.
-* Advanced Debugging: Supports outputting of CPU traces and undocumented 6502 CPU opcodes for in-depth analysis.
+### NES Hardware Emulation
+* 6502 CPU emulation using retrogolib
+* PPU (Picture Processing Unit) with basic rendering
+* APU (Audio Processing Unit) - basic structure implemented
+* Memory mappers: NROM, MMC1, CNROM, UxROM, AxROM, GTROM, UNROM512
+
+### Development Tools
+* Web-based debugger with HTTP endpoints
+* CPU instruction tracing to console/file
+* Execution control (entry point, stop address)
+* Memory and register inspection via debugger
+
+### Implementation
+* Written in pure Go with no CGO dependencies
+* Console mode available (no GUI dependencies)
+* Cross-platform support where Go and SDL2 are available
 
 ## Installation
 
-Your system needs to have a recent [Golang](https://go.dev/) version installed.
+### Requirements
 
-Check [GUI installation](https://github.com/retroenv/nesgoemu/blob/main/docs/gui.md) to set up the GUI dependencies.
+* Go 1.22 or later
+* SDL2 libraries (optional, for GUI mode)
 
-Installation Options:
+### Install from Go
 
-1. Stable Version:
-
-```
+```bash
 go install github.com/retroenv/nesgoemu@latest
 ```
 
-This installs the latest stable version and places the `nesgoemu` binary in your system's GOPATH/bin directory.
+This installs the binary to your `GOPATH/bin` directory.
 
-2. Development Version:
+### Build from Source
 
-The latest development version can be installed using:
-
-```
+```bash
 git clone https://github.com/retroenv/nesgoemu.git
 cd nesgoemu
 go install .
 ```
 
-This builds and install the emulator from the latest code in the development branch.
+### GUI Dependencies
+
+The emulator can run in console mode without any additional libraries. For the SDL-based GUI, you'll need to install SDL2 development libraries.
+
+See [docs/gui.md](docs/gui.md) for detailed platform-specific installation instructions.
 
 ## Usage
 
-Emulate a ROM:
+### Basic Usage
 
-```
-nesgoemu <your_rom_file.nes>
+Run a NES ROM:
+
+```bash
+nesgoemu game.nes
 ```
 
-## Options
+This opens the game in a SDL window with the default controls.
 
-```
-usage: nesgoemu [options] <file to emulate>
+### Controls
 
-  -a string
-    	listening address for the debug server to use (default "127.0.0.1:8080")
-  -c	console mode, disable GUI
-  -d	start built-in webserver for debug mode
-  -e int
-    	entrypoint to start the CPU (default -1)
-  -s int
-    	stop execution at address (default -1)
-  -t	print CPU tracing
-```
+- Arrow keys: D-Pad
+- Z: A button
+- X: B button  
+- Enter: Start
+- Backspace: Select
+
+## Documentation
+
+- [docs/advanced-usage.md](docs/advanced-usage.md) - Debugging, automation, and advanced workflows
+- [docs/development.md](docs/development.md) - Development guide, building, testing, and contributing
+- [docs/gui.md](docs/gui.md) - GUI setup and SDL2 installation
+
+## License
+
+MIT License - see [LICENSE](LICENSE) file for details.
+
+## Acknowledgments
+
+- NESDev community for NES hardware documentation
+- SDL2 for cross-platform multimedia support
