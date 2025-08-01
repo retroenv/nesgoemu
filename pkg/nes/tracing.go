@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/retroenv/retrogolib/arch/cpu/m6502"
-	"github.com/retroenv/retrogolib/arch/nes"
+	"github.com/retroenv/retrogolib/arch/system/nes"
 )
 
 type cpuState struct {

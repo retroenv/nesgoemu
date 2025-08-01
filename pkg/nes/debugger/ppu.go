@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/retroenv/retrogolib/arch/nes/cartridge"
+	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 )
 
 type ppuPaletteBackground struct {

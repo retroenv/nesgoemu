@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"github.com/retroenv/nesgoemu/pkg/nes"
-	"github.com/retroenv/retrogolib/arch/nes/cartridge"
+	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 	"github.com/retroenv/retrogolib/buildinfo"
 	"github.com/retroenv/retrogolib/gui"
 	"github.com/retroenv/retrogolib/gui/sdl"

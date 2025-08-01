@@ -6,8 +6,8 @@ import (
 
 	"github.com/retroenv/nesgoemu/pkg/bus"
 	"github.com/retroenv/nesgoemu/pkg/controller"
-	"github.com/retroenv/retrogolib/arch/nes"
-	"github.com/retroenv/retrogolib/arch/nes/register"
+	"github.com/retroenv/retrogolib/arch/system/nes"
+	"github.com/retroenv/retrogolib/arch/system/nes/register"
 )
 
 // Memory represents the memory controller.

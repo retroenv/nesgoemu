@@ -8,7 +8,7 @@ import (
 
 	"github.com/retroenv/nesgoemu/pkg/nes"
 	"github.com/retroenv/retrogolib/arch/cpu/m6502"
-	"github.com/retroenv/retrogolib/arch/nes/cartridge"
+	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 	"github.com/retroenv/retrogolib/assert"
 )
 

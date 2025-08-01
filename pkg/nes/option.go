@@ -4,7 +4,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/retroenv/retrogolib/arch/nes/cartridge"
+	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 )
 
 // Options contains options for the nesgoemu system.

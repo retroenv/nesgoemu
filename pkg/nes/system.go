@@ -17,7 +17,7 @@ import (
 	"github.com/retroenv/nesgoemu/pkg/ppu/nametable"
 	"github.com/retroenv/nesgoemu/pkg/ppu/screen"
 	"github.com/retroenv/retrogolib/arch/cpu/m6502"
-	"github.com/retroenv/retrogolib/arch/nes/cartridge"
+	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 	"github.com/retroenv/retrogolib/gui"
 )
 
@@ -47,10 +47,13 @@ func NewSystem(opts *Options) (*System, error) {
 		Controller2: controller.New(),
 		NameTable:   nametable.New(cart.Mirror),
 	}
-	mem := m6502.NewMemory(memory.New(systemBus))
+
+	mem, err := m6502.NewMemory(memory.New(systemBus))
+	if err != nil {
+		return nil, fmt.Errorf("creating memory: %w", err)
+	}
 	systemBus.Memory = mem
 
-	var err error
 	systemBus.Mapper, err = mapper.New(systemBus)
 	if err != nil {
 		return nil, fmt.Errorf("creating mapper: %w", err)

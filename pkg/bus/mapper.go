@@ -1,6 +1,6 @@
 package bus
 
-import "github.com/retroenv/retrogolib/arch/nes/cartridge"
+import "github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 
 // MapperState contains the current state of the mapper.
 type MapperState struct {

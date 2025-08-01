@@ -4,8 +4,8 @@ package nametable
 import (
 	"sync"
 
-	"github.com/retroenv/retrogolib/arch/nes"
-	"github.com/retroenv/retrogolib/arch/nes/cartridge"
+	"github.com/retroenv/retrogolib/arch/system/nes"
+	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 )
 
 const (

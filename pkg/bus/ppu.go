@@ -3,8 +3,8 @@ package bus
 import (
 	"image"
 
-	"github.com/retroenv/retrogolib/arch/nes"
-	"github.com/retroenv/retrogolib/arch/nes/cartridge"
+	"github.com/retroenv/retrogolib/arch/system/nes"
+	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 )
 
 // APU represents the Audio Processing Unit.

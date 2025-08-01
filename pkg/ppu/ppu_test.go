@@ -5,8 +5,8 @@ import (
 
 	"github.com/retroenv/nesgoemu/pkg/bus"
 	"github.com/retroenv/nesgoemu/pkg/mapper"
-	"github.com/retroenv/retrogolib/arch/nes/cartridge"
-	"github.com/retroenv/retrogolib/arch/nes/register"
+	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
+	"github.com/retroenv/retrogolib/arch/system/nes/register"
 	"github.com/retroenv/retrogolib/assert"
 )
 

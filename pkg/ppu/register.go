@@ -3,7 +3,7 @@ package ppu
 import (
 	"fmt"
 
-	"github.com/retroenv/retrogolib/arch/nes/register"
+	"github.com/retroenv/retrogolib/arch/system/nes/register"
 )
 
 // Read from a PPU memory register address.

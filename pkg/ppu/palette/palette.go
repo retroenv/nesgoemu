@@ -4,7 +4,7 @@ package palette
 import (
 	"sync"
 
-	"github.com/retroenv/retrogolib/arch/nes"
+	"github.com/retroenv/retrogolib/arch/system/nes"
 )
 
 // Palette implements PPU palette support.
