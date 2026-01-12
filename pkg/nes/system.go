@@ -81,6 +81,21 @@ func NewSystem(opts *Options) (*System, error) {
 	return sys, nil
 }
 
+// Image returns the emulator screen to show.
+func (sys *System) Image() *image.RGBA {
+	return sys.Bus.PPU.Image()
+}
+
+// Dimensions returns the dimensions for the emulator window.
+func (sys *System) Dimensions() gui.Dimensions {
+	return sys.dimensions
+}
+
+// WindowTitle returns the window title to show.
+func (sys *System) WindowTitle() string {
+	return "nesgoemu"
+}
+
 // runEmulatorSteps runs the emulator until it is quit or reaches the given stop address.
 func (sys *System) runEmulatorSteps(stopAt int) error {
 	var state cpuState
@@ -159,19 +174,4 @@ func (sys *System) runRenderer(ctx context.Context, opts *Options, guiStarter gu
 		time.Sleep(time.Second / ppu.FPS)
 	}
 	return nil
-}
-
-// Image returns the emulator screen to show.
-func (sys *System) Image() *image.RGBA {
-	return sys.Bus.PPU.Image()
-}
-
-// Dimensions returns the dimensions for the emulator window.
-func (sys *System) Dimensions() gui.Dimensions {
-	return sys.dimensions
-}
-
-// WindowTitle returns the window title to show.
-func (sys *System) WindowTitle() string {
-	return "nesgoemu"
 }

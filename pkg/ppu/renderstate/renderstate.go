@@ -44,12 +44,6 @@ func (r *RenderState) Tick(mask mask) {
 	r.nextFrame()
 }
 
-func (r *RenderState) nextFrame() {
-	r.cycle = 0
-	r.scanLine = 0
-	r.frame++
-}
-
 // Cycle returns the current cycle, possible values are 0-340.
 func (r *RenderState) Cycle() int {
 	return r.cycle
@@ -58,4 +52,10 @@ func (r *RenderState) Cycle() int {
 // ScanLine returns the current scanline, possible values are 0-261.
 func (r *RenderState) ScanLine() int {
 	return r.scanLine
+}
+
+func (r *RenderState) nextFrame() {
+	r.cycle = 0
+	r.scanLine = 0
+	r.frame++
 }

@@ -38,12 +38,6 @@ func New() *Controller {
 	return c
 }
 
-func (c *Controller) reset() {
-	c.buttons = 0
-	c.strobeMode = false
-	c.index = 1
-}
-
 // SetStrobeMode sets the strobe mode flag of the controller.
 func (c *Controller) SetStrobeMode(mode uint8) {
 	if mode&1 == 1 {
@@ -78,4 +72,10 @@ func (c *Controller) SetButtonState(key Button, pressed bool) {
 		state &= ^uint64(key)
 	}
 	atomic.StoreUint64(&c.buttons, state)
+}
+
+func (c *Controller) reset() {
+	c.buttons = 0
+	c.strobeMode = false
+	c.index = 1
 }

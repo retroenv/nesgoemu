@@ -47,6 +47,11 @@ func New(bus *bus.Bus) *PPU {
 	return p
 }
 
+// Palette returns the palette.
+func (p *PPU) Palette() bus.Palette {
+	return p.palette
+}
+
 func (p *PPU) reset() {
 	p.fineX = 0
 	p.dataReadBuffer = 0
@@ -95,9 +100,4 @@ func (p *PPU) getStatus() byte {
 
 	value := p.status.Value()
 	return value
-}
-
-// Palette returns the palette.
-func (p *PPU) Palette() bus.Palette {
-	return p.palette
 }
