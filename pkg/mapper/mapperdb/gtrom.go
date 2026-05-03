@@ -14,10 +14,6 @@ import (
 	"github.com/retroenv/nesgoemu/pkg/bus"
 )
 
-type mapperGTROM struct {
-	Base
-}
-
 // NewGTROM returns a new mapper instance.
 func NewGTROM(base Base) (bus.Mapper, error) {
 	m := &mapperGTROM{
@@ -35,6 +31,10 @@ func NewGTROM(base Base) (bus.Mapper, error) {
 	m.AddWriteHook(0x7000, 0x7FFF, m.setBanks)
 
 	return m, nil
+}
+
+type mapperGTROM struct {
+	Base
 }
 
 func (m *mapperGTROM) getControl(_ uint16) (uint8, error) {

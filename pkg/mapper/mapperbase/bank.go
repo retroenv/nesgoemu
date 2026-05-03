@@ -1,10 +1,5 @@
 package mapperbase
 
-type bank struct {
-	data   []byte
-	length int
-}
-
 // setDefaultBankSizes sets the default CHR and PRG sizes based on the set window size.
 func (b *Base) setDefaultBankSizes() {
 	b.setDefaultChrBankSizes()
@@ -46,4 +41,9 @@ func (b *Base) setWindows() {
 			bank = 0
 		}
 	}
+}
+
+type bank struct {
+	data   []byte
+	length int
 }

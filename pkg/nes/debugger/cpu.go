@@ -5,37 +5,6 @@ import (
 	"net/http"
 )
 
-type cpuFlags struct {
-	C hexByte `json:"c"`
-	Z hexByte `json:"z"`
-	I hexByte `json:"i"`
-	D hexByte `json:"d"`
-	B hexByte `json:"b"`
-	V hexByte `json:"v"`
-	N hexByte `json:"n"`
-}
-
-type cpuState struct {
-	A          hexByte       `json:"a"`
-	X          hexByte       `json:"x"`
-	Y          hexByte       `json:"y"`
-	PC         hexWord       `json:"pc"`
-	SP         hexByte       `json:"sp"`
-	Cycles     hexQword      `json:"cycles"`
-	Flags      cpuFlags      `json:"flags"`
-	Interrupts cpuInterrupts `json:"interrupts"`
-}
-
-type cpuInterrupts struct {
-	NMI cpuInterruptState `json:"nmi"`
-	IRQ cpuInterruptState `json:"irq"`
-}
-
-type cpuInterruptState struct {
-	Running   bool `json:"running"`
-	Triggered bool `json:"triggered"`
-}
-
 func (d *Debugger) cpuState(w http.ResponseWriter, _ *http.Request) {
 	state := d.bus.CPU.State()
 
@@ -72,4 +41,35 @@ func (d *Debugger) cpuState(w http.ResponseWriter, _ *http.Request) {
 
 func (d *Debugger) cpuPause(_ http.ResponseWriter, _ *http.Request) {
 	// TODO implement
+}
+
+type cpuFlags struct {
+	C hexByte `json:"c"`
+	Z hexByte `json:"z"`
+	I hexByte `json:"i"`
+	D hexByte `json:"d"`
+	B hexByte `json:"b"`
+	V hexByte `json:"v"`
+	N hexByte `json:"n"`
+}
+
+type cpuState struct {
+	A          hexByte       `json:"a"`
+	X          hexByte       `json:"x"`
+	Y          hexByte       `json:"y"`
+	PC         hexWord       `json:"pc"`
+	SP         hexByte       `json:"sp"`
+	Cycles     hexQword      `json:"cycles"`
+	Flags      cpuFlags      `json:"flags"`
+	Interrupts cpuInterrupts `json:"interrupts"`
+}
+
+type cpuInterrupts struct {
+	NMI cpuInterruptState `json:"nmi"`
+	IRQ cpuInterruptState `json:"irq"`
+}
+
+type cpuInterruptState struct {
+	Running   bool `json:"running"`
+	Triggered bool `json:"triggered"`
 }

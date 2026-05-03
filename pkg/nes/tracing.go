@@ -8,27 +8,6 @@ import (
 	"github.com/retroenv/retrogolib/arch/system/nes"
 )
 
-type cpuState struct {
-	A      uint8
-	X      uint8
-	Y      uint8
-	SP     uint8
-	Flags  uint8
-	Cycles uint64
-}
-
-func tracePreExecutionHook(cpu *m6502.CPU, ins *m6502.Instruction, params ...any) {
-	paramsAsString, err := traceCPUParamString(cpu, ins, params...)
-	if err != nil {
-		panic(err)
-	}
-
-	cpu.TraceStep.CustomData = strings.ToUpper(ins.Name)
-	if paramsAsString != "" {
-		cpu.TraceStep.CustomData += " " + paramsAsString
-	}
-}
-
 // print outputs current trace step in Nintendulator / nestest.log compatible format.
 func (sys *System) printTraceStep(state cpuState) {
 	step := sys.CPU.TraceStep
@@ -54,6 +33,15 @@ func (sys *System) printTraceStep(state cpuState) {
 	_, _ = fmt.Fprint(sys.opts.tracingTarget, s)
 }
 
+type cpuState struct {
+	A      uint8
+	X      uint8
+	Y      uint8
+	SP     uint8
+	Flags  uint8
+	Cycles uint64
+}
+
 type paramConverterFunc func(cpu *m6502.CPU, instruction *m6502.Instruction, params ...any) string
 
 var paramConverter = map[m6502.AddressingMode]paramConverterFunc{
@@ -70,6 +58,18 @@ var paramConverter = map[m6502.AddressingMode]paramConverterFunc{
 	m6502.IndirectAddressing:    paramConverterIndirect,
 	m6502.IndirectXAddressing:   paramConverterIndirectX,
 	m6502.IndirectYAddressing:   paramConverterIndirectY,
+}
+
+func tracePreExecutionHook(cpu *m6502.CPU, ins *m6502.Instruction, params ...any) {
+	paramsAsString, err := traceCPUParamString(cpu, ins, params...)
+	if err != nil {
+		panic(err)
+	}
+
+	cpu.TraceStep.CustomData = strings.ToUpper(ins.Name)
+	if paramsAsString != "" {
+		cpu.TraceStep.CustomData += " " + paramsAsString
+	}
 }
 
 // traceCPUParamString returns the instruction parameters formatted as string.

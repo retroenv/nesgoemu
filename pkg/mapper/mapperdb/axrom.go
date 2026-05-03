@@ -13,10 +13,6 @@ PRG ROM window: 32K
 CHR capacity: 8K
 */
 
-type mapperAxROM struct {
-	Base
-}
-
 // NewAxROM returns a new mapper instance.
 func NewAxROM(base Base) (bus.Mapper, error) {
 	m := &mapperAxROM{
@@ -34,6 +30,10 @@ func NewAxROM(base Base) (bus.Mapper, error) {
 
 	m.AddWriteHook(0x8000, 0xFFFF, m.setPrgWindow)
 	return m, nil
+}
+
+type mapperAxROM struct {
+	Base
 }
 
 func (m *mapperAxROM) setPrgWindow(_ uint16, value uint8) error {

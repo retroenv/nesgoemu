@@ -11,10 +11,6 @@ import (
 	"github.com/retroenv/nesgoemu/pkg/bus"
 )
 
-type mapperCNROM struct {
-	Base
-}
-
 // NewCNROM returns a new mapper instance.
 func NewCNROM(base Base) (bus.Mapper, error) {
 	m := &mapperCNROM{
@@ -25,6 +21,10 @@ func NewCNROM(base Base) (bus.Mapper, error) {
 
 	m.AddWriteHook(0x8000, 0xFFFF, m.setChrWindow)
 	return m, nil
+}
+
+type mapperCNROM struct {
+	Base
 }
 
 func (m *mapperCNROM) setChrWindow(_ uint16, value uint8) error {

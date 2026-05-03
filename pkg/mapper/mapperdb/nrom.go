@@ -10,10 +10,6 @@ import (
 	"github.com/retroenv/nesgoemu/pkg/bus"
 )
 
-type mapperNROM struct {
-	Base
-}
-
 // NewNROM returns a new mapper instance.
 func NewNROM(base Base) (bus.Mapper, error) {
 	m := &mapperNROM{
@@ -22,4 +18,8 @@ func NewNROM(base Base) (bus.Mapper, error) {
 	m.SetName("NROM")
 	m.Initialize()
 	return m, nil
+}
+
+type mapperNROM struct {
+	Base
 }

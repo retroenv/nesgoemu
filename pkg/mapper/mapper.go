@@ -10,20 +10,6 @@ import (
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperdb"
 )
 
-type mapperInitializer func(base mapperdb.Base) (bus.Mapper, error)
-
-var mappers = map[byte]mapperInitializer{
-	0:   mapperdb.NewNROM,
-	1:   mapperdb.NewMMC1,
-	2:   mapperdb.NewUxROMOr,
-	3:   mapperdb.NewCNROM,
-	7:   mapperdb.NewAxROM,
-	30:  mapperdb.NewUNROM512,
-	94:  mapperdb.NewUN1ROM,
-	111: mapperdb.NewGTROM,
-	180: mapperdb.NewUxROMAnd,
-}
-
 // New creates a new mapper for the mapper defined by the cartridge.
 func New(bus *bus.Bus) (bus.Mapper, error) {
 	mapperNumber := bus.Cartridge.Mapper
@@ -38,4 +24,18 @@ func New(bus *bus.Bus) (bus.Mapper, error) {
 		return nil, err
 	}
 	return mapper, nil
+}
+
+type mapperInitializer func(base mapperdb.Base) (bus.Mapper, error)
+
+var mappers = map[byte]mapperInitializer{
+	0:   mapperdb.NewNROM,
+	1:   mapperdb.NewMMC1,
+	2:   mapperdb.NewUxROMOr,
+	3:   mapperdb.NewCNROM,
+	7:   mapperdb.NewAxROM,
+	30:  mapperdb.NewUNROM512,
+	94:  mapperdb.NewUN1ROM,
+	111: mapperdb.NewGTROM,
+	180: mapperdb.NewUxROMAnd,
 }

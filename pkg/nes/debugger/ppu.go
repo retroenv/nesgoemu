@@ -7,25 +7,6 @@ import (
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 )
 
-type ppuPaletteBackground struct {
-	Color    hexArray `json:"color"`
-	Palette0 hexArray `json:"palette0"`
-	Palette1 hexArray `json:"palette1"`
-	Palette2 hexArray `json:"palette2"`
-}
-
-type ppuPaletteSprite struct {
-	Palette0 hexArray `json:"palette0"`
-	Palette1 hexArray `json:"palette1"`
-	Palette2 hexArray `json:"palette2"`
-	Palette3 hexArray `json:"palette3"`
-}
-
-type ppuPalette struct {
-	Background ppuPaletteBackground `json:"background"`
-	Sprite     ppuPaletteSprite     `json:"sprite"`
-}
-
 func (d *Debugger) ppuPalette(w http.ResponseWriter, _ *http.Request) {
 	palette := d.bus.PPU.Palette()
 	data := palette.Data()
@@ -48,13 +29,6 @@ func (d *Debugger) ppuPalette(w http.ResponseWriter, _ *http.Request) {
 	_ = json.NewEncoder(w).Encode(res)
 }
 
-type ppuNameTables struct {
-	NameTable0 []hexArrayCombined `json:"nametable0"`
-	NameTable1 []hexArrayCombined `json:"nametable1"`
-	NameTable2 []hexArrayCombined `json:"nametable2"`
-	NameTable3 []hexArrayCombined `json:"nametable3"`
-}
-
 func (d *Debugger) ppuNameTables(w http.ResponseWriter, _ *http.Request) {
 	tables := d.bus.NameTable.Data()
 
@@ -69,10 +43,6 @@ func (d *Debugger) ppuNameTables(w http.ResponseWriter, _ *http.Request) {
 	_ = json.NewEncoder(w).Encode(res)
 }
 
-type ppuMirrorMode struct {
-	MirrorMode cartridge.MirrorMode `json:"mirrorMode"`
-}
-
 func (d *Debugger) ppuMirrorMode(w http.ResponseWriter, _ *http.Request) {
 	mirrorMode := d.bus.NameTable.MirrorMode()
 
@@ -81,4 +51,34 @@ func (d *Debugger) ppuMirrorMode(w http.ResponseWriter, _ *http.Request) {
 	}
 
 	_ = json.NewEncoder(w).Encode(res)
+}
+
+type ppuPaletteBackground struct {
+	Color    hexArray `json:"color"`
+	Palette0 hexArray `json:"palette0"`
+	Palette1 hexArray `json:"palette1"`
+	Palette2 hexArray `json:"palette2"`
+}
+
+type ppuPaletteSprite struct {
+	Palette0 hexArray `json:"palette0"`
+	Palette1 hexArray `json:"palette1"`
+	Palette2 hexArray `json:"palette2"`
+	Palette3 hexArray `json:"palette3"`
+}
+
+type ppuPalette struct {
+	Background ppuPaletteBackground `json:"background"`
+	Sprite     ppuPaletteSprite     `json:"sprite"`
+}
+
+type ppuNameTables struct {
+	NameTable0 []hexArrayCombined `json:"nametable0"`
+	NameTable1 []hexArrayCombined `json:"nametable1"`
+	NameTable2 []hexArrayCombined `json:"nametable2"`
+	NameTable3 []hexArrayCombined `json:"nametable3"`
+}
+
+type ppuMirrorMode struct {
+	MirrorMode cartridge.MirrorMode `json:"mirrorMode"`
 }

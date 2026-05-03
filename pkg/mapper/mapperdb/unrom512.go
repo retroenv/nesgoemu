@@ -14,10 +14,6 @@ CHR capacity: 32K
 CHR window: 8K
 */
 
-type mapperUNROM512 struct {
-	Base
-}
-
 // NewUNROM512 returns a new mapper instance.
 func NewUNROM512(base Base) (bus.Mapper, error) {
 	m := &mapperUNROM512{
@@ -44,6 +40,10 @@ func NewUNROM512(base Base) (bus.Mapper, error) {
 
 	m.SetPrgWindow(1, -1)
 	return m, nil
+}
+
+type mapperUNROM512 struct {
+	Base
 }
 
 func (m *mapperUNROM512) setBanks(_ uint16, value uint8) error {

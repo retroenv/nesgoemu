@@ -9,13 +9,6 @@ PRG ROM window: 16K + 16K fixed
 CHR capacity: 8K
 */
 
-type mapperUxROM struct {
-	Base
-
-	valueShift  int
-	windowIndex int
-}
-
 // NewUxROMOr returns a new mapper instance with OR logic (74HC32) configuration.
 func NewUxROMOr(base Base) (bus.Mapper, error) {
 	m := newMapperUxROM(base)
@@ -48,6 +41,13 @@ func NewUxROMAnd(base Base) (bus.Mapper, error) {
 	// $C000-$FFFF: 16 KB switchable PRG ROM bank
 	m.windowIndex = 1
 	return m, nil
+}
+
+type mapperUxROM struct {
+	Base
+
+	valueShift  int
+	windowIndex int
 }
 
 func newMapperUxROM(base Base) *mapperUxROM {

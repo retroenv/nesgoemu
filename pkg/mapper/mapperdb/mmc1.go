@@ -16,20 +16,6 @@ import (
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 )
 
-type mapperMMC1 struct {
-	Base
-
-	ram []byte
-
-	shiftCount    byte
-	shiftRegister byte
-
-	control  byte
-	chrBank0 int
-	chrBank1 int
-	prgBank  int
-}
-
 // NewMMC1 returns a new mapper instance.
 func NewMMC1(base Base) (bus.Mapper, error) {
 	m := &mapperMMC1{
@@ -56,6 +42,20 @@ func NewMMC1(base Base) (bus.Mapper, error) {
 	// TODO support mmc1 variants
 
 	return m, nil
+}
+
+type mapperMMC1 struct {
+	Base
+
+	ram []byte
+
+	shiftCount    byte
+	shiftRegister byte
+
+	control  byte
+	chrBank0 int
+	chrBank1 int
+	prgBank  int
 }
 
 func (m *mapperMMC1) resetShift() error {

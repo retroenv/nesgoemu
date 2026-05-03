@@ -10,19 +10,6 @@ import (
 // MirrorModeTranslation maps a 8bit index to a nametable mirror mode.
 type MirrorModeTranslation map[uint8]cartridge.MirrorMode
 
-// createNameTableBanks creates the VRAM banks.
-func (b *Base) createNameTableBanks() {
-	b.nameTableBanks = make([]bank, b.nameTableCount)
-
-	for i := range b.nameTableCount {
-		bank := &b.nameTableBanks[i]
-		bank.length = nametable.VramSize
-		bank.data = make([]byte, bank.length)
-	}
-
-	b.SetNameTableWindow(0)
-}
-
 // SetNameTableCount sets amount of nametables.
 func (b *Base) SetNameTableCount(count int) {
 	b.nameTableCount = count
@@ -67,4 +54,17 @@ func (b *Base) SetNameTableMirrorModeIndex(index uint8) error {
 	}
 	b.bus.NameTable.SetMirrorMode(mode)
 	return nil
+}
+
+// createNameTableBanks creates the VRAM banks.
+func (b *Base) createNameTableBanks() {
+	b.nameTableBanks = make([]bank, b.nameTableCount)
+
+	for i := range b.nameTableCount {
+		bank := &b.nameTableBanks[i]
+		bank.length = nametable.VramSize
+		bank.data = make([]byte, bank.length)
+	}
+
+	b.SetNameTableWindow(0)
 }
