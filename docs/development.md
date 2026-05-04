@@ -1,118 +1,161 @@
-# Development Guide
+# Development
 
-Development workflow, project structure, and contribution guidelines for nesgoemu.
+Development workflow, project structure, testing, and contribution notes for nesgoemu.
 
-## Quick Start
+## Common Commands
 
-### Prerequisites
-- Go 1.22+, Make, golangci-lint
-- SDL2 libraries (only required at runtime for GUI mode)
+```bash
+make build
+make lint
+make test
+make test-coverage
+make test-coverage-web
+make install-linters
+```
 
-### Workflow
+`make build` runs `CGO_ENABLED=0 go build ./...`. `make lint` runs `golangci-lint` and
+`retrogolint`. `make test` runs the full test suite with the race detector.
+
+## Prerequisites
+
+- Go 1.22 or later
+- Make
+- `golangci-lint` and `retrogolint` for `make lint`
+- SDL2 runtime libraries only when running GUI mode
+
+Install the configured linter versions with:
+
+```bash
+make install-linters
+```
+
+## Local Workflow
+
 ```bash
 git clone https://github.com/retroenv/nesgoemu.git
 cd nesgoemu
-make build test lint
-go fmt ./...
+make build
+make test
+make lint
 ```
 
-**Development cycle:** Make changes → `make test lint` → Test with ROMs → Commit
+Recommended development cycle:
+
+1. Make a focused change.
+2. Run `go fmt ./...` if Go files changed.
+3. Run `make test`.
+4. Run `make lint` before sending changes.
+5. Validate emulator behavior with a relevant ROM or test fixture.
 
 ## Architecture
 
 Core NES hardware components:
 
-- **CPU** (`pkg/bus/cpu.go`) - 6502 processor using retrogolib
-- **PPU** (`pkg/ppu/`) - Picture Processing Unit with scanline rendering  
-- **APU** (`pkg/apu/`) - Audio Processing Unit (structure only)
-- **Bus** (`pkg/bus/`) - System interconnect and memory mapping
-- **Mappers** (`pkg/mapper/`) - Cartridge memory banking (NROM, MMC1, CNROM, UxROM, AxROM, GTROM, UNROM-512)
+- **CPU** (`pkg/bus/cpu.go`): 6502 processor integration through retrogolib.
+- **PPU** (`pkg/ppu/`): Picture Processing Unit registers, memory, and rendering.
+- **APU** (`pkg/apu/`): Audio Processing Unit register structure.
+- **Bus** (`pkg/bus/`): System interconnect for CPU, PPU, controllers, mapper, and cartridge state.
+- **Mappers** (`pkg/mapper/`): Cartridge memory banking and nametable mirroring.
+- **System** (`pkg/nes/`): Emulator startup, options, tracing, GUI toggle, and debugger setup.
+
+See [architecture.md](architecture.md) for the package map and supported mapper IDs.
 
 ## Testing
 
 ### Unit Tests
+
 ```bash
-make test                    # Run all tests
-make test-coverage          # With coverage
-go test ./pkg/controller -v # Specific package
+make test
+make test-coverage
+go test ./pkg/controller -v
 ```
 
 ### Test ROMs
+
+The tracked nestest fixture validates CPU execution against a checked-in trace:
+
 ```bash
-go run . nestest.nes        # CPU instruction accuracy
-go run . 1.Branch_Basics.nes # Branch instructions
-go run . -c -t nestest.nes > trace.log # With tracing
+go test ./internal/testroms/nestest
 ```
 
-Test ROMs validate CPU instructions, memory mapping, and system timing.
+Run the fixture through the command-line binary:
+
+```bash
+go run . -c -t -e 0xc000 -s 0x0001 internal/testroms/nestest/nestest.nes > trace.log
+```
 
 ## Debugging Tools
 
 ### Web Debugger
+
 ```bash
 go run . -d test_rom.nes
-curl http://127.0.0.1:8080/cpu     # CPU state
-curl http://127.0.0.1:8080/mapper  # Mapper state
+curl http://127.0.0.1:8080/cpu
+curl http://127.0.0.1:8080/mapper
 ```
 
 ### CPU Tracing
+
 ```bash
-go run . -t test_rom.nes           # Trace to console
-go run . -c -t test_rom.nes > log  # Trace to file
+go run . -t test_rom.nes
+go run . -c -t test_rom.nes > trace.log
 ```
 
 ### Development Flags
+
 ```bash
-go run . -c test_rom.nes        # Console mode (no GUI)
-go run . -e 0x8000 test_rom.nes # Custom entry point
-go run . -s 0x8100 test_rom.nes # Stop at address
+go run . -c test_rom.nes
+go run . -e 0x8000 test_rom.nes
+go run . -s 0x8100 test_rom.nes
 ```
+
+See [usage.md](usage.md) and [advanced-usage.md](advanced-usage.md) for the full command-line reference.
 
 ## Code Standards
 
-### Requirements
-- Code formatted: `go fmt ./...`
-- Linter clean: `make lint` (0 issues)
-- Tests pass: `make test`
-- Public APIs documented
-- Error handling (never ignore errors)
+- Code formatted with `go fmt ./...`.
+- Linter clean with `make lint`.
+- Tests pass with `make test`.
+- Public APIs are documented.
+- Errors are handled or explicitly justified.
+- Packages stay organized by NES hardware subsystem.
+- Interfaces are used where they support testing or hardware component boundaries.
 
-### Project Patterns
-- Package organization by hardware component
-- Interfaces for mockable components
-- Structured error handling with wrapping
-- Minimal external dependencies
+## Release Checks
+
+Before tagging a release, run:
+
+```bash
+go fmt ./...
+make lint
+make test
+go vet ./...
+```
+
+Snapshot and release builds use GoReleaser:
+
+```bash
+make release-snapshot
+make release
+```
+
+`make release` expects the current git state and tag to be ready for publishing.
 
 ## Contributing
 
-### Pull Request Checklist
-- [ ] Branch up to date with main
-- [ ] Tests pass (`make test`)
-- [ ] Linter passes (`make lint`)
-- [ ] Code formatted (`go fmt ./...`)
-- [ ] New functionality has tests
-- [ ] Clear commit messages
+Pull request checklist:
 
-### Process
-1. Fork repository
-2. Create feature branch
-3. Make changes with tests
-4. Ensure linter passes
-5. Submit pull request
+- Branch is up to date with main.
+- Tests pass with `make test`.
+- Linter passes with `make lint`.
+- Go files are formatted with `go fmt ./...`.
+- New behavior has tests or a documented validation path.
+- Commit messages are clear and scoped.
 
-Focus on single feature/fix per PR with clear descriptions.
-
-## Build Targets
-
-```bash
-make build           # Build binary
-make test            # Run tests
-make test-coverage   # Run with coverage
-make lint            # Run linter
-```
+Focus on one feature or fix per pull request.
 
 ## Resources
 
-- [NESDev Wiki](https://wiki.nesdev.com/) - NES hardware reference
-- [Effective Go](https://golang.org/doc/effective_go.html) - Go best practices
-- [golangci-lint](https://golangci-lint.run/) - Linting tool
+- [NESDev Wiki](https://www.nesdev.org/wiki/Nesdev_Wiki): NES hardware reference.
+- [Effective Go](https://go.dev/doc/effective_go): Go best practices.
+- [golangci-lint](https://golangci-lint.run/): Go linter documentation.

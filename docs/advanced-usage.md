@@ -1,85 +1,156 @@
 # Advanced Usage
 
-Advanced debugging, automation, and development workflows for nesgoemu.
+Advanced debugging, automation, validation, and performance workflows for nesgoemu.
 
 ## Debugging Tools
 
 ### Web Debugger
+
+Start the debugger on the default address:
+
 ```bash
-nesgoemu -d game.nes                    # Default (localhost:8080)
-nesgoemu -d -a "0.0.0.0:9000" game.nes # Custom address
+nesgoemu -d game.nes
 ```
 
-**Endpoints:**
-- `/cpu` - CPU state and registers
-- `/mapper` - Memory mapper state  
-- `/ppu/palette` - PPU palette data
-- `/ppu/nametables` - PPU nametable data
+Start the debugger on a custom address:
+
+```bash
+nesgoemu -d -a 127.0.0.1:9000 game.nes
+```
+
+Available endpoints:
+
+| Endpoint | Description |
+|----------|-------------|
+| `/cpu` | CPU registers, flags, cycles, and interrupt state |
+| `/cpu/pause` | Reserved pause endpoint; currently not implemented |
+| `/mapper` | Current mapper state |
+| `/ppu/palette` | PPU palette data |
+| `/ppu/mirrormode` | Current nametable mirror mode |
+| `/ppu/nametables` | PPU nametable data |
+
+Example requests:
+
+```bash
+curl http://127.0.0.1:8080/cpu
+curl http://127.0.0.1:8080/mapper
+curl http://127.0.0.1:8080/ppu/mirrormode
+```
 
 ### CPU Tracing
+
+Print CPU trace output to the console:
+
 ```bash
-nesgoemu -t game.nes                    # Trace to console
-nesgoemu -c -t game.nes > trace.log     # Trace to file
-nesgoemu -d -t game.nes                 # Trace with debugger
+nesgoemu -t game.nes
+```
+
+Capture trace output without opening the GUI:
+
+```bash
+nesgoemu -c -t game.nes > trace.log
+```
+
+Run tracing and the web debugger together:
+
+```bash
+nesgoemu -d -t game.nes
 ```
 
 ### Execution Control
+
+The `-e` and `-s` flags accept decimal or Go-style base-prefixed integers such as `0x8000`.
+
 ```bash
-nesgoemu -e 0x8000 game.nes             # Custom entry point
-nesgoemu -s 0x8100 game.nes             # Stop at address
-nesgoemu -e 0x8000 -s 0x8100 game.nes   # Entry + stop
+nesgoemu -e 0x8000 game.nes
+nesgoemu -s 0x8100 game.nes
+nesgoemu -e 0x8000 -s 0x8100 game.nes
 ```
 
-## Console Mode & Automation
+## Console Mode and Automation
 
 ### Headless Operation
+
+Console mode disables GUI setup and is useful for automated runs:
+
 ```bash
-nesgoemu -c game.nes                    # No GUI
-nesgoemu -c -t test.nes > results.log   # With output capture
+nesgoemu -c game.nes
+nesgoemu -c -t game.nes > trace.log
 ```
 
 ### Batch Testing
+
 ```bash
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+mkdir -p logs
+
 for rom in *.nes; do
-    echo "Testing $rom..."
-    timeout 30s nesgoemu -c -t "$rom" > "logs/${rom%.nes}.log" 2>&1
-    [ $? -eq 0 ] && echo "✓ $rom passed" || echo "✗ $rom failed"
+    echo "Testing ${rom}"
+    if timeout 30s nesgoemu -c -t "${rom}" > "logs/${rom%.nes}.log" 2>&1; then
+        echo "PASS ${rom}"
+    else
+        echo "FAIL ${rom}"
+    fi
 done
 ```
 
-## Test ROMs & Validation
+## Test ROMs and Validation
 
-### Standard Test ROMs
+The tracked nestest fixture lives under `internal/testroms/nestest` and is covered by a Go test:
+
 ```bash
-nesgoemu nestest.nes                    # CPU instruction accuracy
-nesgoemu 1.Branch_Basics.nes            # Branch instructions
-nesgoemu -c -t nestest.nes > results.log # With analysis
+go test ./internal/testroms/nestest
 ```
 
-### ROM Compatibility
+Run it through the command-line binary with the same entry and stop addresses used by the test:
+
 ```bash
-nesgoemu -c -e 0x8000 -s 0x8001 rom.nes # Quick compatibility check
-nesgoemu -c -t unknown_rom.nes > trace.log # Full execution trace
+nesgoemu -c -t -e 0xc000 -s 0x0001 internal/testroms/nestest/nestest.nes > trace.log
+```
+
+Compare traces against the checked-in reference when needed:
+
+```bash
+diff -u internal/testroms/nestest/nestest_no_ppu.log trace.log
+```
+
+For unknown ROMs, start with console mode and tracing before using GUI mode:
+
+```bash
+nesgoemu -c -t unknown.nes > trace.log
 ```
 
 ## Performance Analysis
 
-### Profiling
+nesgoemu does not currently expose `-cpuprofile` or `-memprofile` application flags. For repeatable
+profiling of the checked-in nestest workload, use Go test profiling:
+
 ```bash
-go run -cpuprofile=cpu.prof . game.nes  # CPU profiling
-go run -memprofile=mem.prof . game.nes  # Memory profiling
-go tool pprof cpu.prof                  # Analyze profiles
+go test -run TestNestest -cpuprofile cpu.prof ./internal/testroms/nestest
+go tool pprof cpu.prof
 ```
 
-### Benchmarking
+For command-line timing of a ROM run:
+
 ```bash
-time nesgoemu -c -s 0x9000 game.nes     # Performance timing
-/usr/bin/time -v nesgoemu -c game.nes    # Memory usage
+time nesgoemu -c -s 0x9000 game.nes
+/usr/bin/time -v nesgoemu -c game.nes
 ```
 
 ## Build Options
 
+Build the local command:
+
 ```bash
-go build -ldflags="-s -w" .     # Production build (smaller binary)
+go build .
 ```
+
+Build a smaller release-style binary:
+
+```bash
+go build -ldflags="-s -w" .
+```
+
+Project Make targets are documented in [development.md](development.md).

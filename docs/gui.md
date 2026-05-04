@@ -1,16 +1,18 @@
 # GUI Dependencies
 
 nesgoemu can run in two modes:
-- Console mode (`-c` flag): No additional dependencies required
-- GUI mode (default): Requires SDL2 libraries
 
-The GUI uses SDL2 for cross-platform window management, input handling, and rendering. You'll need to install SDL2 development libraries for your platform.
+- Console mode (`-c`): no additional runtime libraries required.
+- GUI mode (default): requires SDL2 runtime libraries.
 
-## Platform-Specific Instructions
+The Go build itself does not require CGO. GUI mode uses SDL2 through retrogolib for window setup,
+input handling, and rendering.
+
+## Platform-Specific Setup
 
 ### macOS
 
-Install SDL2 using Homebrew:
+Install SDL2 with Homebrew:
 
 ```bash
 brew install sdl2
@@ -18,43 +20,55 @@ brew install sdl2
 
 ### Ubuntu/Debian
 
-Install SDL2 development packages:
+Install SDL2 packages:
 
 ```bash
 sudo apt install libsdl2{,-image,-mixer,-ttf,-gfx}-dev
 ```
 
-### CentOS/Fedora/RHEL
+### Fedora/RHEL
 
-Install SDL2 development packages:
+Install SDL2 packages:
 
 ```bash
-sudo yum install SDL2{,_image,_mixer,_ttf,_gfx}-devel
+sudo dnf install SDL2{,_image,_mixer,_ttf,_gfx}-devel
 ```
 
-For newer versions, use `dnf` instead of `yum`.
+On older RHEL-derived systems, use `yum` instead of `dnf`.
 
 ### Windows
 
-1. Install [MSYS2](https://www.msys2.org/)
-2. Open MSYS2 terminal and install SDL2:
-   ```bash
-   pacman -S --needed base-devel mingw-w64-x86_64-toolchain mingw64/mingw-w64-x86_64-SDL2
-   ```
-3. Add `C:\msys64\mingw64\bin` to your system PATH environment variable
+1. Install [MSYS2](https://www.msys2.org/).
+2. Open an MSYS2 terminal.
+3. Install SDL2:
+
+```bash
+pacman -S --needed base-devel mingw-w64-x86_64-toolchain mingw64/mingw-w64-x86_64-SDL2
+```
+
+Add `C:\msys64\mingw64\bin` to your system `PATH` so the SDL2 DLLs can be found at runtime.
 
 ### Other Platforms
 
-For other Unix-like systems, install SDL2 development libraries using your package manager. The package names are typically `libsdl2-dev`, `SDL2-devel`, or similar.
-
-## Troubleshooting
-
-If you encounter runtime errors when using GUI mode:
-
-1. Verify SDL2 libraries are installed and in your system's library path
-2. On Linux, you may need additional packages like `libsdl2-2.0-0`
-3. On macOS, ensure SDL2 is installed via Homebrew or your package manager
+Install SDL2 using your platform package manager. Package names are commonly `libsdl2-dev`,
+`SDL2-devel`, or `sdl2`.
 
 ## Console Mode
 
-nesgoemu can run without GUI using the `-c` flag. SDL2 libraries are only required when actually running in GUI mode, not for building the binary.
+Use console mode when SDL2 is not installed, when running in CI, or when capturing traces:
+
+```bash
+nesgoemu -c game.nes
+nesgoemu -c -t game.nes > trace.log
+```
+
+## Troubleshooting
+
+If GUI mode fails at startup:
+
+1. Verify SDL2 is installed.
+2. Verify SDL2 shared libraries are in the runtime library path.
+3. On Linux, install the runtime package as well as development headers when your distribution splits them.
+4. On Windows, verify the MSYS2 `mingw64\bin` directory is on `PATH`.
+
+For non-GUI workflows, use `-c` to bypass SDL2 setup entirely.
