@@ -96,9 +96,17 @@ func (sys *System) WindowTitle() string {
 	return "nesgoemu"
 }
 
+// NTSC NES timing: CPU runs at ~1.789773 MHz, PPU frame is 60.0988 Hz.
+const (
+	ntscCPUCyclesPerFrame = 29781
+	ntscFrameDuration     = time.Second * 1000 / 60099 // ~16.64ms
+)
+
 // runEmulatorSteps runs the emulator until it is quit or reaches the given stop address.
 func (sys *System) runEmulatorSteps(stopAt int) error {
 	var state cpuState
+	frameCycles := uint64(0)
+	nextFrame := time.Now().Add(ntscFrameDuration)
 
 	for {
 		if stopAt >= 0 && sys.PC == uint16(stopAt) {
@@ -128,6 +136,19 @@ func (sys *System) runEmulatorSteps(stopAt int) error {
 		cpuCycles := sys.CPU.Cycles() - cycles
 		ppuCycles := cpuCycles * 3
 		sys.Bus.PPU.Step(int(ppuCycles))
+
+		frameCycles += cpuCycles
+		if frameCycles >= ntscCPUCyclesPerFrame {
+			frameCycles -= ntscCPUCyclesPerFrame
+			if sleep := time.Until(nextFrame); sleep > 0 {
+				time.Sleep(sleep)
+			}
+			nextFrame = nextFrame.Add(ntscFrameDuration)
+			// If we've fallen far behind (e.g. paused/breakpoint), resync.
+			if time.Until(nextFrame) < -ntscFrameDuration {
+				nextFrame = time.Now().Add(ntscFrameDuration)
+			}
+		}
 	}
 }
 
