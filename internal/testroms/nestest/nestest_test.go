@@ -23,7 +23,7 @@ func TestNestest(t *testing.T) {
 	var buffer bytes.Buffer
 	trace := bufio.NewWriter(&buffer)
 
-	m6502.Isc.Name = "isb"
+	m6502.IscInst.Name = "isb"
 
 	options := []nes.Option{
 		nes.WithCartridge(cart),

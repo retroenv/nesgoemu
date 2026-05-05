@@ -69,7 +69,7 @@ func NewSystem(opts *Options) (*System, error) {
 		},
 	}
 
-	var cpuOpts []m6502.Option
+	cpuOpts := []m6502.Option{m6502.WithVariant(m6502.VariantNES6502)}
 	if opts.tracing {
 		cpuOpts = append(cpuOpts, m6502.WithTracing(), m6502.WithPreExecutionHook(tracePreExecutionHook))
 	}

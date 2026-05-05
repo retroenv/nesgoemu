@@ -98,7 +98,15 @@ func paramConverterAccumulator(_ *m6502.CPU, _ *m6502.Instruction, _ ...any) str
 }
 
 func paramConverterAbsolute(cpu *m6502.CPU, instruction *m6502.Instruction, params ...any) string {
-	address := params[0].(m6502.Absolute)
+	var address m6502.Absolute
+	if len(params) > 0 {
+		address = params[0].(m6502.Absolute)
+	} else {
+		// NoParamFunc instructions (e.g. JSR) read operands themselves; reconstruct from memory.
+		b1 := uint16(cpu.Memory().Read(cpu.TraceStep.PC + 1))
+		b2 := uint16(cpu.Memory().Read(cpu.TraceStep.PC + 2))
+		address = m6502.Absolute(b2<<8 | b1)
+	}
 	if _, ok := m6502.BranchingInstructions[instruction.Name]; ok {
 		return fmt.Sprintf("$%04X", address)
 	}

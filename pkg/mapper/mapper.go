@@ -28,7 +28,7 @@ func New(bus *bus.Bus) (bus.Mapper, error) {
 
 type mapperInitializer func(base mapperdb.Base) (bus.Mapper, error)
 
-var mappers = map[byte]mapperInitializer{
+var mappers = map[uint16]mapperInitializer{
 	0:   mapperdb.NewNROM,
 	1:   mapperdb.NewMMC1,
 	2:   mapperdb.NewUxROMOr,
