@@ -24,6 +24,13 @@ The `pkg/nes` package coordinates startup. The `pkg/bus` package connects the CP
 controllers, cartridge, mapper, and memory. Mapper implementations translate cartridge reads and
 writes into the correct PRG, CHR, and nametable behavior for the loaded ROM.
 
+## Shared Foundations
+
+nesgoemu uses [retrogolib](https://github.com/retroenv/retrogolib) for the NES 6502 core,
+cartridge parsing, system constants, application lifecycle, input abstractions, and SDL integration.
+This repository provides the NES-specific bus, PPU, APU registers, controllers, memory, mappers,
+system orchestration, tracing, and debugger.
+
 ## Mapper Support
 
 Supported mapper IDs are currently:
