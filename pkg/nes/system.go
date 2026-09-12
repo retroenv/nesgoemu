@@ -135,8 +135,7 @@ func (sys *System) runEmulatorSteps(stopAt int) error {
 		}
 
 		cpuCycles := sys.CPU.Cycles() - cycles
-		ppuCycles := cpuCycles * 3
-		sys.Bus.PPU.Step(int(ppuCycles))
+		sys.clockComponents(cpuCycles)
 
 		frameCycles += cpuCycles
 		if frameCycles >= ntscCPUCyclesPerFrame {
@@ -150,6 +149,18 @@ func (sys *System) runEmulatorSteps(stopAt int) error {
 				nextFrame = time.Now().Add(ntscFrameDuration)
 			}
 		}
+	}
+}
+
+func (sys *System) clockComponents(cycles uint64) {
+	clocker, _ := sys.Bus.Mapper.(mapperCPUClocker)
+
+	for range cycles {
+		if clocker != nil {
+			clocker.ClockCPU(1)
+		}
+
+		sys.Bus.PPU.Step(3)
 	}
 }
 
@@ -196,4 +207,8 @@ func (sys *System) runRenderer(ctx context.Context, opts *Options, guiStarter gu
 		time.Sleep(time.Second / ppu.FPS)
 	}
 	return nil
+}
+
+type mapperCPUClocker interface {
+	ClockCPU(cycles uint64)
 }
