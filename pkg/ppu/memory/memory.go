@@ -3,17 +3,18 @@ package memory
 
 import (
 	"github.com/retroenv/nesgoemu/pkg/bus"
+	"github.com/retroenv/retrogolib/arch/cpu/cpu6502"
 )
 
 // Memory implements PPU memory support.
 type Memory struct {
 	mapper    bus.Mapper
 	nametable bus.NameTable
-	palette   bus.Memory
+	palette   cpu6502.BasicMemory
 }
 
 // New returns a new memory manager.
-func New(mapper bus.Mapper, nametable bus.NameTable, palette bus.Memory) *Memory {
+func New(mapper bus.Mapper, nametable bus.NameTable, palette cpu6502.BasicMemory) *Memory {
 	return &Memory{
 		mapper:    mapper,
 		nametable: nametable,

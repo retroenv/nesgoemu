@@ -15,7 +15,8 @@ type Options struct {
 	debug        bool
 	debugAddress string
 
-	noGui     bool
+	noGui bool
+
 	cartridge *cartridge.Cartridge
 
 	tracing       bool

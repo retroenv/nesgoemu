@@ -1,39 +1,46 @@
 # Architecture
 
-nesgoemu organizes the emulator around NES hardware components. The top-level command loads a ROM,
-creates a cartridge, configures runtime options, and starts the NES system orchestration package.
-
-## Emulator Components
-
-Core NES components currently implemented in the repository:
-
-- CPU bus integration backed by `retrogolib/arch/cpu/m6502`
-- PPU registers, addressing, palettes, nametables, sprites, tiles, render state, and screen output
-- APU register structure
-- Controller input handling
-- CPU, PPU, memory, cartridge, and mapper bus wiring
-- Web debugger endpoints for CPU, mapper, palette, and nametable inspection
-
-## Runtime Flow
+`main.go` loads the ROM, configures options, and starts `pkg/nes`.
 
 ```text
 ROM file -> cartridge loader -> NES system -> bus -> CPU/PPU/APU/controllers -> GUI or console output
 ```
 
-The `pkg/nes` package coordinates startup. The `pkg/bus` package connects the CPU, PPU,
-controllers, cartridge, mapper, and memory. Mapper implementations translate cartridge reads and
-writes into the correct PRG, CHR, and nametable behavior for the loaded ROM.
+The bus connects the hardware components. Mappers translate cartridge reads and
+writes into PRG, CHR, and nametable accesses.
 
-## Shared Foundations
+## Packages
 
-nesgoemu uses [retrogolib](https://github.com/retroenv/retrogolib) for the NES 6502 core,
-cartridge parsing, system constants, application lifecycle, input abstractions, and SDL integration.
-This repository provides the NES-specific bus, PPU, APU registers, controllers, memory, mappers,
-system orchestration, tracing, and debugger.
+| Package | Responsibility |
+| --- | --- |
+| `pkg/nes` | Startup, input, tracing, and GUI or console output |
+| `pkg/bus` | Connections between hardware components |
+| `pkg/memory` | CPU memory access |
+| `pkg/mapper` | Mapper selection and bank switching |
+| `pkg/ppu` | PPU registers, memory, palettes, nametables, sprites, tiles, and rendering |
+| `pkg/apu` | APU registers; audio output is not implemented |
+| `pkg/controller` | Controller state and button mapping |
+| `pkg/nes/debugger` | HTTP access to CPU, mapper, palette, and nametable state |
+| `internal/testroms` | Test ROMs and expected traces |
+
+## Shared Library and ROM Loading
+
+[retrogolib](https://github.com/retroenv/retrogolib) provides the CPU core
+(`arch/cpu/cpu6502`), ROM loading and saving, system constants, application
+lifecycle, input types, and SDL support.
+
+`cartridge.LoadFile` reads iNES and NES 2.0 files. Pass the returned cartridge to
+`nes.WithCartridge`. The system bus retains that cartridge, so ROM metadata has
+one owner. Retrogolib tests the file format; `pkg/nes` tests emulator integration.
+
+`Cartridge.NES2.RAMSizes` gives volatile and nonvolatile PRG and CHR RAM sizes
+in bytes. Zero means no memory. For legacy iNES, `Cartridge.NES2` is nil and
+`Cartridge.RAM` holds the PRG RAM bank count. This keeps unspecified legacy sizes
+distinct from explicit zero sizes. See the [NES 2.0 specification](https://www.nesdev.org/wiki/NES_2.0).
 
 ## Mapper Support
 
-Supported mapper IDs are currently:
+ROM header support is separate from mapper execution. Registered mappers are:
 
 - `0`: NROM
 - `1`: MMC1
@@ -44,19 +51,6 @@ Supported mapper IDs are currently:
 - `94`: UN1ROM
 - `111`: GTROM
 - `180`: UxROM AND variant
-
-## Package Overview
-
-    ├─ main.go                  command-line entry point and runtime option parsing
-    ├─ pkg/apu                  APU register and audio-unit structure
-    ├─ pkg/bus                  CPU, PPU, controller, mapper, and cartridge interconnects
-    ├─ pkg/controller           NES controller state and button mapping
-    ├─ pkg/mapper               mapper selection, mapper base helpers, and mapper implementations
-    ├─ pkg/memory               RAM and memory access helpers
-    ├─ pkg/nes                  system orchestration, input, tracing, GUI toggles, and debugger setup
-    ├─ pkg/nes/debugger         HTTP debugger handlers
-    ├─ pkg/ppu                  PPU registers, rendering, palettes, sprites, nametables, and tiles
-    └─ internal/testroms        validation ROM fixtures and expected traces
 
 ## Related Documentation
 

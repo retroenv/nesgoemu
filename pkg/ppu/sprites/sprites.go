@@ -3,6 +3,7 @@ package sprites
 
 import (
 	"github.com/retroenv/nesgoemu/pkg/bus"
+	"github.com/retroenv/retrogolib/arch/cpu/cpu6502"
 )
 
 const (
@@ -26,7 +27,7 @@ type status interface {
 type Sprites struct {
 	cpu         bus.CPU
 	mapper      bus.Mapper
-	memory      bus.Memory
+	memory      cpu6502.BasicMemory
 	renderState renderState
 	status      status
 
@@ -41,7 +42,7 @@ type Sprites struct {
 }
 
 // New returns a new sprites manager.
-func New(cpu bus.CPU, mapper bus.Mapper, memory bus.Memory, renderState renderState, status status) *Sprites {
+func New(cpu bus.CPU, mapper bus.Mapper, memory cpu6502.BasicMemory, renderState renderState, status status) *Sprites {
 	return &Sprites{
 		cpu:         cpu,
 		mapper:      mapper,

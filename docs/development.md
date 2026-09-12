@@ -18,7 +18,7 @@ make install-linters
 
 ## Prerequisites
 
-- Go 1.22 or later
+- Go 1.25 or later
 - Make
 - `golangci-lint` and `retrogolint` for `make lint`
 - SDL2 runtime libraries only when running GUI mode

@@ -3,6 +3,7 @@ package tiles
 
 import (
 	"github.com/retroenv/nesgoemu/pkg/bus"
+	"github.com/retroenv/retrogolib/arch/cpu/cpu6502"
 )
 
 type addressing interface {
@@ -13,7 +14,7 @@ type addressing interface {
 // Tiles implements PPU tiles support.
 type Tiles struct {
 	addressing addressing
-	memory     bus.Memory
+	memory     cpu6502.BasicMemory
 	nameTable  bus.NameTable
 
 	attribute              byte
@@ -24,7 +25,7 @@ type Tiles struct {
 }
 
 // New returns a new tiles manager.
-func New(addressing addressing, memory bus.Memory, nameTable bus.NameTable) *Tiles {
+func New(addressing addressing, memory cpu6502.BasicMemory, nameTable bus.NameTable) *Tiles {
 	return &Tiles{
 		addressing: addressing,
 		memory:     memory,

@@ -1,6 +1,9 @@
 package bus
 
-import "github.com/retroenv/retrogolib/arch/system/nes/cartridge"
+import (
+	"github.com/retroenv/retrogolib/arch/cpu/cpu6502"
+	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
+)
 
 // MapperState contains the current state of the mapper.
 type MapperState struct {
@@ -13,7 +16,7 @@ type MapperState struct {
 
 // Mapper represents a mapper memory access interface.
 type Mapper interface {
-	Memory
+	cpu6502.BasicMemory
 
 	MirrorMode() cartridge.MirrorMode
 	State() MapperState

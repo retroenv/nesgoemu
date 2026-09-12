@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/retroenv/nesgoemu/pkg/nes"
-	"github.com/retroenv/retrogolib/arch/cpu/m6502"
+	"github.com/retroenv/retrogolib/arch/cpu/cpu6502"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 	"github.com/retroenv/retrogolib/assert"
 )
@@ -23,7 +23,7 @@ func TestNestest(t *testing.T) {
 	var buffer bytes.Buffer
 	trace := bufio.NewWriter(&buffer)
 
-	m6502.IscInst.Name = "isb"
+	cpu6502.IscInst.Name = "isb"
 
 	options := []nes.Option{
 		nes.WithCartridge(cart),

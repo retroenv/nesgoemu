@@ -10,7 +10,7 @@ import (
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 	"github.com/retroenv/retrogolib/buildinfo"
 	"github.com/retroenv/retrogolib/gui"
-	"github.com/retroenv/retrogolib/gui/sdl"
+	"github.com/retroenv/retrogolib/gui/sdl2"
 )
 
 type optionFlags struct {
@@ -78,10 +78,10 @@ func emulateFile(options optionFlags) error {
 	}
 
 	cart, err := cartridge.LoadFile(file)
+	_ = file.Close()
 	if err != nil {
 		return fmt.Errorf("reading file: %w", err)
 	}
-	_ = file.Close()
 
 	opts := []nes.Option{
 		nes.WithCartridge(cart),
@@ -102,7 +102,7 @@ func emulateFile(options optionFlags) error {
 	if options.noGui {
 		opts = append(opts, nes.WithDisabledGUI())
 	} else {
-		gui.Setup = sdl.Setup
+		gui.Setup = sdl2.Setup
 	}
 
 	if err := nes.Start(opts...); err != nil {

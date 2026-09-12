@@ -16,7 +16,7 @@ import (
 	"github.com/retroenv/nesgoemu/pkg/ppu"
 	"github.com/retroenv/nesgoemu/pkg/ppu/nametable"
 	"github.com/retroenv/nesgoemu/pkg/ppu/screen"
-	"github.com/retroenv/retrogolib/arch/cpu/m6502"
+	"github.com/retroenv/retrogolib/arch/cpu/cpu6502"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 	"github.com/retroenv/retrogolib/gui"
 )
@@ -25,7 +25,7 @@ import (
 type System struct {
 	opts *Options
 
-	*m6502.CPU
+	*cpu6502.CPU
 	Bus *bus.Bus
 
 	dimensions gui.Dimensions
@@ -42,13 +42,14 @@ func NewSystem(opts *Options) (*System, error) {
 	}
 
 	systemBus := &bus.Bus{
-		Cartridge:   cart,
+		Cartridge: cart,
+
 		Controller1: controller.New(),
 		Controller2: controller.New(),
 		NameTable:   nametable.New(cart.Mirror),
 	}
 
-	mem, err := m6502.NewMemory(memory.New(systemBus))
+	mem, err := cpu6502.NewMemory(memory.New(systemBus))
 	if err != nil {
 		return nil, fmt.Errorf("creating memory: %w", err)
 	}
@@ -69,11 +70,11 @@ func NewSystem(opts *Options) (*System, error) {
 		},
 	}
 
-	cpuOpts := []m6502.Option{m6502.WithVariant(m6502.VariantNES6502)}
+	cpuOpts := []cpu6502.Option{cpu6502.WithVariant(cpu6502.VariantNES6502)}
 	if opts.tracing {
-		cpuOpts = append(cpuOpts, m6502.WithTracing(), m6502.WithPreExecutionHook(tracePreExecutionHook))
+		cpuOpts = append(cpuOpts, cpu6502.WithTracing(), cpu6502.WithPreExecutionHook(tracePreExecutionHook))
 	}
-	sys.CPU = m6502.New(mem, cpuOpts...)
+	sys.CPU = cpu6502.New(mem, cpuOpts...)
 	systemBus.CPU = sys.CPU
 
 	systemBus.APU = apu.New(systemBus)
