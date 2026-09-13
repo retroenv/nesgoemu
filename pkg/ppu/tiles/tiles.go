@@ -42,7 +42,11 @@ func (t *Tiles) FetchCycle(cycle int) {
 		t.storeTileData()
 
 	case 1:
-		t.nameTable.Fetch(t.addressing.Address())
+		// Nametable fetches use coarse X/Y and nametable bits, not fine Y.
+		// https://www.nesdev.org/wiki/PPU_scrolling#Tile_and_attribute_fetching
+		vramAddress := t.addressing.Address()
+		nameTableAddress := 0x2000 | (vramAddress & 0x0FFF)
+		t.nameTable.Fetch(nameTableAddress)
 
 	case 3:
 		t.fetchAttributeTableByte()

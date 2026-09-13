@@ -34,11 +34,13 @@ type Sprites struct {
 	spriteSize         int // 8: 8x8 pixels; 16: 8x16 pixels
 	spritePatternTable uint16
 
-	sprites            [maxSprites]Sprite
-	patterns           [maxSpritesOnScreen]uint32
+	sprites [maxSprites]Sprite
+	address byte // next address in sprites buffer to access
+
 	visibleSprites     [maxSpritesOnScreen]int // value is index of sprite in sprites
 	visibleSpriteCount int                     // number of sprites on the screen
-	address            byte                    // next address in sprites buffer to access
+	patterns           [maxSpritesOnScreen]uint32
+	fetchLow           byte
 }
 
 // New returns a new sprites manager.
@@ -113,14 +115,45 @@ func (s *Sprites) WriteDMA(value byte) {
 
 // Render executes a sprites render cycle.
 func (s *Sprites) Render() {
-	if s.renderState.Cycle() != 257 {
+	cycle := s.renderState.Cycle()
+	line := s.renderState.ScanLine()
+	if cycle < 257 || cycle > 320 || (line >= 240 && line != 261) {
 		return
 	}
 
-	if s.renderState.ScanLine() < 240 {
+	if cycle == 257 {
 		s.evaluate()
+	}
+
+	// Each eight-dot sprite slot has two nametable reads, then low and high
+	// pattern reads. Perform the pattern reads at 261/263, ... , 317/319.
+	// Empty slots also read patterns, using tile $FF, so mapper bus timing continues.
+	// https://www.nesdev.org/wiki/PPU_rendering#Cycles_257-320
+	phase := (cycle - 257) % 8
+	if phase != 4 && phase != 6 {
+		return
+	}
+
+	slot := (cycle - 257) / 8
+	sprite := &Sprite{
+		index: 0xFF,
+		y:     0xFF,
+	}
+	row := 0
+	if slot < s.visibleSpriteCount {
+		index := s.visibleSprites[slot]
+		sprite = &s.sprites[index]
+		row = line - int(sprite.y)
+	}
+
+	address := s.spritePatternAddress(sprite, row)
+	if phase == 4 {
+		s.fetchLow = s.mapper.Read(address)
 	} else {
-		s.visibleSpriteCount = 0
+		high := s.mapper.Read(address + 8)
+		if slot < s.visibleSpriteCount {
+			s.patterns[slot] = spritePattern(sprite, s.fetchLow, high)
+		}
 	}
 }
 
@@ -147,7 +180,7 @@ func (s *Sprites) Pixel() (bool, bool, byte) {
 			continue
 		}
 
-		zeroHit := i == 0
+		zeroHit := index == 0
 		priority := sprite.priority()
 		return priority, zeroHit, color
 	}
@@ -160,13 +193,16 @@ func (s *Sprites) evaluate() {
 
 	for i := range maxSprites {
 		sprite := &s.sprites[i]
-		row := s.renderState.ScanLine() - int(sprite.y)
+		line := s.renderState.ScanLine()
+		if line == 261 {
+			line = -1
+		}
+		row := line - int(sprite.y)
 		if row < 0 || row >= s.spriteSize {
 			continue
 		}
 
 		if s.visibleSpriteCount < maxSpritesOnScreen {
-			s.patterns[s.visibleSpriteCount] = s.fetchSpritePattern(sprite, row)
 			s.visibleSprites[s.visibleSpriteCount] = i
 		}
 		s.visibleSpriteCount++
@@ -178,7 +214,7 @@ func (s *Sprites) evaluate() {
 	}
 }
 
-func (s *Sprites) fetchSpritePattern(sprite *Sprite, row int) uint32 {
+func (s *Sprites) spritePatternAddress(sprite *Sprite, row int) uint16 {
 	tile := sprite.index
 	var address uint16
 
@@ -200,9 +236,11 @@ func (s *Sprites) fetchSpritePattern(sprite *Sprite, row int) uint32 {
 		address = 0x1000*uint16(table) + uint16(tile)*16 + uint16(row)
 	}
 
+	return address
+}
+
+func spritePattern(sprite *Sprite, lowTileByte, highTileByte byte) uint32 {
 	a := (sprite.attributes & 3) << 2
-	lowTileByte := s.mapper.Read(address)
-	highTileByte := s.mapper.Read(address + 8)
 
 	var data uint32
 	for range maxSpritesOnScreen {

@@ -52,3 +52,52 @@ func TestSetMask(t *testing.T) {
 	assert.True(t, p.mask.EnhanceGreen)
 	assert.True(t, p.mask.EnhanceBlue)
 }
+
+func TestResetKeepsVRAMAndVBlank(t *testing.T) {
+	sys := &bus.Bus{Cartridge: cartridge.New()}
+	sys.Mapper = mapper.NewMockMapper(sys)
+	p := New(sys)
+
+	p.Write(register.PPU_CTRL, 0xFF)
+	p.Write(register.PPU_MASK, 0xFF)
+
+	p.addressing.SetAddress(0x2B)
+	p.addressing.SetAddress(0x45)
+	p.addressing.SetScroll(0xFF)
+	p.nmi.SetOccurred(true)
+	p.palette.Write(0, 0x2A)
+	p.fineX = 3
+	p.dataReadBuffer = 7
+
+	p.Reset()
+
+	assert.Equal(t, byte(0), p.control.Value())
+	assert.Equal(t, byte(0), p.mask.Value())
+	assert.False(t, p.nmi.Enabled())
+	assert.True(t, p.nmi.Occurred())
+	assert.False(t, p.addressing.Latch())
+	assert.Equal(t, uint16(0x2B45), p.addressing.Address())
+	assert.Equal(t, uint16(0), p.fineX)
+	assert.Equal(t, byte(0), p.dataReadBuffer)
+	assert.Equal(t, byte(0x2A), p.palette.Read(0))
+}
+
+func TestGrayscalePaletteRead(t *testing.T) {
+	sys := &bus.Bus{Cartridge: cartridge.New()}
+	sys.Mapper = mapper.NewMockMapper(sys)
+	p := New(sys)
+
+	for _, address := range []uint16{0x3F00, 0x3F04, 0x3F10, 0x3F20} {
+		p.palette.Write(address, 0x2A)
+		p.Write(register.PPU_MASK, 1)
+		p.Write(register.PPU_ADDR, byte(address>>8))
+		p.Write(register.PPU_ADDR, byte(address))
+		assert.Equal(t, byte(0x20), p.Read(register.PPU_DATA))
+		assert.Equal(t, byte(0x2A), p.palette.Read(address))
+
+		p.Write(register.PPU_MASK, 0)
+		p.Write(register.PPU_ADDR, byte(address>>8))
+		p.Write(register.PPU_ADDR, byte(address))
+		assert.Equal(t, byte(0x2A), p.Read(register.PPU_DATA))
+	}
+}

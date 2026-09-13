@@ -78,11 +78,42 @@ func (p *PPU) renderLine(cycle int, fetchCycle bool) {
 	if fetchCycle && cycle%8 == 0 {
 		p.addressing.IncrementX()
 	}
+
 	if cycle == 256 {
 		p.addressing.IncrementY()
 	}
+
+	// Bits 0-11 select the nametable and tile. Fine Y must not enter this address.
+	// https://www.nesdev.org/wiki/PPU_scrolling#Tile_and_attribute_fetching
+	address := p.addressing.Address()
 	if cycle == 257 {
+		// The multiplexed bus keeps the old low byte while horizontal reload
+		// changes the high address bits for the first sprite nametable fetch.
+		// https://www.nesdev.org/wiki/PPU_rendering#Cycles_257-320
+		// https://www.nesdev.org/wiki/PPU_programmer_reference
+		low := address & 0xFF
 		p.addressing.CopyX()
+		reloadedAddress := p.addressing.Address()
+		address = reloadedAddress&0xFF00 | low
+	}
+
+	// Each sprite slot has two unused nametable reads before its pattern reads.
+	// The PPU reuses its background fetch sequence for sprite fetches, so the
+	// nametable phases still occur even though the sprite does not use their data.
+	// The read starts are 257/259, 265/267, ... , 313/315. The modulo test
+	// selects phases 1 and 3 in each of the eight sprite slots on dots 257-320.
+	// Dots 337 and 339 start two more nametable reads at the end of the line.
+	// A read occupies two dots; this emulator performs it on the first dot.
+	// The values are unused, but the cartridge must observe the transactions.
+	// The final two reads use the next line's first tile-fetch address.
+	// A mapper can count these reads even though they do not supply a pixel.
+	// renderBackground calls this only on visible and pre-render lines, and step
+	// calls renderBackground only when background or sprite rendering is enabled.
+	// https://www.nesdev.org/wiki/PPU_rendering#Cycles_257-320
+	// https://www.nesdev.org/wiki/PPU_rendering#Cycles_337-340
+	if cycle == 337 || cycle == 339 || (cycle >= 257 && cycle <= 320 && (cycle%8 == 1 || cycle%8 == 3)) {
+		nameTableAddress := 0x2000 | (address & 0x0FFF)
+		p.memory.Read(nameTableAddress)
 	}
 }
 
@@ -131,7 +162,7 @@ func (p *PPU) renderPixel() {
 	}
 
 	colorIndex := p.palette.Read(uint16(paletteIndex))
-	colorIndex %= 64
+	colorIndex = p.maskPaletteColor(colorIndex)
 	color := colors[colorIndex]
 	y := p.renderState.ScanLine()
 	p.screen.SetPixel(x, y, color)

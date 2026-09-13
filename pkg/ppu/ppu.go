@@ -52,6 +52,18 @@ func (p *PPU) Palette() bus.Palette {
 	return p.palette
 }
 
+// Reset clears PPU control state. It keeps the current VRAM address and VBlank state.
+// https://www.nesdev.org/wiki/PPU_power_up_state
+func (p *PPU) Reset() {
+	p.control.Set(0)
+	p.mask.Set(0)
+
+	p.fineX = 0
+	p.addressing.Reset()
+
+	p.dataReadBuffer = 0
+}
+
 func (p *PPU) reset() {
 	p.fineX = 0
 	p.dataReadBuffer = 0
@@ -85,11 +97,22 @@ func (p *PPU) readData() byte {
 	if address >= 0x3F00 {
 		// Palette data reads are unbuffered, $3F00-$3FFF are Palette RAM indexes and mirrors of it
 		data = p.dataReadBuffer
+		data = p.maskPaletteColor(data)
 	}
 
 	// TODO handle special case of reading during rendering
 	p.addressing.Increment(p.control.VRAMIncrement)
 	return data
+}
+
+// maskPaletteColor selects the gray column without changing palette RAM.
+// Apply it to pixels and CPU palette reads when PPUMASK changes.
+// https://www.nesdev.org/wiki/PPU_registers#Color_control
+func (p *PPU) maskPaletteColor(value byte) byte {
+	if p.mask.Grayscale {
+		return value & 0x30
+	}
+	return value & 0x3F
 }
 
 func (p *PPU) getStatus() byte {

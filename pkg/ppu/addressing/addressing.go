@@ -13,6 +13,14 @@ func New() *Addressing {
 	return &Addressing{}
 }
 
+// Reset clears temporary address t and write toggle w, but preserves address v.
+// The current VRAM address does not reset on the NTSC PPU.
+// https://www.nesdev.org/wiki/PPU_power_up_state
+func (a *Addressing) Reset() {
+	a.temp = register{}
+	a.latch = false
+}
+
 // SetAddress sets the address using the temp address register and the latch as switch
 // to differentiate between the high and low bytes.
 func (a *Addressing) SetAddress(value byte) {
