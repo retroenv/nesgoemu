@@ -1,6 +1,8 @@
 package nes
 
 import (
+	"errors"
+
 	"github.com/retroenv/nesgoemu/pkg/nes/debugger"
 	"github.com/retroenv/retrogolib/app"
 	"github.com/retroenv/retrogolib/gui"
@@ -28,5 +30,6 @@ func Start(options ...Option) error {
 	if gui.Setup != nil && !opts.noGui {
 		guiStarter = gui.Setup
 	}
-	return sys.runRenderer(ctx, opts, guiStarter)
+	runErr := sys.runRenderer(ctx, opts, guiStarter)
+	return errors.Join(runErr, sys.SaveBattery())
 }

@@ -10,6 +10,7 @@ import (
 // Options contains options for the nesgoemu system.
 type Options struct {
 	entrypoint int
+	savePath   string
 	stopAt     int
 
 	debug        bool
@@ -92,4 +93,9 @@ func WithDisabledGUI() func(*Options) {
 	return func(options *Options) {
 		options.noGui = true
 	}
+}
+
+// WithSavePath selects the cartridge save file. An empty path disables file saves.
+func WithSavePath(path string) Option {
+	return func(opts *Options) { opts.savePath = path }
 }

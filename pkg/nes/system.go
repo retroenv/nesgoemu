@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"image"
-	"sync/atomic"
 	"time"
 
 	"github.com/retroenv/nesgoemu/pkg/apu"
@@ -23,7 +22,8 @@ import (
 
 // System implements a NES system.
 type System struct {
-	opts *Options
+	opts    *Options
+	storage batteryStorage
 
 	*cpu6502.CPU
 	Bus *bus.Bus
@@ -61,13 +61,18 @@ func NewSystem(opts *Options) (*System, error) {
 	}
 
 	sys := &System{
-		opts: opts,
-		Bus:  systemBus,
+		opts:    opts,
+		storage: diskBatteryStorage{files: osBatteryFiles{}},
+		Bus:     systemBus,
 		dimensions: gui.Dimensions{
 			ScaleFactor: 2.0,
 			Height:      screen.Height,
 			Width:       screen.Width,
 		},
+	}
+
+	if err := sys.loadBattery(); err != nil {
+		return nil, err
 	}
 
 	cpuOpts := []cpu6502.Option{cpu6502.WithVariant(cpu6502.VariantNES6502)}
@@ -103,13 +108,19 @@ const (
 	ntscFrameDuration     = time.Second * 1000 / 60099 // ~16.64ms
 )
 
-// runEmulatorSteps runs the emulator until it is quit or reaches the given stop address.
-func (sys *System) runEmulatorSteps(stopAt int) error {
+// runEmulatorSteps runs until cancellation or the given stop address.
+func (sys *System) runEmulatorSteps(ctx context.Context, stopAt int) error {
 	var state cpuState
 	frameCycles := uint64(0)
 	nextFrame := time.Now().Add(ntscFrameDuration)
 
 	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+		}
+
 		if stopAt >= 0 && sys.PC == uint16(stopAt) {
 			return nil
 		}
@@ -171,42 +182,37 @@ func (sys *System) runRenderer(ctx context.Context, opts *Options, guiStarter gu
 		return err
 	}
 	defer cleanup()
-
-	running := uint64(1)
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	done := make(chan struct{})
+	var cpuError error
 	go func() {
-		if err := sys.runEmulatorSteps(opts.stopAt); err != nil {
-			panic(err)
-		}
-		if opts.stopAt >= 0 {
-			atomic.StoreUint64(&running, 0)
-			return
-		}
-
-		// nolint: revive
-		for { // forever loop in case reset handler returns
-		}
+		defer close(done)
+		cpuError = sys.runEmulatorSteps(ctx, opts.stopAt)
+	}()
+	defer func() {
+		cancel()
+		<-done
 	}()
 
-	for atomic.LoadUint64(&running) == 1 {
-		continueRunning, err := render()
-		if err != nil {
-			return err
-		}
-
+	for {
 		select {
+		case <-done:
+			return cpuError
 		case <-ctx.Done():
-			continueRunning = false
+			return nil
 		default:
 		}
 
-		if !continueRunning {
-			atomic.StoreUint64(&running, 0)
+		running, err := render()
+		if err != nil {
+			return err
 		}
-
-		// TODO replace with better solution
+		if !running {
+			return nil
+		}
 		time.Sleep(time.Second / ppu.FPS)
 	}
-	return nil
 }
 
 type mapperCPUClocker interface {
