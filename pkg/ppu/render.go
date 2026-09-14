@@ -20,6 +20,11 @@ func (p *PPU) step() {
 	p.nmi.Trigger(p.bus.CPU)
 	p.renderState.Tick(p.mask)
 
+	if p.ticker != nil {
+		p.ticker.TickPPU(p.renderState.Cycle(), p.renderState.ScanLine(),
+			p.mask.RenderBackground() || p.mask.RenderSprites())
+	}
+
 	if p.mask.RenderBackground() || p.mask.RenderSprites() {
 		p.renderBackground()
 		// sprite evaluation occurs if either the sprite layer or background layer is enabled
