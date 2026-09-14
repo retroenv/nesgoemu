@@ -70,6 +70,11 @@ func (m *Memory) Read(address uint16) byte {
 		return m.bus.Controller2.Read()
 
 	case address <= register.APU_FRAME:
+		if address == 0x4011 {
+			if reader, ok := m.bus.Mapper.(pcmReader); ok {
+				return reader.ReadPCM()
+			}
+		}
 		return m.bus.APU.Read(address)
 
 	case address >= 0x4020: // GTROM allow writes starting 0x5000, MMC1 has RAM starting at 0x6000
@@ -78,4 +83,8 @@ func (m *Memory) Read(address uint16) byte {
 	default:
 		panic(fmt.Sprintf("unhandled memory read at address: 0x%04X", address))
 	}
+}
+
+type pcmReader interface {
+	ReadPCM() byte
 }
