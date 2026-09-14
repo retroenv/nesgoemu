@@ -34,9 +34,15 @@ type NameTable interface {
 	cpu6502.BasicMemory
 
 	Data() [nes.NameTableCount][]byte
+	SetVRAM(vram []byte)
+	ReadCIRAM(address uint16) byte
+	WriteCIRAM(address uint16, value byte)
+
 	MirrorMode() cartridge.MirrorMode
 	SetMirrorMode(mirrorMode cartridge.MirrorMode)
-	SetVRAM(vram []byte)
+
+	SetReadHook(hook func(uint16) (uint8, bool))
+	SetWriteHook(hook func(uint16, byte) bool)
 
 	Fetch(address uint16)
 	Value() byte

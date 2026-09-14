@@ -17,19 +17,26 @@ const (
 	VramSize = nes.NameTableCount * nes.NameTableSize
 )
 
-// NameTable implements PPU nametable support.
-// A nametable is a 1024 byte area of memory used by the PPU to lay out backgrounds.
-// Each byte in the nametable controls one 8x8 pixel character cell, and each nametable has 30 rows
-// of 32 tiles each, for 960 ($3C0) bytes; the rest is used by each nametable's attribute table.
-// With each tile being 8x8 pixels, this makes a total of 256x240 pixels in one map,
-// the same size as one full screen.
+// NameTable routes PPU background reads and writes.
+// Each nametable has 1024 bytes. The first 960 bytes select tiles in 32 columns
+// and 30 rows. Each tile covers 8 by 8 pixels, so one nametable covers 256 by
+// 240 pixels. The last 64 bytes hold attribute data for background palettes.
+// The NES has 2 KiB of CIRAM. Cartridge mirroring maps four nametable regions
+// to that RAM. A cartridge can map a region to its own RAM or ROM instead.
+// See https://www.nesdev.org/wiki/Nametable
+// See https://www.nesdev.org/wiki/Mirroring
+// See https://www.nesdev.org/wiki/PPU_memory_map
 type NameTable struct {
 	mu sync.RWMutex
 
+	vram []byte
+
 	mirrorMode cartridge.MirrorMode
 
+	readHook  func(uint16) (uint8, bool) // optional mapper read interception
+	writeHook func(uint16, byte) bool
+
 	value byte
-	vram  []byte
 }
 
 // New returns a new nametable manager.
@@ -77,8 +84,48 @@ func (n *NameTable) SetMirrorMode(mirrorMode cartridge.MirrorMode) {
 	n.mu.Unlock()
 }
 
+// SetReadHook installs an optional mapper-provided read interception function.
+// The hook receives the raw PPU address and returns (value, true) if it handles
+// the read, or (0, false) to fall through to the default CIRAM read.
+func (n *NameTable) SetReadHook(hook func(uint16) (uint8, bool)) {
+	n.mu.Lock()
+	n.readHook = hook
+	n.mu.Unlock()
+}
+
+// SetWriteHook installs a mapper write hook. A true result stops the default write.
+func (n *NameTable) SetWriteHook(hook func(uint16, byte) bool) {
+	n.mu.Lock()
+	n.writeHook = hook
+	n.mu.Unlock()
+}
+
+// ReadCIRAM reads a physical CIRAM address without mirroring or mapper hooks.
+func (n *NameTable) ReadCIRAM(address uint16) byte {
+	n.mu.RLock()
+	defer n.mu.RUnlock()
+	return n.vram[address&0x07FF]
+}
+
+// WriteCIRAM writes a physical CIRAM address without mirroring or mapper hooks.
+func (n *NameTable) WriteCIRAM(address uint16, value byte) {
+	n.mu.Lock()
+	n.vram[address&0x07FF] = value
+	n.mu.Unlock()
+}
+
 // Read a value from the nametable address.
 func (n *NameTable) Read(address uint16) byte {
+	n.mu.RLock()
+	hook := n.readHook
+	n.mu.RUnlock()
+
+	if hook != nil {
+		if v, ok := hook(address); ok {
+			return v
+		}
+	}
+
 	base := n.mirroredNameTableAddressToBase(address)
 
 	n.mu.RLock()
@@ -89,6 +136,13 @@ func (n *NameTable) Read(address uint16) byte {
 
 // Write a value to a nametable address.
 func (n *NameTable) Write(address uint16, value byte) {
+	n.mu.RLock()
+	hook := n.writeHook
+	n.mu.RUnlock()
+	if hook != nil && hook(address, value) {
+		return
+	}
+
 	base := n.mirroredNameTableAddressToBase(address)
 
 	n.mu.Lock()
