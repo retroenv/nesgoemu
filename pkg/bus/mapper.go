@@ -38,6 +38,13 @@ type PPUTicker interface {
 	TickPPU(cycle, scanLine int, rendering bool)
 }
 
+// SpriteExtFetcher identifies the OAM entry for a sprite pattern read.
+// The PPU uses an OAM index of -1 for an empty slot. It clears the active
+// entry with an OAM index of -1 and a sprite size of 0 after each read.
+type SpriteExtFetcher interface {
+	SetActiveSpriteExt(oamIndex, spriteSize int)
+}
+
 // TimingEnabler enables detailed mapper bus timing.
 // The PPU calls EnableBusTiming once when it connects to the mapper.
 type TimingEnabler interface {

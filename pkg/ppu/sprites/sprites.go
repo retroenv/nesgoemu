@@ -139,13 +139,17 @@ func (s *Sprites) Render() {
 		index: 0xFF,
 		y:     0xFF,
 	}
-	row := 0
+	row, index := 0, -1
 	if slot < s.visibleSpriteCount {
-		index := s.visibleSprites[slot]
+		index = s.visibleSprites[slot]
 		sprite = &s.sprites[index]
 		row = line - int(sprite.y)
 	}
 
+	ext, _ := s.mapper.(bus.SpriteExtFetcher)
+	if ext != nil {
+		ext.SetActiveSpriteExt(index, s.spriteSize)
+	}
 	address := s.spritePatternAddress(sprite, row)
 	if phase == 4 {
 		s.fetchLow = s.mapper.Read(address)
@@ -154,6 +158,9 @@ func (s *Sprites) Render() {
 		if slot < s.visibleSpriteCount {
 			s.patterns[slot] = spritePattern(sprite, s.fetchLow, high)
 		}
+	}
+	if ext != nil {
+		ext.SetActiveSpriteExt(-1, 0)
 	}
 }
 

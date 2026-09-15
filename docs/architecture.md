@@ -64,6 +64,7 @@ small interfaces from `pkg/bus/mapper.go`:
 | `MapperResetter` | Resets mapper registers and bank state before the PPU and CPU reset. |
 | `PCMReader` | Supplies the value for a CPU read from `$4011` instead of the APU. |
 | `PPUTicker` | Receives the current cycle, scanline, and rendering state after each PPU clock advances. |
+| `SpriteExtFetcher` | Receives the OAM index and sprite height before each sprite pattern read. An index of `-1` identifies an empty sprite slot. The PPU clears the active entry with `(-1, 0)` after the read. |
 | `TimingEnabler` | Enables detailed bus timing once when the PPU connects to the mapper. |
 
 Components detect these interfaces at run time. A mapper that does not implement

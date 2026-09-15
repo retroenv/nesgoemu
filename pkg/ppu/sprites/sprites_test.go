@@ -53,6 +53,28 @@ func TestSpriteFetchSkipsVBlank(t *testing.T) {
 	assert.Equal(t, []uint16{0x0FF0}, mapper.reads)
 }
 
+func TestSpriteExtensionReceivesActiveOAMIndex(t *testing.T) {
+	state := &testRenderState{cycle: 261}
+	mapper := &spriteExtTestMapper{}
+	sprites := New(nil, mapper, nil, state, &testStatus{})
+	sprites.visibleSpriteCount = 1
+	sprites.visibleSprites[0] = 5
+	sprites.sprites[5] = Sprite{
+		y:     0,
+		index: 2,
+	}
+
+	sprites.Render()
+	assert.Equal(t, []int{5, -1}, mapper.indices)
+	assert.Equal(t, []int{8, 0}, mapper.sizes)
+	assert.Equal(t, []int{5}, mapper.readIndices)
+
+	state.cycle = 269
+	sprites.Render()
+	assert.Equal(t, []int{5, -1, -1, -1}, mapper.indices)
+	assert.Equal(t, []int{5, -1}, mapper.readIndices)
+}
+
 func TestSpritePatternAddress(t *testing.T) {
 	sprites := &Sprites{
 		spriteSize:         8,
@@ -104,5 +126,22 @@ type testMapper struct {
 
 func (mapper *testMapper) Read(address uint16) byte {
 	mapper.reads = append(mapper.reads, address)
+	return 0
+}
+
+type spriteExtTestMapper struct {
+	bus.Mapper
+	indices     []int
+	sizes       []int
+	readIndices []int
+}
+
+func (m *spriteExtTestMapper) SetActiveSpriteExt(index, size int) {
+	m.indices = append(m.indices, index)
+	m.sizes = append(m.sizes, size)
+}
+
+func (m *spriteExtTestMapper) Read(uint16) byte {
+	m.readIndices = append(m.readIndices, m.indices[len(m.indices)-1])
 	return 0
 }
