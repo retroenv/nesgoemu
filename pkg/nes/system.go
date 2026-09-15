@@ -164,7 +164,7 @@ func (sys *System) runEmulatorSteps(ctx context.Context, stopAt int) error {
 }
 
 func (sys *System) clockComponents(cycles uint64) {
-	clocker, _ := sys.Bus.Mapper.(mapperCPUClocker)
+	clocker, _ := sys.Bus.Mapper.(bus.CPUClocker)
 
 	for range cycles {
 		if clocker != nil {
@@ -213,8 +213,4 @@ func (sys *System) runRenderer(ctx context.Context, opts *Options, guiStarter gu
 		}
 		time.Sleep(time.Second / ppu.FPS)
 	}
-}
-
-type mapperCPUClocker interface {
-	ClockCPU(cycles uint64)
 }

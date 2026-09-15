@@ -18,15 +18,6 @@ import (
 
 const FPS = 60
 
-type busTimingEnabler interface {
-	EnableBusTiming()
-}
-
-// ppuTicker receives one update for each PPU cycle.
-type ppuTicker interface {
-	TickPPU(cycle, scanLine int, rendering bool)
-}
-
 // PPU represents the Picture Processing Unit.
 type PPU struct {
 	bus *bus.Bus
@@ -44,17 +35,17 @@ type PPU struct {
 	screen      *screen.Screen
 	sprites     *sprites.Sprites
 	status      *status.Status
-	ticker      ppuTicker // optional mapper hook for each PPU cycle
+	ticker      bus.PPUTicker // optional mapper hook for each PPU cycle
 	tiles       *tiles.Tiles
 }
 
 // New returns a new PPU.
-func New(bus *bus.Bus) *PPU {
+func New(systemBus *bus.Bus) *PPU {
 	p := &PPU{
-		bus: bus,
+		bus: systemBus,
 	}
 	p.reset()
-	if timing, ok := bus.Mapper.(busTimingEnabler); ok {
+	if timing, ok := systemBus.Mapper.(bus.TimingEnabler); ok {
 		timing.EnableBusTiming()
 	}
 	return p
@@ -91,7 +82,7 @@ func (p *PPU) reset() {
 
 	p.memory = memory.New(p.bus.Mapper, p.bus.NameTable, p.palette)
 	p.sprites = sprites.New(p.bus.CPU, p.bus.Mapper, p.bus.Memory, p.renderState, p.status)
-	p.ticker, _ = p.bus.Mapper.(ppuTicker)
+	p.ticker, _ = p.bus.Mapper.(bus.PPUTicker)
 
 	p.tiles = tiles.New(p.addressing, p.memory, p.bus.NameTable)
 

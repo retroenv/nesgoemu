@@ -6,12 +6,14 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+
+	"github.com/retroenv/nesgoemu/pkg/bus"
 )
 
 // SaveBattery writes cartridge save data to the configured path.
 // Call this method while emulation is stopped.
 func (sys *System) SaveBattery() error {
-	mapper, ok := sys.Bus.Mapper.(batteryMapper)
+	mapper, ok := sys.Bus.Mapper.(bus.BatteryMapper)
 	if !ok || sys.opts.savePath == "" {
 		return nil
 	}
@@ -22,7 +24,7 @@ func (sys *System) SaveBattery() error {
 }
 
 func (sys *System) loadBattery() error {
-	mapper, ok := sys.Bus.Mapper.(batteryMapper)
+	mapper, ok := sys.Bus.Mapper.(bus.BatteryMapper)
 	if !ok || sys.opts.savePath == "" {
 		return nil
 	}
@@ -30,11 +32,6 @@ func (sys *System) loadBattery() error {
 		return fmt.Errorf("loading battery: %w", err)
 	}
 	return nil
-}
-
-type batteryMapper interface {
-	LoadBattery(io.Reader) error
-	SaveBattery(io.Writer) error
 }
 
 type batteryStorage interface {

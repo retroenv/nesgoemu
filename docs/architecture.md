@@ -52,6 +52,23 @@ ROM header support is separate from mapper execution. Registered mappers are:
 - `111`: GTROM
 - `180`: UxROM AND variant
 
+### Optional Mapper Capabilities
+
+All mappers implement `bus.Mapper`. A mapper can also implement one or more
+small interfaces from `pkg/bus/mapper.go`:
+
+| Interface | Behavior |
+| --- | --- |
+| `BatteryMapper` | Loads and saves persistent cartridge data while emulation is stopped. |
+| `CPUClocker` | Receives each elapsed CPU cycle before the system advances the PPU. |
+| `MapperResetter` | Resets mapper registers and bank state before the PPU and CPU reset. |
+| `PCMReader` | Supplies the value for a CPU read from `$4011` instead of the APU. |
+| `PPUTicker` | Receives the current cycle, scanline, and rendering state after each PPU clock advances. |
+| `TimingEnabler` | Enables detailed bus timing once when the PPU connects to the mapper. |
+
+Components detect these interfaces at run time. A mapper that does not implement
+an optional interface keeps the standard emulator behavior.
+
 ## Related Documentation
 
 - [usage.md](usage.md) - Runtime flags and controls.

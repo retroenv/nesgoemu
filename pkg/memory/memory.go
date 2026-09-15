@@ -71,7 +71,7 @@ func (m *Memory) Read(address uint16) byte {
 
 	case address <= register.APU_FRAME:
 		if address == 0x4011 {
-			if reader, ok := m.bus.Mapper.(pcmReader); ok {
+			if reader, ok := m.bus.Mapper.(bus.PCMReader); ok {
 				return reader.ReadPCM()
 			}
 		}
@@ -83,8 +83,4 @@ func (m *Memory) Read(address uint16) byte {
 	default:
 		panic(fmt.Sprintf("unhandled memory read at address: 0x%04X", address))
 	}
-}
-
-type pcmReader interface {
-	ReadPCM() byte
 }
