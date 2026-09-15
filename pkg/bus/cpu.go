@@ -7,6 +7,8 @@ type CPU interface {
 	Cycles() uint64
 	StallCycles(cycles uint16)
 	State() cpu6502.State
+
+	SetIRQ(active bool)
 	TriggerIrq()
 	TriggerNMI()
 }

@@ -170,6 +170,18 @@ func (b *Base) Cartridge() *cartridge.Cartridge {
 	return b.bus.Cartridge
 }
 
+// NameTableMemory returns the PPU name-table memory.
+func (b *Base) NameTableMemory() bus.NameTable {
+	return b.bus.NameTable
+}
+
+// SetMapperIRQ sets the mapper IRQ input state.
+func (b *Base) SetMapperIRQ(active bool) {
+	if b.bus.CPU != nil {
+		b.bus.CPU.SetIRQ(active)
+	}
+}
+
 func (b *Base) defaultChrBankMapper(address uint16) (int, uint16) {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
