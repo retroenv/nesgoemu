@@ -61,6 +61,8 @@ linters:
       max-complexity: 15
     godot:
       period: false
+    nestif:
+      min-complexity: 7
     revive:
       rules:
         - name: dot-imports
@@ -73,6 +75,10 @@ linters:
         - "-QF1008" # could remove embedded field from selector
         - "-SA5002" # this loop will spin, using 100% CPU
         - "-ST1003" # should not use underscores in Go names
+    whitespace:
+      multi-if: true # Enforces newlines (or comments) after every multi-line if statement
+      multi-func: true # Enforces newlines (or comments) after every multi-line function signature
+
   exclusions:
     rules:
       - linters:

@@ -1,3 +1,5 @@
+version: 2
+
 before:
   hooks:
     - go mod download
@@ -5,16 +7,11 @@ before:
 builds:
   - id: nesgoemu
     binary: nesgoemu
+    dir: .
     env:
       - CGO_ENABLED=0
-    dir: .
     targets:
-      - darwin_amd64
-      - darwin_arm64
-      - linux_amd64
-      - linux_arm64
-      - windows_386
-      - windows_amd64
+      - go_first_class
     flags:
       - -trimpath
     ldflags:
@@ -25,7 +22,7 @@ universal_binaries:
 
 archives:
   - id: nesgoemu
-    builds: ['nesgoemu']
+    ids: ['nesgoemu']
     name_template: >-
       {{ .ProjectName }}_v{{ .Version }}_
       {{- if eq .Os "darwin" }}macos
@@ -36,13 +33,13 @@ archives:
       {{- else }}{{ .Arch }}{{ end }}
     format_overrides:
       - goos: windows
-        format: zip
+        formats: [zip]
 
 checksum:
   name_template: 'checksums.txt'
 
 snapshot:
-  name_template: "{{ .Tag }}-snapshot"
+  version_template: "{{ .Version }}-snapshot"
 
 changelog:
   disable: true

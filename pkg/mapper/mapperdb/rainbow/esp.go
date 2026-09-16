@@ -192,6 +192,7 @@ func (m *Mapper) configureServerSettings(message []byte) {
 	if len(message) < espServerSettingsHeaderSize ||
 		len(message) != espServerSettingsHeaderSize+int(message[espServerHostnameSizeIndex]) ||
 		message[espServerHostnameSizeIndex] > espMaximumHostnameSize {
+
 		return
 	}
 	m.esp.server.port = uint16(message[1])<<registerByteShift | uint16(message[2])

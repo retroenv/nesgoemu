@@ -44,6 +44,7 @@ func (m *Mapper) LoadBattery(reader io.Reader) error {
 	prg, chr := m.nonvolatileRAM()
 	if data.Version != batteryFormatVersion || data.ROM != m.romHash() || len(data.PRG) != len(m.prgROM) ||
 		len(data.CHR) != len(m.chrROM) || len(data.PRGRAM) != len(prg) || len(data.CHRRAM) != len(chr) {
+
 		return errSaveData
 	}
 	copy(m.prgROM, data.PRG)
