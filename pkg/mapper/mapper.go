@@ -38,4 +38,5 @@ var mappers = map[uint16]mapperInitializer{
 	94:  mapperdb.NewUN1ROM,
 	111: mapperdb.NewGTROM,
 	180: mapperdb.NewUxROMAnd,
+	682: mapperdb.NewRainbow,
 }
