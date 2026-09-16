@@ -5,7 +5,7 @@ Development workflow, project structure, testing, and contribution notes for nes
 ## Common Commands
 
 ```bash
-make build
+make build-all
 make lint
 make test
 make test-coverage
@@ -13,8 +13,9 @@ make test-coverage-web
 make install-linters
 ```
 
-`make build` runs `CGO_ENABLED=0 go build ./...`. `make lint` runs `golangci-lint` and
-`retrogolint`. `make test` runs the full test suite with the race detector.
+`make build-all` builds all packages. `make lint` runs `golangci-lint` and
+`retrogolint`. `make test` installs the emulator and runs the full test suite
+with the race detector.
 
 ## Prerequisites
 
@@ -34,7 +35,7 @@ make install-linters
 ```bash
 git clone https://github.com/retroenv/nesgoemu.git
 cd nesgoemu
-make build
+make build-all
 make test
 make lint
 ```
@@ -55,10 +56,18 @@ Core NES hardware components:
 - **PPU** (`pkg/ppu/`): Picture Processing Unit registers, memory, and rendering.
 - **APU** (`pkg/apu/`): Audio Processing Unit register structure.
 - **Bus** (`pkg/bus/`): System interconnect for CPU, PPU, controllers, mapper, and cartridge state.
-- **Mappers** (`pkg/mapper/`): Cartridge memory banking and nametable mirroring.
+- **Mappers** (`pkg/mapper/`): Mapper construction, catalog selection, cartridge banking, and nametable mirroring.
 - **System** (`pkg/nes/`): Emulator startup, options, tracing, GUI toggle, and debugger setup.
 
-See [architecture.md](architecture.md) for the package map and supported mapper IDs.
+See [architecture.md](architecture.md) for the package map and the
+[README](../README.md#supported-mappers) for supported mapper IDs.
+
+### Adding a Mapper
+
+Add the implementation and its tests to the applicable hardware-family package
+under `pkg/mapper/mapperdb`. Name an implementation file
+`mapperNNNN_name.go`, with a four-digit mapper number. Add its constructor to
+`pkg/mapper/mapperdb/catalog.go`.
 
 ## Testing
 

@@ -1,6 +1,10 @@
-package mapperdb
+// Package uxrom implements UxROM cartridge boards and logic variants.
+package uxrom
 
-import "github.com/retroenv/nesgoemu/pkg/bus"
+import (
+	"github.com/retroenv/nesgoemu/pkg/bus"
+	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
+)
 
 /*
 Boards: UNROM, UOROM
@@ -9,8 +13,8 @@ PRG ROM window: 16K + 16K fixed
 CHR capacity: 8K
 */
 
-// NewUxROMOr returns a new mapper instance with OR logic (74HC32) configuration.
-func NewUxROMOr(base Base) (bus.Mapper, error) {
+// NewOR returns a new mapper with the OR logic configuration.
+func NewOR(base *mapperbase.Base) (bus.Mapper, error) {
 	m := newMapperUxROM(base)
 	m.SetName("UxROM")
 
@@ -20,8 +24,8 @@ func NewUxROMOr(base Base) (bus.Mapper, error) {
 	return m, nil
 }
 
-// NewUN1ROM returns a new mapper instance with OR logic (74HC32) configuration and a value shifter of 2.
-func NewUN1ROM(base Base) (bus.Mapper, error) {
+// NewUN1 returns a new mapper with the UN1ROM configuration.
+func NewUN1(base *mapperbase.Base) (bus.Mapper, error) {
 	m := newMapperUxROM(base)
 	m.SetName("UN1ROM")
 
@@ -32,8 +36,8 @@ func NewUN1ROM(base Base) (bus.Mapper, error) {
 	return m, nil
 }
 
-// NewUxROMAnd returns a new mapper instance with AND logic (74HC08) configuration.
-func NewUxROMAnd(base Base) (bus.Mapper, error) {
+// NewAND returns a new mapper with the AND logic configuration.
+func NewAND(base *mapperbase.Base) (bus.Mapper, error) {
 	m := newMapperUxROM(base)
 	m.SetName("UxROM")
 
@@ -44,13 +48,13 @@ func NewUxROMAnd(base Base) (bus.Mapper, error) {
 }
 
 type mapperUxROM struct {
-	Base
+	*mapperbase.Base
 
 	valueShift  int
 	windowIndex int
 }
 
-func newMapperUxROM(base Base) *mapperUxROM {
+func newMapperUxROM(base *mapperbase.Base) *mapperUxROM {
 	m := &mapperUxROM{
 		Base: base,
 	}

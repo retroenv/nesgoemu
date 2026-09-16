@@ -1,4 +1,5 @@
-package mapperdb
+// Package gtrom implements GTROM cartridge boards.
+package gtrom
 
 /*
 Boards: GTROM
@@ -12,10 +13,11 @@ CHR window: 8K
 
 import (
 	"github.com/retroenv/nesgoemu/pkg/bus"
+	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
 )
 
-// NewGTROM returns a new mapper instance.
-func NewGTROM(base Base) (bus.Mapper, error) {
+// New returns a new GTROM mapper.
+func New(base *mapperbase.Base) (bus.Mapper, error) {
 	m := &mapperGTROM{
 		Base: base,
 	}
@@ -34,7 +36,7 @@ func NewGTROM(base Base) (bus.Mapper, error) {
 }
 
 type mapperGTROM struct {
-	Base
+	*mapperbase.Base
 }
 
 func (m *mapperGTROM) getControl(_ uint16) (uint8, error) {

@@ -17,6 +17,41 @@ headless execution, CPU tracing, and HTTP debugging.
 * **Development tools** - Provides CPU tracing, execution control, and an HTTP debugger
 * **Portable builds** - Builds without CGO for Linux, macOS, and Windows
 
+## Supported Mappers
+
+ROM header support is separate from mapper execution. Each supported mapper
+links to its NESdev documentation.
+
+### iNES 1.0
+
+<table>
+  <tbody>
+    <tr>
+      <td><a href="https://www.nesdev.org/wiki/NROM">000 NROM</a></td>
+      <td><a href="https://www.nesdev.org/wiki/MMC1">001 MMC1</a></td>
+      <td><a href="https://www.nesdev.org/wiki/UxROM">002 UxROM OR</a></td>
+      <td><a href="https://www.nesdev.org/wiki/CNROM">003 CNROM</a></td>
+      <td><a href="https://www.nesdev.org/wiki/AxROM">007 AxROM</a></td>
+    </tr>
+    <tr>
+      <td><a href="https://www.nesdev.org/wiki/UNROM_512">030 UNROM-512</a></td>
+      <td><a href="https://www.nesdev.org/wiki/INES_Mapper_094">094 UN1ROM</a></td>
+      <td><a href="https://www.nesdev.org/wiki/GTROM">111 GTROM</a></td>
+      <td><a href="https://www.nesdev.org/wiki/INES_Mapper_180">180 UxROM AND</a></td>
+    </tr>
+  </tbody>
+</table>
+
+### NES 2.0
+
+<table>
+  <tbody>
+    <tr>
+      <td><a href="https://www.nesdev.org/wiki/NES_2.0_Mapper_682">682 Rainbow</a></td>
+    </tr>
+  </tbody>
+</table>
+
 ## Quick Start
 
 ### Installation
@@ -48,4 +83,4 @@ nesgoemu -c game.nes
 
 See the [usage guide](docs/usage.md) for command-line options and controls,
 the [advanced usage guide](docs/advanced-usage.md) for tracing and debugging,
-and the [architecture guide](docs/architecture.md) for internals and mapper support.
+and the [architecture guide](docs/architecture.md) for internals.

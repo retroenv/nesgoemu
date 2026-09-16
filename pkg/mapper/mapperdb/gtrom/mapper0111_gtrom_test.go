@@ -1,4 +1,4 @@
-package mapperdb
+package gtrom
 
 import (
 	"testing"
@@ -20,7 +20,7 @@ func TestMapperGTROM(t *testing.T) {
 		},
 		NameTable: nameTable,
 	})
-	m, err := NewGTROM(base)
+	m, err := New(base)
 	assert.NoError(t, err)
 
 	chr := make([]byte, 0x4000)

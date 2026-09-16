@@ -1,4 +1,4 @@
-package mapperdb
+package uxrom
 
 import (
 	"testing"
@@ -20,7 +20,7 @@ func TestMapperUxROMOr(t *testing.T) {
 		},
 		NameTable: nametable.New(cartridge.MirrorHorizontal),
 	})
-	m, err := NewUxROMOr(base)
+	m, err := NewOR(base)
 	assert.NoError(t, err)
 
 	prg[0x0010] = 0x03 // bank 0
@@ -43,7 +43,7 @@ func TestMapperUxROMAnd(t *testing.T) {
 		},
 		NameTable: nametable.New(cartridge.MirrorHorizontal),
 	})
-	m, err := NewUxROMAnd(base)
+	m, err := NewAND(base)
 	assert.NoError(t, err)
 
 	prg[0x0010] = 0x03 // bank 0
@@ -66,7 +66,7 @@ func TestMapperUN1ROM(t *testing.T) {
 		},
 		NameTable: nametable.New(cartridge.MirrorHorizontal),
 	})
-	m, err := NewUN1ROM(base)
+	m, err := NewUN1(base)
 	assert.NoError(t, err)
 
 	prg[0x0010] = 0x03 // bank 0

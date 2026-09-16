@@ -1,6 +1,9 @@
-package mapperdb
+// Package axrom implements AxROM cartridge boards.
+package axrom
 
 import (
+	"fmt"
+
 	"github.com/retroenv/nesgoemu/pkg/bus"
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
@@ -13,8 +16,8 @@ PRG ROM window: 32K
 CHR capacity: 8K
 */
 
-// NewAxROM returns a new mapper instance.
-func NewAxROM(base Base) (bus.Mapper, error) {
+// New returns a new AxROM mapper.
+func New(base *mapperbase.Base) (bus.Mapper, error) {
 	m := &mapperAxROM{
 		Base: base,
 	}
@@ -33,7 +36,7 @@ func NewAxROM(base Base) (bus.Mapper, error) {
 }
 
 type mapperAxROM struct {
-	Base
+	*mapperbase.Base
 }
 
 func (m *mapperAxROM) setPrgWindow(_ uint16, value uint8) error {
@@ -41,5 +44,9 @@ func (m *mapperAxROM) setPrgWindow(_ uint16, value uint8) error {
 	m.SetPrgWindow(0, int(value)) // select 32 KB PRG ROM bank for CPU $8000-$FFFF
 
 	mirrorMode := (value >> 4) & 1
-	return m.SetNameTableMirrorModeIndex(mirrorMode)
+	if err := m.SetNameTableMirrorModeIndex(mirrorMode); err != nil {
+		return fmt.Errorf("setting AxROM mirror mode: %w", err)
+	}
+
+	return nil
 }

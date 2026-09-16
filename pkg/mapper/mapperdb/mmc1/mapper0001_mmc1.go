@@ -1,4 +1,5 @@
-package mapperdb
+// Package mmc1 implements MMC1 cartridge boards.
+package mmc1
 
 /*
 Boards: SKROM, SLROM, SNROM, others
@@ -11,13 +12,15 @@ CHR window: 4K + 4K or 8K
 */
 
 import (
+	"fmt"
+
 	"github.com/retroenv/nesgoemu/pkg/bus"
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 )
 
-// NewMMC1 returns a new mapper instance.
-func NewMMC1(base Base) (bus.Mapper, error) {
+// New returns a new MMC1 mapper.
+func New(base *mapperbase.Base) (bus.Mapper, error) {
 	m := &mapperMMC1{
 		Base: base,
 		ram:  make([]byte, 0x8000), // 32K
@@ -45,7 +48,7 @@ func NewMMC1(base Base) (bus.Mapper, error) {
 }
 
 type mapperMMC1 struct {
-	Base
+	*mapperbase.Base
 
 	ram []byte
 
@@ -102,7 +105,7 @@ func (m *mapperMMC1) writeShiftBit(address uint16, value uint8) error {
 func (m *mapperMMC1) applyControl() error {
 	mirrorMode := m.control & 0b0000_0011
 	if err := m.SetNameTableMirrorModeIndex(mirrorMode); err != nil {
-		return err
+		return fmt.Errorf("setting MMC1 mirror mode: %w", err)
 	}
 
 	prgMode := (m.control >> 2) & 0b0000_0011

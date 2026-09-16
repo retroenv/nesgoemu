@@ -1,4 +1,4 @@
-package mapperdb
+package cnrom
 
 import (
 	"testing"
@@ -20,7 +20,7 @@ func TestMapperCNROM(t *testing.T) {
 		},
 		NameTable: nametable.New(cartridge.MirrorHorizontal),
 	})
-	m, err := NewCNROM(base)
+	m, err := New(base)
 	assert.NoError(t, err)
 
 	chr[0x0010] = 0x03 // bank 0

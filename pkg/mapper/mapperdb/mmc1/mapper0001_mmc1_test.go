@@ -1,4 +1,4 @@
-package mapperdb
+package mmc1
 
 import (
 	"testing"
@@ -21,7 +21,7 @@ func TestMapperMMC1(t *testing.T) {
 		},
 		NameTable: nametable.New(cartridge.MirrorHorizontal),
 	})
-	m, err := NewMMC1(base)
+	m, err := New(base)
 	assert.NoError(t, err)
 
 	chr[0x0000] = 0x01

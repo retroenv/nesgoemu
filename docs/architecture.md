@@ -16,7 +16,9 @@ writes into PRG, CHR, and nametable accesses.
 | `pkg/nes` | Startup, input, tracing, and GUI or console output |
 | `pkg/bus` | Connections between hardware components |
 | `pkg/memory` | CPU memory access |
-| `pkg/mapper` | Mapper selection and bank switching |
+| `pkg/mapper` | Mapper construction |
+| `pkg/mapper/mapperbase` | Shared banking, hooks, and nametable support |
+| `pkg/mapper/mapperdb` | Mapper catalog and hardware-family implementations |
 | `pkg/ppu` | PPU registers, memory, palettes, nametables, sprites, tiles, and rendering |
 | `pkg/apu` | APU registers; audio output is not implemented |
 | `pkg/controller` | Controller state and button mapping |
@@ -40,22 +42,18 @@ distinct from explicit zero sizes. See the [NES 2.0 specification](https://www.n
 
 ## Mapper Support
 
-ROM header support is separate from mapper execution. Registered mappers are:
+See the [supported mapper tables](../README.md#supported-mappers) for mapper IDs
+and hardware documentation.
 
-- `0`: NROM
-- `1`: MMC1
-- `2`: UxROM OR variant
-- `3`: CNROM
-- `7`: AxROM
-- `30`: UNROM-512
-- `94`: UN1ROM
-- `111`: GTROM
-- `180`: UxROM AND variant
+`pkg/mapper` creates the shared mapper base and delegates mapper selection to
+the catalog in `pkg/mapper/mapperdb`. Each hardware family has its own package
+under the catalog. Mapper implementation files use a four-digit mapper number,
+such as `mapper0001_mmc1.go`.
 
 ### Optional Mapper Capabilities
 
 All mappers implement `bus.Mapper`. A mapper can also implement one or more
-small interfaces from `pkg/bus/mapper.go`:
+small interfaces from `pkg/bus/mapper_capabilities.go`:
 
 | Interface | Behavior |
 | --- | --- |

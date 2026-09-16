@@ -1,6 +1,9 @@
-package mapperdb
+// Package unrom512 implements UNROM-512 cartridge boards.
+package unrom512
 
 import (
+	"fmt"
+
 	"github.com/retroenv/nesgoemu/pkg/bus"
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
@@ -14,8 +17,8 @@ CHR capacity: 32K
 CHR window: 8K
 */
 
-// NewUNROM512 returns a new mapper instance.
-func NewUNROM512(base Base) (bus.Mapper, error) {
+// New returns a new UNROM-512 mapper.
+func New(base *mapperbase.Base) (bus.Mapper, error) {
 	m := &mapperUNROM512{
 		Base: base,
 	}
@@ -35,7 +38,7 @@ func NewUNROM512(base Base) (bus.Mapper, error) {
 
 	cart := m.Cartridge()
 	if err := m.SetNameTableMirrorModeIndex(uint8(cart.Mirror)); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("setting UNROM-512 mirror mode: %w", err)
 	}
 
 	m.SetPrgWindow(1, -1)
@@ -43,7 +46,7 @@ func NewUNROM512(base Base) (bus.Mapper, error) {
 }
 
 type mapperUNROM512 struct {
-	Base
+	*mapperbase.Base
 }
 
 func (m *mapperUNROM512) setBanks(_ uint16, value uint8) error {
@@ -55,8 +58,13 @@ func (m *mapperUNROM512) setBanks(_ uint16, value uint8) error {
 	m.SetChrWindow(0, chrBank)
 
 	screen := int(value>>7) & 1
+	mirrorMode := cartridge.MirrorSingle1
 	if screen == 0 {
-		return m.SetNameTableMirrorMode(cartridge.MirrorSingle0)
+		mirrorMode = cartridge.MirrorSingle0
 	}
-	return m.SetNameTableMirrorMode(cartridge.MirrorSingle1)
+	if err := m.SetNameTableMirrorMode(mirrorMode); err != nil {
+		return fmt.Errorf("setting UNROM-512 mirror mode: %w", err)
+	}
+
+	return nil
 }

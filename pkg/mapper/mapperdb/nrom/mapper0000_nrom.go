@@ -1,4 +1,5 @@
-package mapperdb
+// Package nrom implements NROM cartridge boards.
+package nrom
 
 /*
 Boards: NROM, HROM*, RROM, RTROM, SROM, STROM
@@ -8,10 +9,11 @@ CHR capacity: 8K
 
 import (
 	"github.com/retroenv/nesgoemu/pkg/bus"
+	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
 )
 
-// NewNROM returns a new mapper instance.
-func NewNROM(base Base) (bus.Mapper, error) {
+// New returns a new NROM mapper.
+func New(base *mapperbase.Base) (bus.Mapper, error) {
 	m := &mapperNROM{
 		Base: base,
 	}
@@ -21,5 +23,5 @@ func NewNROM(base Base) (bus.Mapper, error) {
 }
 
 type mapperNROM struct {
-	Base
+	*mapperbase.Base
 }

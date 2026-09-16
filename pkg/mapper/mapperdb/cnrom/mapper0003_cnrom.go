@@ -1,4 +1,5 @@
-package mapperdb
+// Package cnrom implements CNROM cartridge boards.
+package cnrom
 
 /*
 Boards: CNROM "and similar"
@@ -9,10 +10,11 @@ CHR window: 8K
 
 import (
 	"github.com/retroenv/nesgoemu/pkg/bus"
+	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
 )
 
-// NewCNROM returns a new mapper instance.
-func NewCNROM(base Base) (bus.Mapper, error) {
+// New returns a new CNROM mapper.
+func New(base *mapperbase.Base) (bus.Mapper, error) {
 	m := &mapperCNROM{
 		Base: base,
 	}
@@ -24,7 +26,7 @@ func NewCNROM(base Base) (bus.Mapper, error) {
 }
 
 type mapperCNROM struct {
-	Base
+	*mapperbase.Base
 }
 
 func (m *mapperCNROM) setChrWindow(_ uint16, value uint8) error {

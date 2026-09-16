@@ -1,4 +1,4 @@
-package mapperdb
+package nrom
 
 import (
 	"testing"
@@ -21,7 +21,7 @@ func TestMapperNROMPrg16k(t *testing.T) {
 		},
 		NameTable: nametable.New(cartridge.MirrorHorizontal),
 	})
-	m, err := NewNROM(base)
+	m, err := New(base)
 	assert.NoError(t, err)
 
 	chr[0x0001] = 0x02 // bank 0
@@ -43,7 +43,7 @@ func TestMapperNROMPrg32k(t *testing.T) {
 		},
 		NameTable: nametable.New(cartridge.MirrorHorizontal),
 	})
-	m, err := NewNROM(base)
+	m, err := New(base)
 	assert.NoError(t, err)
 
 	chr[0x0001] = 0x02 // bank 0
