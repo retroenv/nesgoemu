@@ -114,8 +114,12 @@ func (m *Mapper) validStateRegisters() bool {
 		m.chrMode <= chrMode512Highest && m.chrSource <= chrSourceNT &&
 		m.fpgaBankSelect <= fpgaBankMask && m.fpgaAutoAddr < fpgaRAMSize && m.activeSpriteIndex >= -1 &&
 		m.activeSpriteIndex < len(m.spriteBankLower) && m.bgTileSlotIdx >= 0 && m.bgTileSlotIdx < len(m.ntBank) &&
-		m.oamLimit < spriteCount && m.esp.server.protocol <= espProtocolUDPPool &&
+		m.validStateOAM() && m.esp.server.protocol <= espProtocolUDPPool &&
 		m.prgFlash.Phase <= flashBypassExit && m.chrFlash.Phase <= flashBypassExit
+}
+
+func (m *Mapper) validStateOAM() bool {
+	return m.oamSlowPage <= oamPageMask && m.oamExtPage <= oamPageMask && m.oamLimit < spriteCount
 }
 
 type stateHeader struct {

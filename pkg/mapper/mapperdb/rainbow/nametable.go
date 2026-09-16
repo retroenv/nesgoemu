@@ -5,7 +5,7 @@ package rainbow
 
 const (
 	ntSourceCIRAM   = 0 // standard NES CIRAM
-	ntSourceCHRRAM  = 1 // CHR-RAM, bank[4:0] selects 1 KB page
+	ntSourceCHRRAM  = 1 // The installed CHR-RAM size limits the bank bits.
 	ntSourceFPGARAM = 2 // FPGA-RAM, bank[1:0] selects 1 KB page
 	ntSourceCHRROM  = 3 // CHR-ROM, bank[7:0] selects 1 KB page
 

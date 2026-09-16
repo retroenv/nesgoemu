@@ -894,17 +894,26 @@ func TestNametableCHRROMSource(t *testing.T) {
 	assert.Equal(t, byte(0x33), result)
 }
 
-// TestNametableCHRRAMBankMask verifies that only 5 bits of ntBank are used for
-// CHR-RAM banks (maximum 31 × 1 KB pages addressable).
-func TestNametableCHRRAMBankMask(t *testing.T) {
-	m := newTestMapper(t, 0x8000, 0x8000)
+func TestNametableCHRRAMBankUsesInstalledSize(t *testing.T) {
+	const (
+		chrRAM32KiB  = 32 * ntSlotSize
+		chrRAM128KiB = 128 * ntSlotSize
+		chrRAM256KiB = 256 * ntSlotSize
+		testOffset   = 0x20
+	)
 
-	m.ntBank[0] = 0xFF // high bits should be masked to 0x1F = 31
-	m.ntControl[0] = ntSourceCHRRAM << ntSrcShift
-	m.chrRAM[31*ntSlotSize+0x00] = 0xBB
+	for _, size := range []int{chrRAM32KiB, chrRAM128KiB, chrRAM256KiB} {
+		m := newTestMapper(t, 0x8000, 0x2000)
+		m.chrRAM = make([]byte, size)
+		m.ntBank[0] = 0xFF
+		m.ntControl[0] = ntSourceCHRRAM << ntSrcShift
+		lastBank := size/ntSlotSize - 1
+		m.chrRAM[lastBank*ntSlotSize+testOffset] = 0xBB
 
-	result := m.NameTableMemory().Read(0x2000)
-	assert.Equal(t, byte(0xBB), result)
+		assert.Equal(t, byte(0xBB), m.NameTableMemory().Read(ntBaseAddress+testOffset))
+		m.NameTableMemory().Write(ntBaseAddress+testOffset+1, 0xCC)
+		assert.Equal(t, byte(0xCC), m.chrRAM[lastBank*ntSlotSize+testOffset+1])
+	}
 }
 
 // TestNametableFPGARAMBankMask verifies that only 2 bits of ntBank are used for

@@ -65,3 +65,35 @@ func TestStateRejectsDataBeforeChangingMemory(t *testing.T) {
 	assert.Error(t, m.LoadState(bytes.NewReader(saved.Bytes())))
 	assert.Equal(t, uint16(1), m.fpgaAutoAddr)
 }
+
+func TestStateRejectsInvalidOAMPages(t *testing.T) {
+	tests := []struct {
+		name string
+		set  func(*Mapper, byte)
+		get  func(*Mapper) byte
+	}{
+		{
+			name: "slow page",
+			set:  func(m *Mapper, page byte) { m.oamSlowPage = page },
+			get:  func(m *Mapper) byte { return m.oamSlowPage },
+		},
+		{
+			name: "extended page",
+			set:  func(m *Mapper, page byte) { m.oamExtPage = page },
+			get:  func(m *Mapper) byte { return m.oamExtPage },
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			m := newTestMapper(t, 0x8000, 0x2000)
+			test.set(m, oamPageMask+1)
+			var saved bytes.Buffer
+			assert.NoError(t, m.SaveState(&saved))
+
+			test.set(m, 0)
+			assert.Error(t, m.LoadState(bytes.NewReader(saved.Bytes())))
+			assert.Equal(t, byte(0), test.get(m))
+		})
+	}
+}
