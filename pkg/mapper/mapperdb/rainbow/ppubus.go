@@ -39,6 +39,7 @@ func (m *Mapper) observePPURead(address uint16) {
 	m.ppuBus.lastAddress = address
 	if m.scanIRQ.inFrame && address >= ntBaseAddress && address < ntBaseAddress+ntMirrorSize &&
 		address&(ntSlotSize-1) < ntAttrOffset {
+
 		m.ppuBus.tiles++
 		if m.ppuBus.tiles == ppuBusHBlankTileCount {
 			m.scanIRQ.inHBlank = true

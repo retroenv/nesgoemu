@@ -94,11 +94,13 @@ func (m *Mapper) stateFields() []any {
 func (m *Mapper) validStateMemory(next *Mapper) bool {
 	if len(next.prgROM) != len(m.prgROM) || len(next.chrROM) != len(m.chrROM) ||
 		len(next.prgRAM) != len(m.prgRAM) || len(next.chrRAM) != len(m.chrRAM) {
+
 		return false
 	}
 	if len(next.esp.pending) > espMaximumMessageSize || len(next.esp.server.hostname) > espMaximumHostnameSize ||
 		next.wifiRegs[regESPReceivePage-regESPControl] > espPageMask ||
 		next.wifiRegs[regESPTransmitPage-regESPControl] > espPageMask {
+
 		return false
 	}
 	for _, message := range next.esp.queue {
