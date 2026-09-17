@@ -17,6 +17,7 @@ type APU interface {
 type PPU interface {
 	cpu6502.BasicMemory
 
+	Frame() uint64
 	Image() *image.RGBA
 	Palette() Palette
 	Step(cycles int)

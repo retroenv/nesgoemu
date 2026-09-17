@@ -68,6 +68,10 @@ func (ppu *clockPPU) Image() *image.RGBA {
 	return nil
 }
 
+func (ppu *clockPPU) Frame() uint64 {
+	return 0
+}
+
 func (ppu *clockPPU) Palette() bus.Palette {
 	return nil
 }

@@ -30,6 +30,19 @@ func TestPCMReadFallsBackToAPU(t *testing.T) {
 	assert.Equal(t, 1, apu.reads)
 }
 
+func TestInspectRAMReadsWithoutBusAccess(t *testing.T) {
+	systemBus := &bus.Bus{}
+	memory := New(systemBus)
+	memory.Write(0x0807, 0xa5)
+
+	value, ok := memory.InspectRAM(0x0807)
+
+	assert.True(t, ok)
+	assert.Equal(t, byte(0xa5), value)
+	_, ok = memory.InspectRAM(0x2000)
+	assert.False(t, ok)
+}
+
 type pcmTestAPU struct {
 	bus.APU
 	reads int

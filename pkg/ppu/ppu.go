@@ -56,6 +56,11 @@ func (p *PPU) Palette() bus.Palette {
 	return p.palette
 }
 
+// Frame returns the number of completed PPU frame periods.
+func (p *PPU) Frame() uint64 {
+	return p.renderState.Frame()
+}
+
 // Reset clears PPU control state. It keeps the current VRAM address and VBlank state.
 // https://www.nesdev.org/wiki/PPU_power_up_state
 func (p *PPU) Reset() {

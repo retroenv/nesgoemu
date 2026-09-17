@@ -84,3 +84,12 @@ func (m *Memory) Read(address uint16) byte {
 		panic(fmt.Sprintf("unhandled memory read at address: 0x%04X", address))
 	}
 }
+
+// InspectRAM reads internal CPU RAM without access to MMIO or mapper state.
+func (m *Memory) InspectRAM(address uint16) (byte, bool) {
+	if address >= register.PPU_CTRL {
+		return 0, false
+	}
+
+	return m.ram.Read(address & nes.RAMEndAddress), true
+}

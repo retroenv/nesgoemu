@@ -54,6 +54,11 @@ func (r *RenderState) ScanLine() int {
 	return r.scanLine
 }
 
+// Frame returns the number of frames that reached the first visible scanline.
+func (r *RenderState) Frame() uint64 {
+	return r.frame
+}
+
 func (r *RenderState) nextFrame() {
 	r.cycle = 0
 	r.scanLine = 0

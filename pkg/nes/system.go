@@ -24,11 +24,20 @@ import (
 type System struct {
 	opts    *Options
 	storage batteryStorage
+	memory  *memory.Memory
 
 	*cpu6502.CPU
 	Bus *bus.Bus
 
 	dimensions gui.Dimensions
+}
+
+// StepResult reports the time advanced by one system step.
+type StepResult struct {
+	CPUCycles           uint64
+	Frame               uint64
+	FrameCompleted      bool
+	InstructionExecuted bool
 }
 
 // NewSystem creates a new NES system.
@@ -49,7 +58,8 @@ func NewSystem(opts *Options) (*System, error) {
 		NameTable:   nametable.New(cart.Mirror),
 	}
 
-	mem, err := cpu6502.NewMemory(memory.New(systemBus))
+	systemMemory := memory.New(systemBus)
+	mem, err := cpu6502.NewMemory(systemMemory)
 	if err != nil {
 		return nil, fmt.Errorf("creating memory: %w", err)
 	}
@@ -63,6 +73,7 @@ func NewSystem(opts *Options) (*System, error) {
 	sys := &System{
 		opts:    opts,
 		storage: diskBatteryStorage{files: osBatteryFiles{}},
+		memory:  systemMemory,
 		Bus:     systemBus,
 		dimensions: gui.Dimensions{
 			ScaleFactor: 2.0,
@@ -102,6 +113,35 @@ func (sys *System) WindowTitle() string {
 	return "nesgoemu"
 }
 
+// InspectRAM reads internal CPU RAM without emulated bus side effects.
+func (sys *System) InspectRAM(address uint16) (byte, bool) {
+	return sys.memory.InspectRAM(address)
+}
+
+// StepSystem services one interrupt or CPU instruction and clocks the other components.
+func (sys *System) StepSystem() (StepResult, error) {
+	cyclesBefore := sys.CPU.Cycles()
+	frameBefore := sys.Bus.PPU.Frame()
+
+	instructionExecuted := !sys.CPU.CheckInterrupts()
+	if instructionExecuted {
+		if err := sys.CPU.Step(); err != nil {
+			return StepResult{}, fmt.Errorf("executing CPU step at 0x%04x: %w", sys.PC, err)
+		}
+	}
+
+	cpuCycles := sys.CPU.Cycles() - cyclesBefore
+	sys.clockComponents(cpuCycles)
+	frame := sys.Bus.PPU.Frame()
+
+	return StepResult{
+		CPUCycles:           cpuCycles,
+		Frame:               frame,
+		FrameCompleted:      frame != frameBefore,
+		InstructionExecuted: instructionExecuted,
+	}, nil
+}
+
 // NTSC NES timing: CPU runs at ~1.789773 MHz, PPU frame is 60.0988 Hz.
 const (
 	ntscCPUCyclesPerFrame = 29781
@@ -135,18 +175,16 @@ func (sys *System) runEmulatorSteps(ctx context.Context, stopAt int) error {
 			state.Cycles = cycles
 		}
 
-		if !sys.CPU.CheckInterrupts() {
-			if err := sys.CPU.Step(); err != nil {
-				return fmt.Errorf("executing CPU step: %w", err)
-			}
+		step, err := sys.StepSystem()
+		if err != nil {
+			return err
+		}
 
-			if sys.opts.tracing {
-				sys.printTraceStep(state)
-			}
+		if sys.opts.tracing && step.InstructionExecuted {
+			sys.printTraceStep(state)
 		}
 
 		cpuCycles := sys.CPU.Cycles() - cycles
-		sys.clockComponents(cpuCycles)
 
 		frameCycles += cpuCycles
 		if frameCycles >= ntscCPUCyclesPerFrame {
