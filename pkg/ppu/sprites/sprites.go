@@ -71,6 +71,15 @@ func (s *Sprites) SetSpritePatternTable(table uint16) {
 	s.spritePatternTable = table * 0x1000
 }
 
+// Data returns a copy of primary OAM.
+func (s *Sprites) Data() [oamMemorySize]byte {
+	var data [oamMemorySize]byte
+	for index := range data {
+		data[index] = s.sprites[index/spriteStructSize].field(byte(index % spriteStructSize))
+	}
+	return data
+}
+
 // Read a sprite field, based on the previously set address.
 func (s *Sprites) Read() byte {
 	// TODO handle special case of reading during rendering

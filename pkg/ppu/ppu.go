@@ -61,6 +61,11 @@ func (p *PPU) Frame() uint64 {
 	return p.renderState.Frame()
 }
 
+// OAM returns a copy of primary OAM.
+func (p *PPU) OAM() [256]byte {
+	return p.sprites.Data()
+}
+
 // Reset clears PPU control state. It keeps the current VRAM address and VBlank state.
 // https://www.nesdev.org/wiki/PPU_power_up_state
 func (p *PPU) Reset() {

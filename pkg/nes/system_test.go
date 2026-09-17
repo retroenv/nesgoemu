@@ -72,6 +72,10 @@ func (ppu *clockPPU) Frame() uint64 {
 	return 0
 }
 
+func (ppu *clockPPU) OAM() [256]byte {
+	return [256]byte{}
+}
+
 func (ppu *clockPPU) Palette() bus.Palette {
 	return nil
 }

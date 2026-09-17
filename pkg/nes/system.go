@@ -118,6 +118,11 @@ func (sys *System) InspectRAM(address uint16) (byte, bool) {
 	return sys.memory.InspectRAM(address)
 }
 
+// InspectOAM returns a copy of primary OAM without changing PPU state.
+func (sys *System) InspectOAM() [256]byte {
+	return sys.Bus.PPU.OAM()
+}
+
 // StepSystem services one interrupt or CPU instruction and clocks the other components.
 func (sys *System) StepSystem() (StepResult, error) {
 	cyclesBefore := sys.CPU.Cycles()

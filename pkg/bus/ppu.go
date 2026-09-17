@@ -19,6 +19,7 @@ type PPU interface {
 
 	Frame() uint64
 	Image() *image.RGBA
+	OAM() [256]byte
 	Palette() Palette
 	Step(cycles int)
 }
