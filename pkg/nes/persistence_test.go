@@ -65,6 +65,11 @@ func TestBatteryHooksAreOptional(t *testing.T) {
 	assert.NoError(t, sys.loadBattery())
 	assert.Equal(t, 0, files.calls)
 
+	sys.Bus.Mapper = &testBatteryMapper{volatileOnly: true}
+	assert.NoError(t, sys.SaveBattery())
+	assert.NoError(t, sys.loadBattery())
+	assert.Equal(t, 0, files.calls)
+
 	sys.Bus.Mapper = &testBatteryMapper{value: 0xAB}
 	sys.opts = NewOptions()
 	assert.NoError(t, sys.SaveBattery())
@@ -100,8 +105,9 @@ func TestRendererWaitsForCPUShutdown(t *testing.T) {
 
 type testBatteryMapper struct {
 	plainMapper
-	value   byte
-	saveErr error
+	value        byte
+	saveErr      error
+	volatileOnly bool
 }
 
 type memoryBatteryFiles struct {
@@ -115,6 +121,8 @@ type memoryBatteryFile struct {
 	name   string
 	closed bool
 }
+
+func (mapper *testBatteryMapper) BatteryBacked() bool { return !mapper.volatileOnly }
 
 func (files *memoryBatteryFiles) CreateTemp(dir, _ string) (batterySaveFile, error) {
 	files.calls++

@@ -1,5 +1,9 @@
 package mapperbase
 
+import (
+	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
+)
+
 // PrgBankCount returns the amount of PRG banks.
 func (b *Base) PrgBankCount() int {
 	return len(b.prgBanks)
@@ -53,4 +57,25 @@ func (b *Base) setPrgBanks() {
 		bank.data = prg[startOffset:endOffset]
 		startOffset += bank.length
 	}
+}
+
+// PrgRAMSize returns the PRG RAM size of a cartridge in bytes.
+//
+// NES 2.0 sizes are explicit and a size of zero means that the memory is absent.
+// The volatile and the nonvolatile size are added, a mapper maps one RAM block.
+//
+// A legacy iNES file gets 8 KiB. The format has a size field for PRG RAM, but it
+// is rarely used, it can hold unrelated data, and the format defines 8 KiB as
+// the default for compatibility. The field is ignored. A size above 8 KiB can
+// add no memory, the window at $6000-$7FFF is 8 KiB in size and cannot reach the
+// remaining memory.
+//
+// https://www.nesdev.org/wiki/NES_2.0#PRG-RAM/EEPROM
+// https://www.nesdev.org/wiki/INES
+func PrgRAMSize(cart *cartridge.Cartridge) int {
+	if cart.NES2 != nil {
+		return cart.NES2.RAMSizes.PRGVolatile + cart.NES2.RAMSizes.PRGNonvolatile
+	}
+
+	return defaultPrgRAMSize
 }

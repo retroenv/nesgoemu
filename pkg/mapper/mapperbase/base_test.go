@@ -14,3 +14,35 @@ func TestNameTableMemoryReturnsSystemNameTable(t *testing.T) {
 	system := &bus.Bus{NameTable: nameTable}
 	assert.Equal(t, nameTable, New(system).NameTableMemory())
 }
+
+func TestPrgRAMSize(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, 0x2000, PrgRAMSize(&cartridge.Cartridge{}),
+		"a legacy file without a size gets 8 KiB")
+	assert.Equal(t, 0x2000, PrgRAMSize(&cartridge.Cartridge{RAM: 2}),
+		"the legacy size field is ignored")
+	assert.Equal(t, 0, PrgRAMSize(&cartridge.Cartridge{NES2: &cartridge.NES2Metadata{}}),
+		"a NES 2.0 size of zero means that the memory is absent")
+	assert.Equal(t, 0x800, PrgRAMSize(&cartridge.Cartridge{
+		NES2: &cartridge.NES2Metadata{
+			RAMSizes: cartridge.RAMSizes{
+				PRGVolatile:    0x400,
+				PRGNonvolatile: 0x400,
+			},
+		},
+	}))
+}
+
+func TestPrgRAMSupports64KiB(t *testing.T) {
+	t.Parallel()
+
+	base := New(&bus.Bus{Cartridge: &cartridge.Cartridge{}})
+	base.SetPrgRAM(make([]byte, 64*1024))
+
+	base.Write(prgRAMStart, 0x5A)
+	base.Write(prgRAMEnd, 0xA5)
+
+	assert.Equal(t, byte(0x5A), base.Read(prgRAMStart))
+	assert.Equal(t, byte(0xA5), base.Read(prgRAMEnd))
+}
