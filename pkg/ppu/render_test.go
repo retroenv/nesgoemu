@@ -7,7 +7,9 @@ import (
 	"github.com/retroenv/nesgoemu/pkg/mapper"
 	"github.com/retroenv/nesgoemu/pkg/ppu/addressing"
 	ppumemory "github.com/retroenv/nesgoemu/pkg/ppu/memory"
+	"github.com/retroenv/nesgoemu/pkg/ppu/nametable"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
+	"github.com/retroenv/retrogolib/arch/system/nes/register"
 	"github.com/retroenv/retrogolib/assert"
 )
 
@@ -74,6 +76,35 @@ func TestGrayscalePixelOutput(t *testing.T) {
 		assert.Equal(t, colors[value&0x30], p.Image().RGBAAt(value*2, 0))
 		assert.Equal(t, colors[value], p.Image().RGBAAt(value*2+1, 0))
 	}
+}
+
+func TestBackgroundPrefetchDrawsFirstTileAtLeftEdge(t *testing.T) {
+	cart := cartridge.New()
+	for row := range 8 {
+		cart.CHR[row] = 0xff
+	}
+	system := &bus.Bus{
+		Cartridge: cart,
+		NameTable: nametable.New(cart.Mirror),
+	}
+	var err error
+	system.Mapper, err = mapper.New(system)
+	assert.NoError(t, err)
+	p := New(system)
+	system.PPU = p
+
+	system.NameTable.Write(0x2000, 0)
+	system.NameTable.Write(0x2001, 1)
+	p.palette.Write(0, 0x0f)
+	p.palette.Write(1, 0x30)
+	p.Write(register.PPU_SCROLL, 0)
+	p.Write(register.PPU_SCROLL, 0)
+	p.Write(register.PPU_MASK, 0x0a)
+	p.Step(341 * 262 * 2)
+
+	assert.Equal(t, colors[0x30], p.Image().RGBAAt(0, 0))
+	assert.Equal(t, colors[0x30], p.Image().RGBAAt(7, 0))
+	assert.Equal(t, colors[0x0f], p.Image().RGBAAt(8, 0))
 }
 
 type recordNameTable struct {

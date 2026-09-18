@@ -22,7 +22,10 @@ const (
 	rainbowRegVectorControl     = 0x416B
 	rainbowRegIRQVectorUpper    = 0x416E
 	rainbowRegIRQVectorLower    = 0x416F
+	rainbowRegCHRControl        = 0x4120
+	rainbowRegNametableControl0 = 0x412a
 	ppuMaskRegister             = 0x2001
+	ppuScrollRegister           = 0x2005
 )
 
 func TestRainbowNES2System(t *testing.T) {
@@ -77,4 +80,31 @@ func TestRainbowBusTimingAndIRQDelivery(t *testing.T) {
 	mapper.Write(rainbowRegCycleIRQAck, 0)
 	sys.Flags.I = 0
 	assert.False(t, sys.CheckInterrupts())
+}
+
+func TestRainbowExtendedBackgroundPrefetchAtLeftEdge(t *testing.T) {
+	cart := cartridge.New()
+	cart.Mapper = rainbowMapperID
+	for row := range 8 {
+		cart.CHR[row] = 0xff
+	}
+	sys, err := NewSystem(NewOptions(WithCartridge(cart)))
+	assert.NoError(t, err)
+
+	for offset := range uint16(960) {
+		sys.Bus.NameTable.Write(0x2000+offset, 1)
+	}
+	sys.Bus.NameTable.Write(0x20c0, 0)
+	sys.Bus.Mapper.Write(rainbowRegCHRControl, 0)
+	sys.Bus.Mapper.Write(rainbowRegNametableControl0, 3)
+	sys.Bus.Mapper.Write(0x5000, 0)
+	sys.Bus.PPU.Palette().Write(0, 0x0f)
+	sys.Bus.PPU.Palette().Write(1, 0x30)
+	sys.Bus.PPU.Write(ppuScrollRegister, 0)
+	sys.Bus.PPU.Write(ppuScrollRegister, 0)
+	sys.Bus.PPU.Write(ppuMaskRegister, 0x0a)
+	sys.clockComponents(60_000)
+
+	assert.Equal(t, byte(0xff), sys.Image().RGBAAt(0, 48).R)
+	assert.Equal(t, byte(0), sys.Image().RGBAAt(8, 48).R)
 }
