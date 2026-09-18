@@ -9,6 +9,11 @@ type BatteryMapper interface {
 	SaveBattery(io.Writer) error
 }
 
+// BatteryBacker reports whether a mapper has data that must persist.
+type BatteryBacker interface {
+	BatteryBacked() bool
+}
+
 // CPUClocker receives elapsed CPU cycles.
 // The system calls ClockCPU before it advances the PPU for each CPU cycle.
 type CPUClocker interface {

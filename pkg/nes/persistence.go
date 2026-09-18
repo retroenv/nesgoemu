@@ -14,7 +14,8 @@ import (
 // Call this method while emulation is stopped.
 func (sys *System) SaveBattery() error {
 	mapper, ok := sys.Bus.Mapper.(bus.BatteryMapper)
-	if !ok || sys.opts.savePath == "" {
+	backer, reportsBacking := sys.Bus.Mapper.(bus.BatteryBacker)
+	if !ok || (reportsBacking && !backer.BatteryBacked()) || sys.opts.savePath == "" {
 		return nil
 	}
 	if err := sys.storage.Save(sys.opts.savePath, mapper.SaveBattery); err != nil {
@@ -25,7 +26,8 @@ func (sys *System) SaveBattery() error {
 
 func (sys *System) loadBattery() error {
 	mapper, ok := sys.Bus.Mapper.(bus.BatteryMapper)
-	if !ok || sys.opts.savePath == "" {
+	backer, reportsBacking := sys.Bus.Mapper.(bus.BatteryBacker)
+	if !ok || (reportsBacking && !backer.BatteryBacked()) || sys.opts.savePath == "" {
 		return nil
 	}
 	if err := sys.storage.Load(sys.opts.savePath, mapper.LoadBattery); err != nil {

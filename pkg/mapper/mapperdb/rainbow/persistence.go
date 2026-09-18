@@ -16,6 +16,11 @@ const (
 	romHashSize          = sha256.Size
 )
 
+// BatteryBacked reports whether the mapper has data that must persist.
+func (m *Mapper) BatteryBacked() bool {
+	return true
+}
+
 // SaveBattery writes flash and nonvolatile RAM. It does not write the input ROM.
 // Call this method while emulation is stopped.
 func (m *Mapper) SaveBattery(writer io.Writer) error {

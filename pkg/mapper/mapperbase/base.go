@@ -18,6 +18,8 @@ const (
 
 	prgRAMStart = 0x6000
 	prgRAMEnd   = 0x7FFF
+
+	defaultPrgRAMSize = 0x2000 // 8K, the size that a legacy iNES file implies
 )
 
 // bankMapper maps an address to a bank number and offset into that bank.
@@ -111,7 +113,9 @@ func (b *Base) Read(address uint16) uint8 {
 		value = bank.data[offset]
 
 	case address >= prgRAMStart && address <= prgRAMEnd && len(b.prgRAM) > 0:
-		offset := address - prgRAMStart
+		// A PRG RAM that is smaller than its window repeats inside it, the address
+		// decoding covers only the size of the RAM.
+		offset := int(address-prgRAMStart) % len(b.prgRAM)
 		value = b.prgRAM[offset]
 
 	case address >= nes.CodeBaseAddress:
@@ -147,11 +151,14 @@ func (b *Base) Write(address uint16, value uint8) {
 		bank.data[offset] = value
 
 	case address >= prgRAMStart && address <= prgRAMEnd && len(b.prgRAM) > 0:
-		offset := address - prgRAMStart
+		// A PRG RAM that is smaller than its window repeats inside it, the address
+		// decoding covers only the size of the RAM.
+		offset := int(address-prgRAMStart) % len(b.prgRAM)
 		b.prgRAM[offset] = value
 
 	default:
-		panic(fmt.Sprintf("invalid write to address #%0000x", address))
+		// Addresses without memory ignore writes.
+		// https://www.nesdev.org/wiki/CPU_memory_map
 	}
 }
 
