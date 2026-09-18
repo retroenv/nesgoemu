@@ -12,7 +12,9 @@ import (
 func TestClockComponents(t *testing.T) {
 	mapper := &clockMapper{}
 	ppu := &clockPPU{}
+	apu := &clockAPU{}
 	sys := &System{Bus: &bus.Bus{
+		APU:    apu,
 		Mapper: mapper,
 		PPU:    ppu,
 	}}
@@ -20,20 +22,38 @@ func TestClockComponents(t *testing.T) {
 	sys.clockComponents(3)
 
 	assert.Equal(t, []uint64{1, 1, 1}, mapper.cycles)
+	assert.Equal(t, []int{1, 1, 1}, apu.cycles)
 	assert.Equal(t, []int{3, 3, 3}, ppu.cycles)
 }
 
 func TestClockComponentsWithoutMapperClock(t *testing.T) {
 	ppu := &clockPPU{}
+	apu := &clockAPU{}
 	sys := &System{Bus: &bus.Bus{
+		APU:    apu,
 		Mapper: plainMapper{},
 		PPU:    ppu,
 	}}
 
 	sys.clockComponents(2)
 
+	assert.Equal(t, []int{1, 1}, apu.cycles)
 	assert.Equal(t, []int{3, 3}, ppu.cycles)
 }
+
+type clockAPU struct {
+	cycles []int
+}
+
+func (apu *clockAPU) Read(_ uint16) byte {
+	return 0
+}
+
+func (apu *clockAPU) Step(cycles int) {
+	apu.cycles = append(apu.cycles, cycles)
+}
+
+func (apu *clockAPU) Write(_ uint16, _ byte) {}
 
 type plainMapper struct{}
 

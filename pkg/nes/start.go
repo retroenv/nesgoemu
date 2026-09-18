@@ -5,6 +5,7 @@ import (
 
 	"github.com/retroenv/nesgoemu/pkg/nes/debugger"
 	"github.com/retroenv/retrogolib/app"
+	"github.com/retroenv/retrogolib/audio"
 	"github.com/retroenv/retrogolib/gui"
 )
 
@@ -30,6 +31,16 @@ func Start(options ...Option) error {
 	if gui.Setup != nil && !opts.noGui {
 		guiStarter = gui.Setup
 	}
-	runErr := sys.runRenderer(ctx, opts, guiStarter)
+
+	var playback *audio.Playback
+	if audioEnabled(opts) {
+		playback, err = startAudio(sys)
+		if err != nil {
+			return err
+		}
+		defer playback.Stop()
+	}
+
+	runErr := sys.runRenderer(ctx, opts, guiStarter, playbackErrors(playback))
 	return errors.Join(runErr, sys.SaveBattery())
 }

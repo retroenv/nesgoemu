@@ -27,6 +27,7 @@ usage: nesgoemu [options] <file to emulate>
   -d    start built-in webserver for debug mode
   -e int
         entrypoint to start the CPU (default -1)
+  -m    mute audio output
   -s int
         stop execution at address (default -1)
   -t    print CPU tracing
@@ -75,3 +76,21 @@ nesgoemu -c game.nes
 ```
 
 For debugger endpoints, batch testing, and profiling examples, see [advanced-usage.md](advanced-usage.md).
+
+## Audio
+
+GUI mode plays sound through the SDL2 audio renderer. Audio output needs SDL2
+runtime libraries, like the GUI. Console mode does not open an audio device.
+
+Mute the audio output:
+
+```bash
+nesgoemu -m game.nes
+```
+
+Use `-m` when the system has no audio device. Without the flag, a failing audio
+device stops the emulator with an error message.
+
+The emulator writes 44100 Hz mono samples. The sample queue holds about 93 ms of
+audio. If the emulator runs late, the output writes silence. If it runs ahead,
+the oldest samples are dropped.

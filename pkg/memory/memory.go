@@ -41,7 +41,9 @@ func (m *Memory) Write(address uint16, value byte) {
 		m.bus.Controller1.SetStrobeMode(value)
 
 	case address == register.JOYPAD2:
+		// $4017 is both the controller 2 port and the APU frame counter.
 		m.bus.Controller2.SetStrobeMode(value)
+		m.bus.APU.Write(address, value)
 
 	case address <= register.APU_FRAME:
 		m.bus.APU.Write(address, value)

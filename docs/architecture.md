@@ -20,7 +20,7 @@ writes into PRG, CHR, and nametable accesses.
 | `pkg/mapper/mapperbase` | Shared banking, hooks, and nametable support |
 | `pkg/mapper/mapperdb` | Mapper catalog and hardware-family implementations |
 | `pkg/ppu` | PPU registers, memory, palettes, nametables, sprites, tiles, and rendering |
-| `pkg/apu` | APU registers; audio output is not implemented |
+| `pkg/apu` | APU registers, sound channels, frame counter, mixing, and audio output |
 | `pkg/controller` | Controller state and button mapping |
 | `pkg/nes/debugger` | HTTP access to CPU, mapper, palette, and nametable state |
 | `internal/testroms` | Test ROMs and expected traces |
@@ -67,6 +67,44 @@ small interfaces from `pkg/bus/mapper_capabilities.go`:
 
 Components detect these interfaces at run time. A mapper that does not implement
 an optional interface keeps the standard emulator behavior.
+
+## Audio
+
+The APU contains two pulse channels, a triangle channel, a noise channel, a
+delta modulation channel (DMC), and the frame counter. Each unit has its own
+package under `pkg/apu`. The parent package decodes the registers, clocks the
+units, aggregates the interrupts, and mixes the channel levels.
+
+`pkg/nes` steps the APU once per CPU cycle. The pulse, noise, and DMC timers
+advance once per APU cycle, which is every second CPU cycle. The triangle timer
+advances on every CPU cycle.
+
+The mixed signal goes to the sampler, which converts it to mono 16-bit samples
+at 44100 Hz. The output stage then applies the filter chain of the NES and holds
+the samples for playback. `pkg/nes` implements the `audio.Backend` interface of
+retrogolib and fills the playback buffer. A full sample queue drops its oldest
+samples to keep latency bounded. An empty queue writes silence.
+
+Audio output uses the SDL2 audio renderer from retrogolib. It is active in GUI
+mode only. The `-m` flag disables it.
+
+The implementation follows these NESdev wiki pages:
+
+| Topic | Page |
+| --- | --- |
+| APU overview, register map, status register | https://www.nesdev.org/wiki/APU |
+| Pulse channels | https://www.nesdev.org/wiki/APU_Pulse |
+| Triangle channel | https://www.nesdev.org/wiki/APU_Triangle |
+| Noise channel | https://www.nesdev.org/wiki/APU_Noise |
+| DMC channel | https://www.nesdev.org/wiki/APU_DMC |
+| Envelope, sweep, and length counter units | https://www.nesdev.org/wiki/APU_Envelope, https://www.nesdev.org/wiki/APU_Sweep, https://www.nesdev.org/wiki/APU_Length_Counter |
+| Frame counter and frame interrupt | https://www.nesdev.org/wiki/APU_Frame_Counter |
+| Mixer and output filters | https://www.nesdev.org/wiki/APU_Mixer |
+| Power-up register values | https://www.nesdev.org/wiki/CPU_power_up_state#APU |
+| NTSC clock rates | https://www.nesdev.org/wiki/Cycle_reference_chart |
+
+Register writes take effect when the instruction completes. The emulator does
+not model intra-instruction bus timing, and it does not model expansion audio.
 
 ## Related Documentation
 

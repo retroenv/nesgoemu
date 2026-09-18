@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/retroenv/nesgoemu/pkg/bus"
+	"github.com/retroenv/nesgoemu/pkg/controller"
 	"github.com/retroenv/retrogolib/assert"
 )
 
@@ -43,14 +44,56 @@ func TestInspectRAMReadsWithoutBusAccess(t *testing.T) {
 	assert.False(t, ok)
 }
 
+func TestWriteFrameCounterReachesControllerAndAPU(t *testing.T) {
+	apu := &pcmTestAPU{}
+	systemBus := &bus.Bus{
+		APU:         apu,
+		Controller2: controller.New(),
+	}
+	memory := New(systemBus)
+
+	systemBus.Controller2.SetButtonState(controller.A, true)
+	memory.Write(0x4017, 1)
+
+	assert.Equal(t, []apuWrite{{address: 0x4017, value: 1}}, apu.writes)
+	assert.Equal(t, byte(1), systemBus.Controller2.Read(), "the write strobes controller 2")
+}
+
+func TestWriteOtherAPURegistersSkipsController(t *testing.T) {
+	apu := &pcmTestAPU{}
+	systemBus := &bus.Bus{
+		APU:         apu,
+		Controller2: controller.New(),
+	}
+	memory := New(systemBus)
+
+	memory.Write(0x4000, 0xbf)
+
+	assert.Equal(t, []apuWrite{{address: 0x4000, value: 0xbf}}, apu.writes)
+}
+
+type apuWrite struct {
+	address uint16
+	value   byte
+}
+
 type pcmTestAPU struct {
 	bus.APU
-	reads int
+	reads  int
+	writes []apuWrite
 }
 
 func (a *pcmTestAPU) Read(uint16) byte {
 	a.reads++
 	return 0x5A
+}
+
+func (a *pcmTestAPU) Write(address uint16, value byte) {
+	entry := apuWrite{
+		address: address,
+		value:   value,
+	}
+	a.writes = append(a.writes, entry)
 }
 
 type pcmTestMapper struct {

@@ -25,6 +25,7 @@ type System struct {
 	opts    *Options
 	storage batteryStorage
 	memory  *memory.Memory
+	apu     *apu.APU
 
 	*cpu6502.CPU
 	Bus *bus.Bus
@@ -93,7 +94,9 @@ func NewSystem(opts *Options) (*System, error) {
 	sys.CPU = cpu6502.New(mem, cpuOpts...)
 	systemBus.CPU = sys.CPU
 
-	systemBus.APU = apu.New(systemBus)
+	apuDevice := apu.New(systemBus)
+	systemBus.APU = apuDevice
+	sys.apu = apuDevice
 	systemBus.PPU = ppu.New(systemBus)
 	return sys, nil
 }
@@ -214,12 +217,16 @@ func (sys *System) clockComponents(cycles uint64) {
 			clocker.ClockCPU(1)
 		}
 
+		sys.Bus.APU.Step(1)
 		sys.Bus.PPU.Step(3)
 	}
 }
 
-// runRenderer starts the chosen GUI renderer.
-func (sys *System) runRenderer(ctx context.Context, opts *Options, guiStarter gui.Initializer) error {
+// runRenderer starts the chosen GUI renderer. It stops when the renderer stops,
+// the context is cancelled, or the audio playback fails.
+func (sys *System) runRenderer(ctx context.Context, opts *Options, guiStarter gui.Initializer,
+	audioErrors <-chan error) error {
+
 	render, cleanup, err := guiStarter(sys)
 	if err != nil {
 		return err
@@ -244,6 +251,8 @@ func (sys *System) runRenderer(ctx context.Context, opts *Options, guiStarter gu
 			return cpuError
 		case <-ctx.Done():
 			return nil
+		case err := <-audioErrors:
+			return err
 		default:
 		}
 

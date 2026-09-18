@@ -54,7 +54,7 @@ Core NES hardware components:
 
 - **CPU** (`pkg/bus/cpu.go`): 6502 processor integration through retrogolib.
 - **PPU** (`pkg/ppu/`): Picture Processing Unit registers, memory, and rendering.
-- **APU** (`pkg/apu/`): Audio Processing Unit register structure.
+- **APU** (`pkg/apu/`): Audio Processing Unit registers, sound channels, frame counter, and audio output.
 - **Bus** (`pkg/bus/`): System interconnect for CPU, PPU, controllers, mapper, and cartridge state.
 - **Mappers** (`pkg/mapper/`): Mapper construction, catalog selection, cartridge banking, and nametable mirroring.
 - **System** (`pkg/nes/`): Emulator startup, options, tracing, GUI toggle, and debugger setup.
@@ -86,6 +86,12 @@ The tracked nestest fixture validates CPU execution against a checked-in trace:
 ```bash
 go test ./internal/testroms/nestest
 ```
+
+`nestest_no_ppu.log` is the official nestest log without the PPU column. Trailing
+`= XX` fields show the value that a read of the instruction operand returns. For
+I/O registers these fields follow the register model of this emulator. Open bus
+behavior is not modeled, so a register that returns open bus on hardware shows
+the register value instead.
 
 Run the fixture through the command-line binary:
 

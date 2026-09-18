@@ -8,9 +8,11 @@ import (
 
 	"github.com/retroenv/nesgoemu/pkg/nes"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
+	"github.com/retroenv/retrogolib/audio"
+	audiosdl2 "github.com/retroenv/retrogolib/audio/sdl2"
 	"github.com/retroenv/retrogolib/buildinfo"
 	"github.com/retroenv/retrogolib/gui"
-	"github.com/retroenv/retrogolib/gui/sdl2"
+	guisdl2 "github.com/retroenv/retrogolib/gui/sdl2"
 )
 
 type optionFlags struct {
@@ -20,6 +22,7 @@ type optionFlags struct {
 	debugAddress string
 
 	entrypoint int
+	noAudio    bool
 	noGui      bool
 	stopAt     int
 	tracing    bool
@@ -48,6 +51,7 @@ func readArguments() optionFlags {
 	flags.StringVar(&options.debugAddress, "a", "127.0.0.1:8080", "listening address for the debug server to use")
 	flags.IntVar(&options.entrypoint, "e", -1, "entrypoint to start the CPU")
 	flags.BoolVar(&options.noGui, "c", false, "console mode, disable GUI")
+	flags.BoolVar(&options.noAudio, "m", false, "mute audio output")
 	flags.IntVar(&options.stopAt, "s", -1, "stop execution at address")
 	flags.BoolVar(&options.tracing, "t", false, "print CPU tracing")
 
@@ -103,7 +107,11 @@ func emulateFile(options optionFlags) error {
 	if options.noGui {
 		opts = append(opts, nes.WithDisabledGUI())
 	} else {
-		gui.Setup = sdl2.Setup
+		gui.Setup = guisdl2.Setup
+		audio.Setup = audiosdl2.Setup
+	}
+	if options.noAudio {
+		opts = append(opts, nes.WithDisabledAudio())
 	}
 
 	if err := nes.Start(opts...); err != nil {

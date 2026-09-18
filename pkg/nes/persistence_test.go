@@ -92,7 +92,7 @@ func TestRendererWaitsForCPUShutdown(t *testing.T) {
 		return func() (bool, error) { return false, nil }, func() {}, nil
 	}
 
-	assert.NoError(t, sys.runRenderer(t.Context(), sys.opts, starter))
+	assert.NoError(t, sys.runRenderer(t.Context(), sys.opts, starter, nil))
 	// The CPU worker has stopped before the next memory access.
 	sys.Bus.Memory.Write(0, 0xAB)
 	assert.Equal(t, byte(0xAB), sys.Bus.Memory.Read(0))
