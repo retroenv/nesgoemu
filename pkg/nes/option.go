@@ -22,6 +22,8 @@ type Options struct {
 
 	tracing       bool
 	tracingTarget io.Writer
+
+	summaryTarget io.Writer
 }
 
 // Option defines a Start parameter.
@@ -98,4 +100,9 @@ func WithDisabledGUI() func(*Options) {
 // WithSavePath selects the cartridge save file. An empty path disables file saves.
 func WithSavePath(path string) Option {
 	return func(opts *Options) { opts.savePath = path }
+}
+
+// WithSummaryTarget sets the target for the run summary. A nil target disables the summary.
+func WithSummaryTarget(target io.Writer) Option {
+	return func(opts *Options) { opts.summaryTarget = target }
 }

@@ -31,5 +31,7 @@ func Start(options ...Option) error {
 		guiStarter = gui.Setup
 	}
 	runErr := sys.runRenderer(ctx, opts, guiStarter)
-	return errors.Join(runErr, sys.SaveBattery())
+	summaryErr := sys.writeSummary(opts.summaryTarget)
+
+	return errors.Join(runErr, sys.SaveBattery(), summaryErr)
 }

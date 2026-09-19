@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/retroenv/nesgoemu/pkg/bus"
+	"github.com/retroenv/nesgoemu/pkg/feature"
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 )
@@ -23,6 +24,9 @@ func New(base *mapperbase.Base) (bus.Mapper, error) {
 		Base: base,
 	}
 	m.SetName("UNROM 512")
+	m.DeclareFeature(feature.CHRBanking)
+	m.DeclareFeature(feature.Mirroring)
+	m.DeclareFeature(feature.PRGBanking)
 	m.SetChrRAM(make([]byte, 0x8000)) // 32K
 	m.Initialize()
 
@@ -50,6 +54,10 @@ type mapperUNROM512 struct {
 }
 
 func (m *mapperUNROM512) setBanks(_ uint16, value uint8) error {
+	m.MarkFeature(feature.PRGBanking)
+	m.MarkFeature(feature.CHRBanking)
+	m.MarkFeature(feature.Mirroring)
+
 	prgBank := value & 0b0001_1111
 
 	m.SetPrgWindow(0, int(prgBank)) // select 16 KB PRG ROM bank at $8000

@@ -1,5 +1,7 @@
 package rainbow
 
+import "github.com/retroenv/nesgoemu/pkg/feature"
+
 // Specification: https://github.com/BrokeStudio/rainbow-net/blob/master/NES/mapper-doc.md#auto-generated-oam-procedures
 
 const (
@@ -23,6 +25,8 @@ const (
 // at another entry point from replacing the active routine.
 // Revision 1 has two entries. $4286 is ordinary generated code, not a clear entry.
 func (m *Mapper) readOAMRoutine(address uint16) byte {
+	m.MarkFeature(feature.OAMRoutines)
+
 	if !m.oamCodeLocked {
 		switch address {
 		case oamRoutineStart:

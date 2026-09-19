@@ -1,5 +1,7 @@
 package rainbow
 
+import "github.com/retroenv/nesgoemu/pkg/feature"
+
 // Specification: https://github.com/BrokeStudio/rainbow-net/blob/master/NES/mapper-doc.md#chr-configuration
 
 // CHR banking mode window configurations:
@@ -62,6 +64,7 @@ func (m *Mapper) readCHR(address uint16) uint8 {
 		return m.NameTableMemory().ReadCIRAM(address & ciramAddressMask)
 	}
 	if m.chrSource == chrSourceFPGA {
+		m.MarkFeature(feature.FPGARAM)
 		return m.fpgaRAM[address&(chrWindowSize4K-1)]
 	}
 	if m.spriteExtMode && m.activeSpriteIndex >= 0 {
@@ -100,6 +103,7 @@ func (m *Mapper) writeCHR(address uint16, value uint8) {
 		return
 	}
 	if m.chrSource == chrSourceFPGA {
+		m.MarkFeature(feature.FPGARAM)
 		m.fpgaRAM[address&(chrWindowSize4K-1)] = value
 		return
 	}
@@ -110,6 +114,7 @@ func (m *Mapper) writeCHR(address uint16, value uint8) {
 
 	switch m.chrSource {
 	case chrSourceROM:
+		m.MarkFeature(feature.FlashProgramming)
 		m.chrFlash.write(m.chrROM, byteOffset, value)
 	case chrSourceRAM:
 		m.writeToRAM(m.chrRAM, byteOffset, value)
@@ -156,6 +161,7 @@ func (m *Mapper) readCHRSource(offset int) uint8 {
 		return m.chrRAM[offset%len(m.chrRAM)]
 
 	case chrSourceFPGA:
+		m.MarkFeature(feature.FPGARAM)
 		return m.fpgaRAM[offset%fpgaRAMSize]
 
 	case chrSourceNT:

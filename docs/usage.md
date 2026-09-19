@@ -56,6 +56,33 @@ nesgoemu -s 0x8100 game.nes
 nesgoemu -e 0x8000 -s 0x8100 game.nes
 ```
 
+## Run Summary
+
+The emulator prints a summary when it stops. The summary shows the ROM details and the hardware
+features that the run used. A used feature has an `x` mark. An unused feature has no mark.
+
+```text
+Run summary
+  Mapper:     682 Rainbow
+  PRG ROM:    512 KB
+  CHR ROM:    0 bytes
+  PRG RAM:    32 KB
+  CHR RAM:    32 KB
+  Mirroring:  horizontal
+  Battery:    no
+
+PPU features
+  [x] Background rendering
+  [x] Sprite rendering
+  [ ] 8x16 sprites
+
+Mapper features
+  [x] CHR banking
+  [x] Extended attributes
+  [x] PRG banking
+  [ ] Scanline IRQ
+```
+
 ## Controls
 
 Default GUI controls:

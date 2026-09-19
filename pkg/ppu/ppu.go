@@ -3,6 +3,7 @@ package ppu
 
 import (
 	"github.com/retroenv/nesgoemu/pkg/bus"
+	"github.com/retroenv/nesgoemu/pkg/feature"
 	"github.com/retroenv/nesgoemu/pkg/ppu/addressing"
 	"github.com/retroenv/nesgoemu/pkg/ppu/control"
 	"github.com/retroenv/nesgoemu/pkg/ppu/mask"
@@ -21,6 +22,8 @@ const FPS = 60
 // PPU represents the Picture Processing Unit.
 type PPU struct {
 	bus *bus.Bus
+
+	features *feature.Set
 
 	fineX          uint16
 	dataReadBuffer byte
@@ -42,8 +45,10 @@ type PPU struct {
 // New returns a new PPU.
 func New(systemBus *bus.Bus) *PPU {
 	p := &PPU{
-		bus: systemBus,
+		bus:      systemBus,
+		features: feature.NewSet(),
 	}
+	p.declareFeatures()
 	p.reset()
 	if timing, ok := systemBus.Mapper.(bus.TimingEnabler); ok {
 		timing.EnableBusTiming()

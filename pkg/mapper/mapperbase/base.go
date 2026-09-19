@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/retroenv/nesgoemu/pkg/bus"
+	"github.com/retroenv/nesgoemu/pkg/feature"
 	"github.com/retroenv/retrogolib/arch/system/nes"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 )
@@ -31,6 +32,8 @@ type Base struct {
 	bus  *bus.Bus
 	name string // optional
 
+	features *feature.Set
+
 	chrRAM []byte
 	prgRAM []byte
 
@@ -55,9 +58,11 @@ type Base struct {
 }
 
 // New creates a new mapper base.
-func New(bus *bus.Bus) *Base {
+func New(systemBus *bus.Bus) *Base {
 	return &Base{
-		bus: bus,
+		bus: systemBus,
+
+		features: feature.NewSet(),
 
 		chrWindowSize: defaultChrWindowSize,
 		prgWindowSize: defaultPrgWindowSize,
@@ -79,6 +84,26 @@ func (b *Base) State() bus.MapperState {
 	}
 
 	return state
+}
+
+// DeclareFeature adds a supported feature to the mapper inventory.
+func (b *Base) DeclareFeature(id feature.ID) {
+	b.features.Declare(id)
+}
+
+// Features returns the mapper feature inventory in declaration order.
+func (b *Base) Features() []feature.Usage {
+	return b.features.Features()
+}
+
+// MarkFeature records that a supported mapper feature was used.
+func (b *Base) MarkFeature(id feature.ID) {
+	b.features.Mark(id)
+}
+
+// MemorySizes returns the mapper PRG RAM and CHR RAM sizes in bytes.
+func (b *Base) MemorySizes() (prgRAM, chrRAM int) {
+	return len(b.prgRAM), len(b.chrRAM)
 }
 
 // SetName sets the name of the mapper.
@@ -113,6 +138,8 @@ func (b *Base) Read(address uint16) uint8 {
 		value = bank.data[offset]
 
 	case address >= prgRAMStart && address <= prgRAMEnd && len(b.prgRAM) > 0:
+		b.MarkFeature(feature.PRGRAM)
+
 		// A PRG RAM that is smaller than its window repeats inside it, the address
 		// decoding covers only the size of the RAM.
 		offset := int(address-prgRAMStart) % len(b.prgRAM)
@@ -151,6 +178,8 @@ func (b *Base) Write(address uint16, value uint8) {
 		bank.data[offset] = value
 
 	case address >= prgRAMStart && address <= prgRAMEnd && len(b.prgRAM) > 0:
+		b.MarkFeature(feature.PRGRAM)
+
 		// A PRG RAM that is smaller than its window repeats inside it, the address
 		// decoding covers only the size of the RAM.
 		offset := int(address-prgRAMStart) % len(b.prgRAM)

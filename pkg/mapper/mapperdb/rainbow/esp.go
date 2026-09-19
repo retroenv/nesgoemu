@@ -1,5 +1,7 @@
 package rainbow
 
+import "github.com/retroenv/nesgoemu/pkg/feature"
+
 // Specification: https://github.com/BrokeStudio/rainbow-net/blob/master/NES/mapper-doc.md#wi-fi-4190-4194
 // Configuration example: https://github.com/BrokeStudio/rainbow-net/blob/master/NES/rainbow-net-code-example.md#configuration
 // Transfer example: https://github.com/BrokeStudio/rainbow-net/blob/master/NES/rainbow-net-code-example.md#send-and-receive-data
@@ -30,6 +32,8 @@ const (
 // RX ownership passes to the CPU until a write to $4191 acknowledges the message.
 // Queued messages must not overwrite that page before acknowledgement.
 func (m *Mapper) writeESPRegister(address uint16, value byte) {
+	m.MarkFeature(feature.ESPMessages)
+
 	switch address {
 	case regESPControl:
 		m.espEnabled = value&espEnableBit != 0

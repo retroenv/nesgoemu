@@ -1,6 +1,7 @@
 package mapperbase
 
 import (
+	"github.com/retroenv/nesgoemu/pkg/feature"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 )
 
@@ -29,6 +30,7 @@ func (b *Base) SetPrgWindowSize(size int) {
 // SetPrgRAM enables the usage of PRG RAM and sets the RAM buffer.
 func (b *Base) SetPrgRAM(ram []byte) {
 	b.prgRAM = ram
+	b.DeclareFeature(feature.PRGRAM)
 }
 
 // setDefaultPrgBankSizes creates the banks with default lengths set based on the PRG and PRG window size.
