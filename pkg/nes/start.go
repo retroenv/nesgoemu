@@ -42,5 +42,7 @@ func Start(options ...Option) error {
 	}
 
 	runErr := sys.runRenderer(ctx, opts, guiStarter, playbackErrors(playback))
-	return errors.Join(runErr, sys.SaveBattery())
+	summaryErr := sys.writeSummary(opts.summaryTarget)
+
+	return errors.Join(runErr, sys.SaveBattery(), summaryErr)
 }

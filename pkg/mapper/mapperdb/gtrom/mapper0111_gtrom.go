@@ -13,6 +13,7 @@ CHR window: 8K
 
 import (
 	"github.com/retroenv/nesgoemu/pkg/bus"
+	"github.com/retroenv/nesgoemu/pkg/feature"
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
 )
 
@@ -22,6 +23,9 @@ func New(base *mapperbase.Base) (bus.Mapper, error) {
 		Base: base,
 	}
 	m.SetName("Cheapocabra (GTROM)")
+	m.DeclareFeature(feature.CHRBanking)
+	m.DeclareFeature(feature.NameTableBanking)
+	m.DeclareFeature(feature.PRGBanking)
 	m.SetPrgWindowSize(0x8000) // 32K
 	m.SetNameTableCount(2)
 	m.SetChrRAM(make([]byte, 0x4000)) // 16K
@@ -44,6 +48,10 @@ func (m *mapperGTROM) getControl(_ uint16) (uint8, error) {
 }
 
 func (m *mapperGTROM) setBanks(_ uint16, value uint8) error {
+	m.MarkFeature(feature.PRGBanking)
+	m.MarkFeature(feature.CHRBanking)
+	m.MarkFeature(feature.NameTableBanking)
+
 	prgBank := value & 0b0000_1111
 
 	m.SetPrgWindow(0, int(prgBank)) // select 32 KB PRG ROM bank for CPU $8000-$FFFF

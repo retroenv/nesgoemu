@@ -3,6 +3,9 @@ package ppu
 import (
 	"fmt"
 
+	"github.com/retroenv/nesgoemu/pkg/feature"
+	"github.com/retroenv/nesgoemu/pkg/ppu/control"
+	"github.com/retroenv/nesgoemu/pkg/ppu/mask"
 	"github.com/retroenv/retrogolib/arch/system/nes/register"
 )
 
@@ -38,9 +41,11 @@ func (p *PPU) Write(address uint16, value uint8) {
 	switch base {
 	case register.PPU_CTRL:
 		p.control.Set(value)
+		p.markControlFeatures(value)
 
 	case register.PPU_MASK:
 		p.mask.Set(value)
+		p.markMaskFeatures(value)
 
 	case register.OAM_ADDR:
 		p.sprites.SetAddress(value)
@@ -64,9 +69,43 @@ func (p *PPU) Write(address uint16, value uint8) {
 
 	case register.OAM_DMA:
 		p.sprites.WriteDMA(value)
+		p.features.Mark(feature.OAMDMA)
 
 	default:
 		panic(fmt.Sprintf("unhandled ppu write at address: 0x%04X", address))
+	}
+}
+
+func (p *PPU) markControlFeatures(value uint8) {
+	if value&control.CTRL_NMI != 0 {
+		p.features.Mark(feature.NMI)
+	}
+	if value&control.CTRL_BG_1000 != 0 {
+		p.features.Mark(feature.BackgroundTableHigh)
+	}
+	if value&control.CTRL_SPR_1000 != 0 {
+		p.features.Mark(feature.SpriteTableHigh)
+	}
+	if value&control.CTRL_8x16 != 0 {
+		p.features.Mark(feature.SpriteSize8x16)
+	}
+	if value&control.CTRL_INC_32 != 0 {
+		p.features.Mark(feature.VRAMIncrement32)
+	}
+}
+
+func (p *PPU) markMaskFeatures(value uint8) {
+	if value&mask.MASK_BG != 0 {
+		p.features.Mark(feature.BackgroundRendering)
+	}
+	if value&mask.MASK_SPR != 0 {
+		p.features.Mark(feature.SpriteRendering)
+	}
+	if value&mask.MASK_MONO != 0 {
+		p.features.Mark(feature.Grayscale)
+	}
+	if value&(mask.MASK_TINT_RED|mask.MASK_TINT_BLUE|mask.MASK_TINT_GREEN) != 0 {
+		p.features.Mark(feature.ColorEmphasis)
 	}
 }
 

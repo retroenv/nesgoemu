@@ -15,6 +15,7 @@ import (
 	"fmt"
 
 	"github.com/retroenv/nesgoemu/pkg/bus"
+	"github.com/retroenv/nesgoemu/pkg/feature"
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 )
@@ -26,6 +27,10 @@ func New(base *mapperbase.Base) (bus.Mapper, error) {
 		ram:  make([]byte, 0x8000), // 32K
 	}
 	m.SetName("MMC1")
+	m.DeclareFeature(feature.CHRBanking)
+	m.DeclareFeature(feature.Mirroring)
+	m.DeclareFeature(feature.PRGBanking)
+	m.DeclareFeature(feature.ShiftRegister)
 	m.SetChrWindowSize(0x1000) // 4K
 	m.SetPrgRAM(m.ram)
 	m.Initialize()
@@ -72,6 +77,8 @@ func (m *mapperMMC1) resetShift() error {
 }
 
 func (m *mapperMMC1) writeShiftBit(address uint16, value uint8) error {
+	m.MarkFeature(feature.ShiftRegister)
+
 	if value&0x80 != 0 {
 		return m.resetShift()
 	}
@@ -103,6 +110,10 @@ func (m *mapperMMC1) writeShiftBit(address uint16, value uint8) error {
 }
 
 func (m *mapperMMC1) applyControl() error {
+	m.MarkFeature(feature.PRGBanking)
+	m.MarkFeature(feature.CHRBanking)
+	m.MarkFeature(feature.Mirroring)
+
 	mirrorMode := m.control & 0b0000_0011
 	if err := m.SetNameTableMirrorModeIndex(mirrorMode); err != nil {
 		return fmt.Errorf("setting MMC1 mirror mode: %w", err)

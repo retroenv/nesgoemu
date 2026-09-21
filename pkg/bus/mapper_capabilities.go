@@ -26,6 +26,11 @@ type MapperResetter interface {
 	Reset()
 }
 
+// MemorySizer reports the mapper PRG RAM and CHR RAM sizes in bytes.
+type MemorySizer interface {
+	MemorySizes() (prgRAM, chrRAM int)
+}
+
 // PCMReader provides mapper data for CPU reads from $4011.
 // The memory controller uses this value instead of the APU value.
 type PCMReader interface {

@@ -10,8 +10,10 @@ type ReadHookFunc func(address uint16) (uint8, error)
 type WriteHookFunc func(address uint16, value uint8) error
 
 // AddReadHook adds an address range read hook that gets called when a read from given range is made.
+// The hook is stored as a pointer and the returned Hook is that pointer. A later
+// SetProxyOnly call therefore changes the registered hook.
 func (b *Base) AddReadHook(startAddress, endAddress uint16, hookFunc ReadHookFunc) Hook {
-	hook := readHook{
+	hook := &readHook{
 		hook: hook{
 			startAddress: startAddress,
 			endAddress:   endAddress,
@@ -19,12 +21,14 @@ func (b *Base) AddReadHook(startAddress, endAddress uint16, hookFunc ReadHookFun
 		hookFunc: hookFunc,
 	}
 	b.readHooks = append(b.readHooks, hook)
-	return &hook.hook
+	return hook
 }
 
 // AddWriteHook adds an address range write hook that gets called when a write into the given range is made.
+// The hook is stored as a pointer and the returned Hook is that pointer. A later
+// SetProxyOnly call therefore changes the registered hook.
 func (b *Base) AddWriteHook(startAddress, endAddress uint16, hookFunc WriteHookFunc) Hook {
-	hook := writeHook{
+	hook := &writeHook{
 		hook: hook{
 			startAddress: startAddress,
 			endAddress:   endAddress,
@@ -32,7 +36,7 @@ func (b *Base) AddWriteHook(startAddress, endAddress uint16, hookFunc WriteHookF
 		hookFunc: hookFunc,
 	}
 	b.writeHooks = append(b.writeHooks, hook)
-	return &hook.hook
+	return hook
 }
 
 type hook struct {
@@ -54,6 +58,8 @@ type writeHook struct {
 	hookFunc WriteHookFunc
 }
 
+// SetProxyOnly selects whether the memory function continues after the hook call.
+// A proxy-only hook observes the access and lets the default memory function run.
 func (h *hook) SetProxyOnly(proxy bool) {
 	h.onlyProxy = proxy
 }

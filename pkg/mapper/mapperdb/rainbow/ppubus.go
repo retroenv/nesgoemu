@@ -1,5 +1,7 @@
 package rainbow
 
+import "github.com/retroenv/nesgoemu/pkg/feature"
+
 const (
 	ppuBusRepeatedReadCount    = 2
 	ppuBusIdleClockCount       = 3
@@ -22,6 +24,7 @@ func (m *Mapper) observePPURead(address uint16) {
 	if !m.ppuBus.enabled {
 		return
 	}
+	m.MarkFeature(feature.PPUBusTiming)
 	m.ppuBus.reads++
 	if address >= ntBaseAddress && address < ntBaseAddress+ntMirrorSize && address == m.ppuBus.lastAddress {
 		m.ppuBus.repeated++

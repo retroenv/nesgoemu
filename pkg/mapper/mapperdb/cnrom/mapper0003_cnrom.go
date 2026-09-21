@@ -10,6 +10,7 @@ CHR window: 8K
 
 import (
 	"github.com/retroenv/nesgoemu/pkg/bus"
+	"github.com/retroenv/nesgoemu/pkg/feature"
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
 )
 
@@ -19,6 +20,7 @@ func New(base *mapperbase.Base) (bus.Mapper, error) {
 		Base: base,
 	}
 	m.SetName("CNROM")
+	m.DeclareFeature(feature.CHRBanking)
 	m.Initialize()
 
 	m.AddWriteHook(0x8000, 0xFFFF, m.setChrWindow)
@@ -30,6 +32,8 @@ type mapperCNROM struct {
 }
 
 func (m *mapperCNROM) setChrWindow(_ uint16, value uint8) error {
+	m.MarkFeature(feature.CHRBanking)
+
 	m.SetChrWindow(0, int(value)) // select 8 KB CHR ROM bank for PPU $0000-$1FFF
 	return nil
 }

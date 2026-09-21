@@ -1,5 +1,7 @@
 package rainbow
 
+import "github.com/retroenv/nesgoemu/pkg/feature"
+
 // Nametable specification: https://github.com/BrokeStudio/rainbow-net/blob/master/NES/mapper-doc.md#nametables-control-412a-412d-412f-write-only
 // Window specification: https://github.com/BrokeStudio/rainbow-net/blob/master/NES/mapper-doc.md#window-split-mode-4170-4175
 
@@ -114,6 +116,7 @@ func (m *Mapper) readAttrExtMode(bankIdx int, ctrl byte) (uint8, bool) {
 
 	extData := m.fpgaRAM[extOffset]
 	palette := (extData >> ntSrcShift) & ntPaletteMask
+	m.MarkFeature(feature.ExtendedAttributes)
 	return replicateAttr(palette), true
 }
 
@@ -132,6 +135,8 @@ func (m *Mapper) readSlot(bankIdx int, slotOffset uint16) (uint8, bool) {
 	}
 
 	if ctrl&ntFillBit != 0 {
+		m.MarkFeature(feature.NameTableFill)
+
 		if slotOffset >= ntAttrOffset {
 			return replicateAttr(m.fillAttr & ntPaletteMask), true
 		}
@@ -184,6 +189,7 @@ func (m *Mapper) updateBGExtState(bankIdx int, slotOffset uint16, ctrl byte) {
 	if !m.bgExtActive {
 		return
 	}
+	m.MarkFeature(feature.BGExtendedMode)
 
 	fpgaSrcPage := (ctrl >> ntExtPageShift) & ntExtPageMask
 	extOffset := uint32(fpgaSrcPage)*ntSlotSize + uint32(slotOffset)

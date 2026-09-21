@@ -3,6 +3,7 @@ package uxrom
 
 import (
 	"github.com/retroenv/nesgoemu/pkg/bus"
+	"github.com/retroenv/nesgoemu/pkg/feature"
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
 )
 
@@ -58,6 +59,7 @@ func newMapperUxROM(base *mapperbase.Base) *mapperUxROM {
 	m := &mapperUxROM{
 		Base: base,
 	}
+	m.DeclareFeature(feature.PRGBanking)
 	m.Initialize()
 
 	m.AddWriteHook(0x8000, 0xFFFF, m.setPrgWindow)
@@ -65,6 +67,8 @@ func newMapperUxROM(base *mapperbase.Base) *mapperUxROM {
 }
 
 func (m *mapperUxROM) setPrgWindow(_ uint16, value uint8) error {
+	m.MarkFeature(feature.PRGBanking)
+
 	value >>= m.valueShift
 	value &= 0b0000_0111                      // UNROM uses bits 2-0; UOROM/UN1ROM uses bits 3-0
 	m.SetPrgWindow(m.windowIndex, int(value)) // select 16 KB PRG ROM bank

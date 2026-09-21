@@ -1,5 +1,7 @@
 package rainbow
 
+import "github.com/retroenv/nesgoemu/pkg/feature"
+
 const (
 	registerLowByteMask  = 0x00FF
 	registerHighByteMask = 0xFF00
@@ -72,11 +74,13 @@ func (m *Mapper) writePRGRegister(address uint16, value uint8) {
 
 	case address >= regLowBankUpperStart && address <= regLowBankUpperEnd:
 		// Low bank upper bytes ($6000-$7FFF).
+		m.MarkFeature(feature.PRGBanking)
 		idx := address - regLowBankUpperStart
 		m.lowBanks[idx] = (m.lowBanks[idx] & registerLowByteMask) | uint16(value)<<registerByteShift
 
 	case address >= regHighBankUpperStart && address <= regHighBankUpperEnd:
 		// High bank upper bytes ($8000-$FFFF).
+		m.MarkFeature(feature.PRGBanking)
 		idx := address - regHighBankUpperStart
 		m.highBanks[idx] = (m.highBanks[idx] & registerLowByteMask) | uint16(value)<<registerByteShift
 
@@ -85,11 +89,13 @@ func (m *Mapper) writePRGRegister(address uint16, value uint8) {
 
 	case address >= regLowBankLowerStart && address <= regLowBankLowerEnd:
 		// Low bank lower bytes ($6000-$7FFF).
+		m.MarkFeature(feature.PRGBanking)
 		idx := address - regLowBankLowerStart
 		m.lowBanks[idx] = (m.lowBanks[idx] & registerHighByteMask) | uint16(value)
 
 	case address >= regHighBankLowerStart && address <= regHighBankLowerEnd:
 		// High bank lower bytes ($8000-$FFFF).
+		m.MarkFeature(feature.PRGBanking)
 		idx := address - regHighBankLowerStart
 		m.highBanks[idx] = (m.highBanks[idx] & registerHighByteMask) | uint16(value)
 	}
@@ -110,24 +116,30 @@ func (m *Mapper) writeCHRAndNTRegister(address uint16, value uint8) {
 		m.fillAttr = value & ntPaletteMask
 
 	case address >= regNTBankStart && address <= regNTBankEnd:
+		m.MarkFeature(feature.NameTableControl)
 		m.ntBank[address-regNTBankStart] = value
 
 	case address >= regNTControlStart && address <= regNTControlEnd:
+		m.MarkFeature(feature.NameTableControl)
 		m.ntControl[address-regNTControlStart] = value
 
 	case address == regNTWindowBank:
+		m.MarkFeature(feature.NameTableControl)
 		m.ntBank[ntWindowSlot] = value
 
 	case address == regNTWindowControl:
+		m.MarkFeature(feature.NameTableControl)
 		m.ntControl[ntWindowSlot] = (value &^ ntSrcMask) | ntWindowSource
 
 	case address >= regCHRBankUpperStart && address <= regCHRBankUpperEnd:
 		// CHR bank upper bytes.
+		m.MarkFeature(feature.CHRBanking)
 		idx := address - regCHRBankUpperStart
 		m.chrBanks[idx] = (m.chrBanks[idx] & registerLowByteMask) | uint16(value)<<registerByteShift
 
 	case address >= regCHRBankLowerStart && address <= regCHRBankLowerEnd:
 		// CHR bank lower bytes.
+		m.MarkFeature(feature.CHRBanking)
 		idx := address - regCHRBankLowerStart
 		m.chrBanks[idx] = (m.chrBanks[idx] & registerHighByteMask) | uint16(value)
 	}
@@ -162,6 +174,10 @@ func (m *Mapper) writeIRQAndFPGARegister(address uint16, value uint8) {
 }
 
 func (m *Mapper) writeExtRegister(address uint16, value uint8) {
+	if address >= regSpriteBankLowerStart && address <= regSpriteBankUpper {
+		m.MarkFeature(feature.SpriteExtendedMode)
+	}
+
 	switch {
 	case address >= regVectorControl && address <= regIRQVectorLower:
 		m.writeVectorRegisters(address, value)
@@ -183,6 +199,8 @@ func (m *Mapper) writeExtRegister(address uint16, value uint8) {
 }
 
 func (m *Mapper) writePRGControl(value uint8) {
+	m.MarkFeature(feature.PRGBanking)
+
 	m.prgMode = value & prgModeMask
 	m.prgRAMMode = (value >> prgRAMModeShift) & prgRAMModeMask
 }
@@ -199,6 +217,14 @@ func (m *Mapper) readCHRControlReg() uint8 {
 }
 
 func (m *Mapper) writeCHRControl(value uint8) {
+	m.MarkFeature(feature.CHRBanking)
+	if value>>chrSourceShift&chrSourceMask != chrSourceROM {
+		m.MarkFeature(feature.CHRSourceSelect)
+	}
+	if value&chrSpriteExtBit != 0 {
+		m.MarkFeature(feature.SpriteExtendedMode)
+	}
+
 	m.chrMode = value & chrModeMask
 	m.windowEnabled = value&chrWindowEnableBit != 0
 	m.spriteExtMode = value&chrSpriteExtBit != 0
@@ -206,6 +232,8 @@ func (m *Mapper) writeCHRControl(value uint8) {
 }
 
 func (m *Mapper) writeVectorRegisters(address uint16, value uint8) {
+	m.MarkFeature(feature.VectorRedirection)
+
 	switch address {
 	case regVectorControl:
 		m.nmiVectorEnabled = value&vectorNMIEnableBit != 0
@@ -222,6 +250,8 @@ func (m *Mapper) writeVectorRegisters(address uint16, value uint8) {
 }
 
 func (m *Mapper) writeWindowSplit(address uint16, value uint8) {
+	m.MarkFeature(feature.WindowSplit)
+
 	idx := address - regWindowSplitStart
 	if idx == windowSplitXStartIndex || idx == windowSplitXEndIndex || idx == windowSplitXScrollIndex {
 		value &= ntTileCols - 1
@@ -251,6 +281,8 @@ func (m *Mapper) readScanlineIRQStatus() uint8 {
 }
 
 func (m *Mapper) writeScanlineIRQReg(address uint16, value uint8) {
+	m.MarkFeature(feature.ScanlineIRQ)
+
 	switch address {
 	case regScanIRQLatch:
 		m.scanIRQ.latch = value
@@ -273,6 +305,8 @@ func (m *Mapper) writeScanlineIRQReg(address uint16, value uint8) {
 // Latch writes do not change the counter. Enabling reloads it.
 // Acknowledgement clears pending and copies the enable-after-ack bit to enable.
 func (m *Mapper) writeCycleIRQReg(address uint16, value uint8) {
+	m.MarkFeature(feature.CPUCycleIRQ)
+
 	switch address {
 	case regCycleIRQReloadUpper:
 		m.cycleIRQ.reloadValue = (m.cycleIRQ.reloadValue & registerLowByteMask) |

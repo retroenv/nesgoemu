@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/retroenv/nesgoemu/pkg/bus"
+	"github.com/retroenv/nesgoemu/pkg/feature"
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 )
@@ -22,6 +23,8 @@ func New(base *mapperbase.Base) (bus.Mapper, error) {
 		Base: base,
 	}
 	m.SetName("AxROM")
+	m.DeclareFeature(feature.PRGBanking)
+	m.DeclareFeature(feature.SingleScreenMirroring)
 	m.SetPrgWindowSize(0x8000) // 32K
 	m.Initialize()
 
@@ -40,6 +43,9 @@ type mapperAxROM struct {
 }
 
 func (m *mapperAxROM) setPrgWindow(_ uint16, value uint8) error {
+	m.MarkFeature(feature.PRGBanking)
+	m.MarkFeature(feature.SingleScreenMirroring)
+
 	value &= 0b0000_0111
 	m.SetPrgWindow(0, int(value)) // select 32 KB PRG ROM bank for CPU $8000-$FFFF
 

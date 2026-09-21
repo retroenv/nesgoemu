@@ -90,6 +90,7 @@ func emulateFile(options optionFlags) error {
 	opts := []nes.Option{
 		nes.WithCartridge(cart),
 		nes.WithSavePath(options.input + ".sav"),
+		nes.WithSummaryTarget(os.Stdout),
 	}
 
 	if options.debug {

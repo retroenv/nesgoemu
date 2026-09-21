@@ -9,6 +9,7 @@ package rainbow
 
 import (
 	"github.com/retroenv/nesgoemu/pkg/bus"
+	"github.com/retroenv/nesgoemu/pkg/feature"
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
 )
 
@@ -129,6 +130,7 @@ func New(base *mapperbase.Base) (bus.Mapper, error) {
 		chrRAM: make([]byte, chrRAMSize),
 	}
 	m.SetName("Rainbow")
+	m.declareFeatures()
 	m.Base.Initialize()
 
 	m.applyPowerUpDefaults()
@@ -151,6 +153,7 @@ func (m *Mapper) Read(address uint16) uint8 {
 		return m.readRegister(address)
 
 	case address >= fpgaFixedStart && address <= fpgaFixedEnd:
+		m.MarkFeature(feature.FPGARAM)
 		return m.fpgaRAM[fpgaFixedRAMOffset+(address-fpgaFixedStart)]
 
 	case address >= fpgaBankedStart && address <= fpgaBankedEnd:
@@ -180,6 +183,7 @@ func (m *Mapper) Write(address uint16, value uint8) {
 		m.writeRegister(address, value)
 
 	case address >= fpgaFixedStart && address <= fpgaFixedEnd:
+		m.MarkFeature(feature.FPGARAM)
 		m.fpgaRAM[fpgaFixedRAMOffset+(address-fpgaFixedStart)] = value
 
 	case address >= fpgaBankedStart && address <= fpgaBankedEnd:
@@ -191,6 +195,11 @@ func (m *Mapper) Write(address uint16, value uint8) {
 	case address >= prgROMStart:
 		m.writePRG(address, value)
 	}
+}
+
+// MemorySizes returns the mapper PRG RAM and CHR RAM sizes in bytes.
+func (m *Mapper) MemorySizes() (prgRAM, chrRAM int) {
+	return len(m.prgRAM), len(m.chrRAM)
 }
 
 // Specification: https://github.com/BrokeStudio/rainbow-net/blob/master/NES/mapper-doc.md#vector-redirection-416b-416f-write-only

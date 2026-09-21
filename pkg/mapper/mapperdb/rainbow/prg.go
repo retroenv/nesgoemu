@@ -1,5 +1,7 @@
 package rainbow
 
+import "github.com/retroenv/nesgoemu/pkg/feature"
+
 // Specification: https://github.com/BrokeStudio/rainbow-net/blob/master/NES/mapper-doc.md#prg-banking-modes-4100-readwrite
 
 // PRG banking mode window configurations for $8000-$FFFF:
@@ -61,8 +63,10 @@ func (m *Mapper) writePRG(address uint16, value uint8) {
 	regIdx, offset, windowSize := m.prgHighBankMapping(address)
 	bank := m.highBanks[regIdx]
 	if bank&prgHighBankRAMBit != 0 {
+		m.MarkFeature(feature.PRGRAM)
 		m.writeToRAM(m.prgRAM, int(bank&prgHighBankIndexMask)*windowSize+int(offset), value)
 	} else {
+		m.MarkFeature(feature.FlashProgramming)
 		m.prgFlash.write(m.prgROM, int(bank&prgHighBankIndexMask)*windowSize+int(offset), value)
 	}
 }
@@ -94,6 +98,8 @@ func (m *Mapper) writePRGRAM(address uint16, value uint8) {
 
 // readLowBank reads from $6000-$7FFF using 3-way chip select.
 func (m *Mapper) readLowBank(bank uint16, offset, windowSize int) uint8 {
+	m.MarkFeature(feature.LowBankMapping)
+
 	bankIndex := int(bank & prgLowBankIndexMask)
 	byteOffset := bankIndex*windowSize + offset
 
@@ -106,6 +112,7 @@ func (m *Mapper) readLowBank(bank uint16, offset, windowSize int) uint8 {
 		return m.readFromPRGRAM(byteOffset)
 	case prgLowBankSourceFPGA:
 		// FPGA-RAM.
+		m.MarkFeature(feature.FPGARAM)
 		return m.fpgaRAM[byteOffset%fpgaRAMSize]
 	}
 	return 0
@@ -113,17 +120,22 @@ func (m *Mapper) readLowBank(bank uint16, offset, windowSize int) uint8 {
 
 // writeLowBank writes to $6000-$7FFF using 3-way chip select.
 func (m *Mapper) writeLowBank(bank uint16, offset, windowSize int, value uint8) {
+	m.MarkFeature(feature.LowBankMapping)
+
 	bankIndex := int(bank & prgLowBankIndexMask)
 	byteOffset := bankIndex*windowSize + offset
 
 	switch (bank >> prgLowBankSourceShift) & prgLowBankSourceMask {
 	case prgLowBankSourceROM0, prgLowBankSourceROM1:
+		m.MarkFeature(feature.FlashProgramming)
 		m.prgFlash.write(m.prgROM, byteOffset, value)
 	case prgLowBankSourceRAM:
 		// PRG-RAM.
+		m.MarkFeature(feature.PRGRAM)
 		m.writeToRAM(m.prgRAM, byteOffset, value)
 	case prgLowBankSourceFPGA:
 		// FPGA-RAM.
+		m.MarkFeature(feature.FPGARAM)
 		m.fpgaRAM[byteOffset%fpgaRAMSize] = value
 	}
 }
@@ -181,6 +193,8 @@ func (m *Mapper) readFromPRGROM(offset int) uint8 {
 }
 
 func (m *Mapper) readFromPRGRAM(offset int) uint8 {
+	m.MarkFeature(feature.PRGRAM)
+
 	if len(m.prgRAM) == 0 {
 		return 0
 	}
