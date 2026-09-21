@@ -64,6 +64,18 @@ const (
 	regESPReceivePage  = 0x4193
 	regESPTransmitPage = 0x4194
 
+	regAudioPulse1Control = 0x41A0
+	regAudioPulse1Low     = 0x41A1
+	regAudioPulse1High    = 0x41A2
+	regAudioPulse2Control = 0x41A3
+	regAudioPulse2Low     = 0x41A4
+	regAudioPulse2High    = 0x41A5
+	regAudioSawRate       = 0x41A6
+	regAudioSawLow        = 0x41A7
+	regAudioSawHigh       = 0x41A8
+	regAudioOutputControl = 0x41A9
+	regAudioMasterVolume  = 0x41AA
+
 	regSpriteBankLowerStart = 0x4200
 	regSpriteBankLowerEnd   = 0x423F
 	regSpriteBankUpper      = 0x4240

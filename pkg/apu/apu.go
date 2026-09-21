@@ -138,7 +138,11 @@ func (a *APU) clockFrames(quarter, half bool) {
 // mix returns the mixed level of all channels.
 // https://www.nesdev.org/wiki/APU_Mixer
 func (a *APU) mix() float64 {
-	return mixer.Mix(a.pulse1.Output(), a.pulse2.Output(), a.triangle.Output(), a.noise.Output(), a.dmc.Output())
+	level := mixer.Mix(a.pulse1.Output(), a.pulse2.Output(), a.triangle.Output(), a.noise.Output(), a.dmc.Output())
+	if source, ok := a.bus.Mapper.(bus.ExpansionAudioSource); ok {
+		level += source.ExpansionAudioOutput()
+	}
+	return level
 }
 
 // reset creates the channel units and clears their state.

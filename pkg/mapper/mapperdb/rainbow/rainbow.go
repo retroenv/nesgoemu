@@ -1,7 +1,7 @@
 // Package rainbow implements the Rainbow mapper (iNES 682) by Broke Studio.
 // It provides PRG/CHR banking, 8 KB FPGA-RAM, flash commands, cartridge saves,
 // mapper snapshots, scanline/CPU IRQs, and basic ESP message commands.
-// Expansion audio, host networking, and ESP file commands remain incomplete.
+// Host networking and ESP file commands remain incomplete.
 //
 // See the official Rainbow mapper specification:
 // https://github.com/BrokeStudio/rainbow-net/blob/master/NES/mapper-doc.md
@@ -104,6 +104,8 @@ type Mapper struct {
 	wifiIrqEnable bool
 	wifiRegs      [espRegisterCount]byte // $4190-$4194
 	esp           espState
+
+	audio audioState
 }
 
 // New creates and initializes a new Rainbow mapper instance.
@@ -255,6 +257,8 @@ func (m *Mapper) applyPowerUpDefaults() {
 
 	// Default FPGA auto-increment to 1.
 	m.fpgaAutoInc = 1
+	m.audio.outputControl = audioOutputEXP6 | audioOutputEXP9
+	m.audio.masterVolume = audioMasterVolumeMask
 
 	// No active sprite fetch at power-up.
 	m.activeSpriteIndex = -1

@@ -109,6 +109,14 @@ func TestStepProducesSamples(t *testing.T) {
 	assert.Equal(t, 1086, a.output.Queued(), "44100 CPU cycles at 44100 Hz")
 }
 
+func TestMixAddsMapperExpansionAudio(t *testing.T) {
+	a, _ := newTestAPU()
+	base := a.mix()
+	a.bus.Mapper.(*testMapper).expansionAudio = 0.25
+
+	assert.Equal(t, base+0.25, a.mix())
+}
+
 func TestFillSamplesWritesSilence(t *testing.T) {
 	a, _ := newTestAPU()
 	buffer := make([]byte, 8)
@@ -170,10 +178,15 @@ func (c *testCPU) TriggerNMI() {}
 // testMapper supplies sample bytes to the DMC channel.
 type testMapper struct {
 	bus.Mapper
+	expansionAudio float64
 }
 
 func (m *testMapper) Read(_ uint16) byte {
 	return 0
+}
+
+func (m *testMapper) ExpansionAudioOutput() float64 {
+	return m.expansionAudio
 }
 
 // newTestAPU returns an APU that is connected to a test CPU and mapper.
