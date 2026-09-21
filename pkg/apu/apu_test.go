@@ -118,6 +118,16 @@ func TestFillSamplesWritesSilence(t *testing.T) {
 	assert.Equal(t, []byte{0, 0, 0, 0, 0, 0, 0, 0}, buffer)
 }
 
+func TestDrainSamplesReportsQueuedFrames(t *testing.T) {
+	a, _ := newTestAPU()
+	a.Step(100)
+	buffer := make([]byte, 16)
+
+	frames := a.DrainSamples(buffer)
+
+	assert.Equal(t, 2, frames)
+}
+
 func TestResetClearsChannels(t *testing.T) {
 	a, cpu := newTestAPU()
 	a.Write(0x4015, 0x0f)

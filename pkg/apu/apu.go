@@ -69,7 +69,13 @@ func New(systemBus *bus.Bus) *APU {
 // samples at SampleRate. The function writes silence when no samples are
 // queued. The playback worker calls this method.
 func (a *APU) FillSamples(destination []byte) {
-	a.output.Fill(destination)
+	a.DrainSamples(destination)
+}
+
+// DrainSamples fills the destination and returns the number of queued sample
+// frames that it removed. It writes silence after the queued samples.
+func (a *APU) DrainSamples(destination []byte) int {
+	return a.output.Fill(destination)
 }
 
 // ObserveRegisterWrites replaces the optional APU register-write observer.
