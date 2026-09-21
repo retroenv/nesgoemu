@@ -53,6 +53,8 @@ type APU struct {
 
 	cycle       uint64
 	irqAsserted bool
+
+	writeObserver func(RegisterWrite)
 }
 
 // New returns a new APU.
@@ -68,6 +70,12 @@ func New(systemBus *bus.Bus) *APU {
 // queued. The playback worker calls this method.
 func (a *APU) FillSamples(destination []byte) {
 	a.output.Fill(destination)
+}
+
+// ObserveRegisterWrites replaces the optional APU register-write observer.
+// The emulation goroutine calls the observer before it applies each write.
+func (a *APU) ObserveRegisterWrites(observer func(RegisterWrite)) {
+	a.writeObserver = observer
 }
 
 // Reset returns the APU to its power-up state. Samples that wait for playback

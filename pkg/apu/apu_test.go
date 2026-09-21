@@ -46,6 +46,20 @@ func TestWriteOfUnmappedRegisterIsIgnored(t *testing.T) {
 	assert.Equal(t, byte(0x00), a.Read(0x4015))
 }
 
+func TestObserveRegisterWritesReportsCycleAddressAndValue(t *testing.T) {
+	a, _ := newTestAPU()
+	var writes []RegisterWrite
+	a.ObserveRegisterWrites(func(write RegisterWrite) {
+		writes = append(writes, write)
+	})
+	a.Step(17)
+
+	a.Write(0x4000, 0xbf)
+	a.Write(0x4016, 0xff)
+
+	assert.Equal(t, []RegisterWrite{{Cycle: 17, Address: 0x4000, Value: 0xbf}}, writes)
+}
+
 func TestFrameIRQDrivesCPULine(t *testing.T) {
 	a, cpu := newTestAPU()
 

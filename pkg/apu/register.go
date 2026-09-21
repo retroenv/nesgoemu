@@ -2,6 +2,13 @@ package apu
 
 import "github.com/retroenv/retrogolib/arch/system/nes/register"
 
+// RegisterWrite describes one APU register write at an APU CPU-cycle offset.
+type RegisterWrite struct {
+	Cycle   uint64
+	Address uint16
+	Value   byte
+}
+
 // Read returns the value of an APU register.
 // $4015 returns the channel status and clears the frame interrupt flag. The
 // other registers are write-only, and open bus behavior is not modeled.
@@ -17,6 +24,14 @@ func (a *APU) Read(address uint16) byte {
 // Write sets an APU register.
 // https://www.nesdev.org/wiki/APU_registers
 func (a *APU) Write(address uint16, value byte) {
+	if a.writeObserver != nil && isRegister(address) {
+		a.writeObserver(RegisterWrite{
+			Cycle:   a.cycle,
+			Address: address,
+			Value:   value,
+		})
+	}
+
 	switch {
 	case address <= register.APU_PL1_HI: // $4000 to $4003
 		a.pulse1.Write(address, value)
@@ -89,4 +104,9 @@ func (a *APU) writeStatus(value byte) {
 	a.dmc.SetEnabled(value&0x10 != 0)
 
 	a.updateIRQ()
+}
+
+func isRegister(address uint16) bool {
+	return address >= register.APU_PL1_VOL && address <= register.APU_DMC_LEN ||
+		address == register.APU_SND_CHN || address == register.APU_FRAME
 }
