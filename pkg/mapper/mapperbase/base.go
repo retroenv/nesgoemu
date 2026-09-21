@@ -53,8 +53,8 @@ type Base struct {
 	chrBankMapper bankMapper
 	prgBankMapper bankMapper
 
-	readHooks  []readHook
-	writeHooks []writeHook
+	readHooks  []*readHook
+	writeHooks []*writeHook
 }
 
 // New creates a new mapper base.
