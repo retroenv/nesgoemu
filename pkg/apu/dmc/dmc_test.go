@@ -7,217 +7,179 @@ import (
 )
 
 func TestWriteRegisters(t *testing.T) {
-	d := New(&memoryReader{}, &cycleStaller{})
-
-	d.Write(0x4010, 0xcf) // interrupt enabled, loop, rate index 15
+	d := New()
+	d.Write(0x4010, 0xcf)
 	assert.True(t, d.irqEnabled)
 	assert.True(t, d.loop)
 	assert.Equal(t, uint16(27), d.timer)
-
 	d.Write(0x4011, 0xff)
-	assert.Equal(t, byte(0x7f), d.output, "the direct load uses seven bits")
-
-	d.Write(0x4012, 0x02)
-	d.Write(0x4013, 0x01)
+	assert.Equal(t, byte(0x7f), d.Output())
+	d.Write(0x4012, 2)
+	d.Write(0x4013, 1)
 	assert.Equal(t, byte(2), d.sampleAddr)
 	assert.Equal(t, byte(1), d.sampleLen)
 }
 
-func TestWriteClearsIRQWhenDisabled(t *testing.T) {
-	d := New(&memoryReader{}, &cycleStaller{})
-	d.irq = true
-
-	d.Write(0x4010, 0x00)
-
-	assert.False(t, d.IRQ())
-}
-
-func TestEnableRestartsSampleAndFetches(t *testing.T) {
-	reader := &memoryReader{data: map[uint16]byte{0xc000: 0xa5}}
-	staller := &cycleStaller{}
-	d := New(reader, staller)
-	d.Write(0x4012, 0x00)
-	d.Write(0x4013, 0x01) // 17 bytes
-
-	d.SetEnabled(true)
-
-	assert.True(t, d.Active())
-	assert.Equal(t, 1, reader.reads)
-	assert.Equal(t, uint16(dmaStallCycles), staller.total)
-	assert.Equal(t, byte(0xa5), d.sample)
-	assert.True(t, d.sampleFull)
-	assert.Equal(t, uint16(0xc001), d.address)
-	assert.Equal(t, uint16(16), d.remaining)
+func TestEnableWaitsForDMA(t *testing.T) {
+	for phase := range 2 {
+		d := New()
+		for range phase {
+			d.Clock()
+		}
+		d.Write(0x4012, 2)
+		d.Write(0x4013, 1)
+		d.SetEnabled(true)
+		for range 2 + phase {
+			_, pending := d.DMARequest()
+			assert.False(t, pending)
+			d.Clock()
+		}
+		request, pending := d.DMARequest()
+		assert.True(t, pending)
+		assert.Equal(t, Request{
+			Address: 0xc080,
+			Load:    true,
+		}, request)
+		assert.Equal(t, uint16(17), d.remaining)
+		d.CompleteDMA(0xa5)
+		assert.Equal(t, uint16(16), d.remaining)
+		assert.Equal(t, byte(0xa5), d.sample)
+		_, pending = d.DMARequest()
+		assert.False(t, pending, "a full buffer cannot request another byte")
+	}
 }
 
 func TestEnableKeepsRunningSample(t *testing.T) {
-	reader := &memoryReader{}
-	d := New(reader, &cycleStaller{})
+	d := New()
+	d.Write(0x4013, 1)
 	d.SetEnabled(true)
-	reads := reader.reads
-
+	d.CompleteDMA(0xff)
 	d.SetEnabled(true)
-
-	assert.Equal(t, reads, reader.reads, "a running sample is not restarted")
+	assert.Equal(t, uint16(16), d.remaining)
+	assert.Equal(t, uint16(0xc001), d.address)
 }
 
 func TestDisableClearsLengthAndIRQ(t *testing.T) {
-	d := New(&memoryReader{}, &cycleStaller{})
+	d := New()
 	d.SetEnabled(true)
 	d.irq = true
-
 	d.SetEnabled(false)
-
 	assert.False(t, d.Active())
 	assert.False(t, d.IRQ())
+	_, pending := d.DMARequest()
+	assert.False(t, pending)
 }
 
 func TestSampleEndSetsIRQ(t *testing.T) {
-	d := New(&memoryReader{}, &cycleStaller{})
-	d.Write(0x4010, 0x80) // interrupt enabled, no loop
-	d.Write(0x4013, 0x00) // one byte
-
+	d := New()
+	d.Write(0x4010, 0x80)
 	d.SetEnabled(true)
-
+	assert.False(t, d.IRQ())
+	d.CompleteDMA(0)
 	assert.False(t, d.Active())
-	assert.True(t, d.IRQ(), "the interrupt is set when the last byte is read")
+	assert.True(t, d.IRQ())
+	d.Write(0x4010, 0)
+	assert.False(t, d.IRQ())
 }
 
 func TestSampleEndRestartsWithLoop(t *testing.T) {
-	d := New(&memoryReader{}, &cycleStaller{})
-	d.Write(0x4010, 0x40) // loop, interrupt disabled
-	d.Write(0x4013, 0x00) // one byte
-
+	d := New()
+	d.Write(0x4010, 0xc0)
 	d.SetEnabled(true)
-
+	d.CompleteDMA(0)
 	assert.True(t, d.Active())
 	assert.Equal(t, uint16(0xc000), d.address)
 	assert.False(t, d.IRQ())
 }
 
-func TestFetchAdvancesAndWrapsAddress(t *testing.T) {
-	d := New(&memoryReader{}, &cycleStaller{})
+func TestDMAAdvancesAndWrapsAddress(t *testing.T) {
+	d := New()
 	d.address = 0xffff
 	d.remaining = 2
-
-	d.fetch()
-
+	d.CompleteDMA(0)
 	assert.Equal(t, uint16(0x8000), d.address)
 	assert.Equal(t, uint16(1), d.remaining)
 }
 
-func TestFetchKeepsFullBuffer(t *testing.T) {
-	reader := &memoryReader{}
-	d := New(reader, &cycleStaller{})
-	d.remaining = 2
-	d.sampleFull = true
-
-	d.fetch()
-
-	assert.Equal(t, 0, reader.reads)
+func TestClockUsesRatePeriod(t *testing.T) {
+	d := New()
+	d.Write(0x4010, 0x0f)
+	d.silence = false
+	d.shift = 0xff
+	d.Write(0x4011, 10)
+	d.Clock()
+	assert.Equal(t, byte(12), d.Output())
+	for range 53 {
+		d.Clock()
+		assert.Equal(t, byte(12), d.Output())
+	}
+	d.Clock()
+	assert.Equal(t, byte(14), d.Output(), "rate 15 advances every 54 CPU cycles")
 }
 
-func TestClockUsesRatePeriod(t *testing.T) {
-	d := New(&memoryReader{}, &cycleStaller{})
-	d.Write(0x4010, 0x0f) // rate index 15, 27 APU cycles
+func TestBufferWaitsForOutputCycle(t *testing.T) {
+	d := New()
+	d.Write(0x4011, 10)
+	d.SetEnabled(true)
+	d.CompleteDMA(0xff)
+	for range 8 {
+		d.clockOutput()
+		assert.Equal(t, byte(10), d.Output())
+	}
+	d.clockOutput()
+	assert.Equal(t, byte(12), d.Output(), "the new byte starts on the next timer clock")
+}
 
-	d.Clock()
-	assert.Equal(t, uint16(26), d.counter)
-
-	for range 26 {
+func TestRefillStartsWhenBufferEmpties(t *testing.T) {
+	d := New()
+	d.Write(0x4013, 1)
+	d.SetEnabled(true)
+	for range 4 {
 		d.Clock()
 	}
-	assert.Equal(t, uint16(0), d.counter)
-
-	d.Clock()
-	assert.Equal(t, uint16(26), d.counter, "the period repeats")
+	d.CompleteDMA(0xff)
+	for d.sampleFull {
+		d.clockOutput()
+	}
+	request, pending := d.DMARequest()
+	assert.True(t, pending)
+	assert.Equal(t, Request{Address: 0xc001}, request)
 }
 
-func TestOutputUnitIncreasesLevel(t *testing.T) {
-	d := New(&memoryReader{}, &cycleStaller{})
-	d.output = 10
-	d.sampleFull = true
-	d.sample = 0xff
-
-	d.clockOutput()
-
-	assert.Equal(t, byte(12), d.output)
-	assert.Equal(t, byte(0x7f), d.shift)
-	assert.Equal(t, byte(7), d.bits)
-	assert.False(t, d.sampleFull)
-}
-
-func TestOutputUnitDecreasesLevel(t *testing.T) {
-	d := New(&memoryReader{}, &cycleStaller{})
-	d.output = 10
-	d.sampleFull = true
-	d.sample = 0x00
-
-	d.clockOutput()
-
-	assert.Equal(t, byte(8), d.output)
-}
-
-func TestOutputLevelIsClamped(t *testing.T) {
-	d := New(&memoryReader{}, &cycleStaller{})
-	d.output = outputLevelMaximum
-	d.sampleFull = true
-	d.sample = 0xff
-
-	d.clockOutput()
-	assert.Equal(t, byte(outputLevelMaximum), d.output)
-
-	d.output = 1
-	d.bits = 0
-	d.sampleFull = true
-	d.sample = 0x00
-
-	d.clockOutput()
-	assert.Equal(t, byte(1), d.output)
-}
-
-func TestOutputUnitHoldsLevelWhileSilent(t *testing.T) {
-	d := New(&memoryReader{}, &cycleStaller{})
-	d.output = 42
-
-	d.clockOutput()
-
-	assert.Equal(t, byte(42), d.output)
-	assert.True(t, d.silence)
+func TestOutputStepPreservesParityAtLimits(t *testing.T) {
+	// A step outside the DAC range leaves the output unchanged.
+	// https://www.nesdev.org/wiki/APU_DMC#Output_unit
+	for level := range 128 {
+		for bit := range 2 {
+			d := New()
+			d.output = byte(level)
+			want := level
+			if bit == 0 && level >= 2 {
+				want -= 2
+			}
+			if bit == 1 && level <= 125 {
+				want += 2
+			}
+			d.changeLevel(byte(bit))
+			assert.Equal(t, byte(want), d.Output())
+		}
+	}
 }
 
 func TestReset(t *testing.T) {
-	d := New(&memoryReader{}, &cycleStaller{})
+	d := New()
 	d.Write(0x4010, 0xcf)
-	d.Write(0x4011, 0x40)
+	d.Write(0x4011, 0x41)
+	d.Write(0x4012, 0x23)
+	d.Write(0x4013, 0x45)
 	d.SetEnabled(true)
-
 	d.Reset()
-
 	assert.False(t, d.Active())
 	assert.False(t, d.IRQ())
-	assert.False(t, d.loop)
-	assert.False(t, d.irqEnabled)
-	assert.Equal(t, byte(0), d.output)
-	assert.Equal(t, ntscRateTable[0], d.timer)
-}
-
-// memoryReader supplies sample bytes and counts the reads.
-type memoryReader struct {
-	data  map[uint16]byte
-	reads int
-}
-
-func (m *memoryReader) Read(address uint16) byte {
-	m.reads++
-	return m.data[address]
-}
-
-// cycleStaller records the requested stall cycles.
-type cycleStaller struct {
-	total uint16
-}
-
-func (s *cycleStaller) StallCycles(cycles uint16) {
-	s.total += cycles
+	assert.True(t, d.loop)
+	assert.True(t, d.irqEnabled)
+	assert.Equal(t, byte(1), d.Output())
+	assert.Equal(t, ntscRateTable[15], d.timer)
+	assert.Equal(t, byte(0x23), d.sampleAddr)
+	assert.Equal(t, byte(0x45), d.sampleLen)
 }

@@ -12,8 +12,12 @@ func TestWriteDutyAndRegisters(t *testing.T) {
 	p.SetEnabled(true)
 
 	p.Write(0x4000, 0xbf) // duty 2, constant volume 15
+
+	p.CommitLengthWrites()
 	p.Write(0x4002, 0xfd)
+	p.CommitLengthWrites()
 	p.Write(0x4003, 0x00)
+	p.CommitLengthWrites()
 
 	assert.Equal(t, byte(2), p.duty)
 	assert.Equal(t, uint16(0xfd), p.timer)
@@ -24,7 +28,10 @@ func TestTimerHighSetsHighBits(t *testing.T) {
 	p := New(sweep.OnesComplement)
 
 	p.Write(0x4002, 0xff)
+
+	p.CommitLengthWrites()
 	p.Write(0x4003, 0x07)
+	p.CommitLengthWrites()
 
 	assert.Equal(t, uint16(0x7ff), p.timer)
 }
@@ -32,6 +39,7 @@ func TestTimerHighSetsHighBits(t *testing.T) {
 func TestClockAdvancesSequencerAfterPeriod(t *testing.T) {
 	p := New(sweep.OnesComplement)
 	p.Write(0x4002, 0x03) // period 3, so the sequencer advances every 4 cycles
+	p.CommitLengthWrites()
 
 	initial := p.sequence
 	for range 4 {
@@ -44,6 +52,7 @@ func TestClockAdvancesSequencerAfterPeriod(t *testing.T) {
 func TestClockCountsDownThroughPeriod(t *testing.T) {
 	p := New(sweep.OnesComplement)
 	p.Write(0x4002, 0x03)
+	p.CommitLengthWrites()
 
 	p.Clock()
 	assert.Equal(t, uint16(3), p.counter)
@@ -55,10 +64,14 @@ func TestClockCountsDownThroughPeriod(t *testing.T) {
 func TestOutputFollowsDutySequence(t *testing.T) {
 	p := New(sweep.OnesComplement)
 	p.Write(0x4000, 0x1f) // duty 0, constant volume 15
+	p.CommitLengthWrites()
 	p.Write(0x4002, 0x0f)
+	p.CommitLengthWrites()
 	p.Write(0x4003, 0x00)
+	p.CommitLengthWrites()
 	p.SetEnabled(true)
 	p.Write(0x4003, 0x00)
+	p.CommitLengthWrites()
 
 	outputs := make([]byte, 0, 8)
 	for range 8 {
@@ -74,9 +87,12 @@ func TestOutputFollowsDutySequence(t *testing.T) {
 func TestOutputIsZeroForLowPeriods(t *testing.T) {
 	p := New(sweep.OnesComplement)
 	p.Write(0x4000, 0x1f)
+	p.CommitLengthWrites()
 	p.SetEnabled(true)
 	p.Write(0x4003, 0x00)
+	p.CommitLengthWrites()
 	p.Write(0x4002, 0x07)
+	p.CommitLengthWrites()
 
 	assert.Equal(t, byte(0), p.Output())
 }
@@ -84,7 +100,9 @@ func TestOutputIsZeroForLowPeriods(t *testing.T) {
 func TestOutputIsZeroWithoutLength(t *testing.T) {
 	p := New(sweep.OnesComplement)
 	p.Write(0x4000, 0x1f)
+	p.CommitLengthWrites()
 	p.Write(0x4002, 0x0f)
+	p.CommitLengthWrites()
 
 	assert.Equal(t, byte(0), p.Output())
 }
@@ -93,11 +111,14 @@ func TestLengthLoadRestartsSequencer(t *testing.T) {
 	p := New(sweep.OnesComplement)
 	p.SetEnabled(true)
 	p.Write(0x4002, 0x0f)
+	p.CommitLengthWrites()
 
 	p.Clock()
 	assert.NotEqual(t, byte(0), p.sequence)
 
 	p.Write(0x4003, 0x00)
+
+	p.CommitLengthWrites()
 	assert.Equal(t, byte(0), p.sequence)
 }
 
@@ -105,7 +126,9 @@ func TestLengthCounterHaltsWithEnvelopeLoop(t *testing.T) {
 	p := New(sweep.OnesComplement)
 	p.SetEnabled(true)
 	p.Write(0x4003, 0x08) // length index 1
+	p.CommitLengthWrites()
 	p.Write(0x4000, 0x20) // loop flag set, which halts the length counter
+	p.CommitLengthWrites()
 
 	for range 300 {
 		p.ClockHalfFrame()
@@ -118,13 +141,16 @@ func TestReset(t *testing.T) {
 	p := New(sweep.OnesComplement)
 	p.SetEnabled(true)
 	p.Write(0x4000, 0xff)
+	p.CommitLengthWrites()
 	p.Write(0x4002, 0xff)
+	p.CommitLengthWrites()
 	p.Write(0x4003, 0x07)
+	p.CommitLengthWrites()
 
 	p.Reset()
 
 	assert.False(t, p.LengthActive())
-	assert.Equal(t, byte(0), p.duty)
-	assert.Equal(t, uint16(0), p.timer)
+	assert.Equal(t, byte(3), p.duty)
+	assert.Equal(t, uint16(0x7ff), p.timer)
 	assert.Equal(t, byte(0), p.Output())
 }

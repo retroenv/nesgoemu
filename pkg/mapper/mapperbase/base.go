@@ -213,9 +213,7 @@ func (b *Base) NameTableMemory() bus.NameTable {
 
 // SetMapperIRQ sets the mapper IRQ input state.
 func (b *Base) SetMapperIRQ(active bool) {
-	if b.bus.CPU != nil {
-		b.bus.CPU.SetIRQ(active)
-	}
+	b.bus.SetMapperIRQ(active)
 }
 
 func (b *Base) defaultChrBankMapper(address uint16) (int, uint16) {

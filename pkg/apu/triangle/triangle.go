@@ -52,6 +52,11 @@ func (t *Triangle) ClockHalfFrame() {
 	t.length.Clock()
 }
 
+// CommitLengthWrites applies length register writes after the frame clock.
+func (t *Triangle) CommitLengthWrites() {
+	t.length.Commit()
+}
+
 // ClockQuarterFrame advances the linear counter by one quarter frame.
 // https://www.nesdev.org/wiki/APU_Triangle
 func (t *Triangle) ClockQuarterFrame() {
@@ -78,17 +83,14 @@ func (t *Triangle) Output() byte {
 	return sequenceTable[t.sequence]
 }
 
-// Reset returns the channel to its power-up state.
+// Reset clears the channel counters and phase. It keeps the register settings.
 // https://www.nesdev.org/wiki/CPU_power_up_state#APU
 func (t *Triangle) Reset() {
 	t.length.Reset()
 
-	t.timer = 0
 	t.counter = 0
 	t.sequence = 0
 	t.linear = 0
-	t.reloadValue = 0
-	t.control = false
 	t.reload = false
 }
 

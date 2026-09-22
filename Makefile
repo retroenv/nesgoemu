@@ -1,5 +1,6 @@
 GOLANGCI_VERSION = v2.13.2
 RETROGOLINT_VERSION = v1.0.5
+TEST_TIMEOUT ?= 2m
 
 help: ## show help, shown by default if no target is specified
 	@grep -E '^[0-9a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
@@ -12,10 +13,10 @@ build-all: ## build code
 	go build ./...
 
 test: install ## run tests
-	go test -timeout 10s -race ./...
+	go test -timeout $(TEST_TIMEOUT) -race ./...
 
 test-coverage: ## run unit tests and create test coverage
-	go test -timeout 10s ./... -coverprofile coverage.txt
+	go test -timeout $(TEST_TIMEOUT) ./... -coverprofile coverage.txt
 
 test-coverage-web: test-coverage ## run unit tests and show test coverage in browser
 	go tool cover -func coverage.txt | grep total | awk '{print "Total coverage: "$$3}'

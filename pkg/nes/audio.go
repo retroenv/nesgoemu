@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/retroenv/nesgoemu/pkg/apu"
+	"github.com/retroenv/nesgoemu/pkg/apu/output"
 	"github.com/retroenv/retrogolib/audio"
 )
 
@@ -32,6 +33,11 @@ func (sys *System) AudioCallback(buffer []byte) {
 // while the playback is active.
 func (sys *System) AudioPaused() bool {
 	return false
+}
+
+// AudioStats returns the APU queue counters. The SDL queue is separate.
+func (sys *System) AudioStats() output.Stats {
+	return sys.apu.AudioStats()
 }
 
 // audioEnabled reports whether the system opens an audio device. Audio output

@@ -14,6 +14,12 @@ import (
 type Memory struct {
 	bus *bus.Bus
 	ram *RAM
+
+	cycle uint64
+
+	controllerAddress uint16
+	controllerCycle   uint64
+	controllerValue   byte
 }
 
 // New returns a new memory instance, embedded it has
@@ -23,6 +29,13 @@ func New(bus *bus.Bus) *Memory {
 		bus: bus,
 		ram: NewRAM(0, 0x2000),
 	}
+}
+
+// BeginCycle advances the bus clock. Adjacent reads of the same controller
+// keep its output enable active and must not shift a second button bit.
+// https://www.nesdev.org/wiki/DMA#Register_conflicts
+func (m *Memory) BeginCycle() {
+	m.cycle++
 }
 
 // Write a byte to a memory address.
@@ -39,11 +52,7 @@ func (m *Memory) Write(address uint16, value byte) {
 
 	case address == register.JOYPAD1:
 		m.bus.Controller1.SetStrobeMode(value)
-
-	case address == register.JOYPAD2:
-		// $4017 is both the controller 2 port and the APU frame counter.
 		m.bus.Controller2.SetStrobeMode(value)
-		m.bus.APU.Write(address, value)
 
 	case address <= register.APU_FRAME:
 		m.bus.APU.Write(address, value)
@@ -66,10 +75,10 @@ func (m *Memory) Read(address uint16) byte {
 		return m.bus.PPU.Read(address)
 
 	case address == controller.JOYPAD1:
-		return m.bus.Controller1.Read()
+		return m.readController(address, m.bus.Controller1)
 
 	case address == controller.JOYPAD2:
-		return m.bus.Controller2.Read()
+		return m.readController(address, m.bus.Controller2)
 
 	case address <= register.APU_FRAME:
 		if address == 0x4011 {
@@ -94,4 +103,13 @@ func (m *Memory) InspectRAM(address uint16) (byte, bool) {
 	}
 
 	return m.ram.Read(address & nes.RAMEndAddress), true
+}
+
+func (m *Memory) readController(address uint16, device bus.Controller) byte {
+	if m.cycle == 0 || m.controllerCycle+1 != m.cycle || m.controllerAddress != address {
+		m.controllerValue = device.Read()
+	}
+	m.controllerCycle = m.cycle
+	m.controllerAddress = address
+	return m.controllerValue
 }

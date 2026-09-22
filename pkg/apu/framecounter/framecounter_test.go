@@ -17,6 +17,52 @@ func TestFourStepSequenceClocks(t *testing.T) {
 	assert.Equal(t, []uint64{29828}, r.irqAt)
 }
 
+func TestSequenceKeepsItsPeriod(t *testing.T) {
+	f := New()
+	r := &recorder{}
+	r.clock(f, 59660)
+
+	assert.Equal(t, []uint64{7457, 14913, 22371, 29829, 37287, 44743, 52201, 59659}, r.quarter)
+}
+
+func TestFrameIRQReassertsOnThreeCycles(t *testing.T) {
+	f := New()
+	clock(f, 29827)
+	for range 3 {
+		f.Clock()
+		assert.True(t, f.IRQ())
+		f.ClearIRQ()
+	}
+	f.Clock()
+	assert.False(t, f.IRQ())
+}
+
+func TestPendingWriteKeepsOldSequenceRunning(t *testing.T) {
+	f := New()
+	clock(f, 7456)
+	f.Write(0)
+	quarter, half := f.Clock()
+
+	assert.True(t, quarter)
+	assert.False(t, half)
+}
+
+func TestWriteDelayDependsOnClockPhase(t *testing.T) {
+	for phase := range 2 {
+		f := New()
+		clock(f, phase)
+		f.Write(0x80)
+		for range 2 + phase {
+			quarter, half := f.Clock()
+			assert.False(t, quarter)
+			assert.False(t, half)
+		}
+		quarter, half := f.Clock()
+		assert.True(t, quarter)
+		assert.True(t, half)
+	}
+}
+
 func TestFiveStepSequenceClocks(t *testing.T) {
 	f := New()
 	f.Write(0x80)
@@ -86,8 +132,8 @@ func TestReset(t *testing.T) {
 	f.Reset()
 
 	assert.False(t, f.IRQ())
-	assert.False(t, f.mode)
-	assert.False(t, f.inhibit)
+	assert.True(t, f.mode)
+	assert.True(t, f.inhibit)
 	assert.Equal(t, uint64(0), f.cycles)
 }
 

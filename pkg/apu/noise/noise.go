@@ -36,6 +36,7 @@ func New() *Noise {
 	channel := &Noise{
 		envelope: envelope.New(),
 		length:   lengthcounter.New(),
+		shift:    powerOnShiftRegister,
 	}
 	channel.Reset()
 
@@ -64,6 +65,11 @@ func (n *Noise) ClockHalfFrame() {
 	n.length.Clock()
 }
 
+// CommitLengthWrites applies length register writes after the frame clock.
+func (n *Noise) CommitLengthWrites() {
+	n.length.Commit()
+}
+
 // LengthActive reports whether the length counter is not zero.
 func (n *Noise) LengthActive() bool {
 	return n.length.Active()
@@ -80,17 +86,15 @@ func (n *Noise) Output() byte {
 	return n.envelope.Output()
 }
 
-// Reset returns the channel to its power-up state.
+// Reset clears the channel counters and period. It keeps the volume and mode.
 // https://www.nesdev.org/wiki/CPU_power_up_state#APU
 func (n *Noise) Reset() {
 	n.envelope.Reset()
 	n.length.Reset()
 
-	// The period register powers up as zero and selects the first table entry.
+	// Reset clears the period register, which selects the first table entry.
 	n.timer = ntscPeriodTable[0]
 	n.counter = 0
-	n.shift = powerOnShiftRegister
-	n.mode = false
 }
 
 // SetEnabled enables or disables the channel. A disabled channel clears its

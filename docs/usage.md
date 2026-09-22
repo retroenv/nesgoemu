@@ -31,6 +31,10 @@ usage: nesgoemu [options] <file to emulate>
   -s int
         stop execution at address (default -1)
   -t    print CPU tracing
+  -wav string
+        write deterministic audio to a new WAV file
+  -audio-frames uint
+        number of sample frames to record with -wav (default 441000)
 ```
 
 ## Common Run Modes
@@ -121,3 +125,14 @@ device stops the emulator with an error message.
 The emulator writes 44100 Hz mono samples. The sample queue holds about 93 ms of
 audio. If the emulator runs late, the output writes silence. If it runs ahead,
 the oldest samples are dropped.
+
+Record ten seconds of audio from power-on without an audio device:
+
+```bash
+nesgoemu -wav capture.wav -audio-frames 441000 game.nes
+```
+
+The output is a mono 16-bit WAV file at 44100 Hz. The output path must not
+exist. Recording uses emulated time, with no controller input or battery save.
+It stops after the specified number of sample frames. See the
+[audio review](audio-review.md) for comparison settings and accuracy limits.

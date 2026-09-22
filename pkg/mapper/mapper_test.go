@@ -36,6 +36,14 @@ func TestNewProvidesDefaultPrgRAMForLegacyCartridgeWithoutSize(t *testing.T) {
 	assert.Equal(t, byte(0x5A), m.Read(0x6000))
 }
 
+func TestLegacyCartridgeWithoutCHRUsesRAM(t *testing.T) {
+	m := newTestMapper(t, &cartridge.Cartridge{PRG: make([]byte, 0x8000)})
+	m.Write(0, 0x23)
+	m.Write(0x1fff, 0x45)
+	assert.Equal(t, byte(0x23), m.Read(0))
+	assert.Equal(t, byte(0x45), m.Read(0x1fff))
+}
+
 func newTestMapper(t *testing.T, cart *cartridge.Cartridge) bus.Mapper {
 	t.Helper()
 

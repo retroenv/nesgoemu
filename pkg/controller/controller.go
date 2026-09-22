@@ -54,6 +54,9 @@ func (c *Controller) Read() uint8 {
 	if c.strobeMode {
 		return uint8(state & uint64(A))
 	}
+	if c.index == 0 {
+		return 1
+	}
 
 	val := state & uint64(c.index) // nolint:ifshort
 	c.index <<= 1

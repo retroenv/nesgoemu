@@ -25,6 +25,8 @@ func TestWriteSelectsPeriodFromTable(t *testing.T) {
 
 			noise.Write(0x400e, tt.value)
 
+			noise.CommitLengthWrites()
+
 			assert.Equal(t, tt.expected, noise.timer)
 		})
 	}
@@ -34,15 +36,20 @@ func TestWriteModeFlag(t *testing.T) {
 	n := New()
 
 	n.Write(0x400e, 0x80)
+
+	n.CommitLengthWrites()
 	assert.True(t, n.mode)
 
 	n.Write(0x400e, 0x00)
+
+	n.CommitLengthWrites()
 	assert.False(t, n.mode)
 }
 
 func TestClockReloadsPeriodAfterShift(t *testing.T) {
 	n := New()
 	n.Write(0x400e, 0x01) // period 4 in APU cycles
+	n.CommitLengthWrites()
 
 	n.Clock()
 	assert.Equal(t, uint16(3), n.counter, "the shift register is clocked first")
@@ -85,6 +92,7 @@ func TestShiftRegisterUsesModeTap(t *testing.T) {
 	modeChannel := New()
 	modeChannel.shift = 0x40
 	modeChannel.Write(0x400e, 0x80)
+	modeChannel.CommitLengthWrites()
 	modeChannel.advance()
 
 	assert.Equal(t, uint16(0x4020), modeChannel.shift, "the short mode feeds back bit 6")
@@ -94,7 +102,9 @@ func TestOutputRequiresLengthAndShiftBitZero(t *testing.T) {
 	n := New()
 	n.SetEnabled(true)
 	n.Write(0x400c, 0x1f) // constant volume 15
+	n.CommitLengthWrites()
 	n.Write(0x400f, 0x00)
+	n.CommitLengthWrites()
 	n.shift = 0
 
 	assert.Equal(t, byte(15), n.Output())
@@ -111,7 +121,9 @@ func TestLengthCounterHaltsWithEnvelopeLoop(t *testing.T) {
 	n := New()
 	n.SetEnabled(true)
 	n.Write(0x400f, 0x08) // length index 1
+	n.CommitLengthWrites()
 	n.Write(0x400c, 0x20) // loop flag set, which halts the length counter
+	n.CommitLengthWrites()
 
 	for range 300 {
 		n.ClockHalfFrame()
@@ -124,13 +136,16 @@ func TestReset(t *testing.T) {
 	n := New()
 	n.SetEnabled(true)
 	n.Write(0x400c, 0xff)
+	n.CommitLengthWrites()
 	n.Write(0x400e, 0x8f)
+	n.CommitLengthWrites()
 	n.Write(0x400f, 0x00)
+	n.CommitLengthWrites()
 
 	n.Reset()
 
 	assert.False(t, n.LengthActive())
-	assert.False(t, n.mode)
+	assert.True(t, n.mode)
 	assert.Equal(t, powerOnShiftRegister, n.shift)
 	assert.Equal(t, ntscPeriodTable[0], n.timer)
 }

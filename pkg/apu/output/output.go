@@ -41,7 +41,23 @@ type Stage struct {
 	tail int
 	size int
 
+	produced uint64
+	dropped  uint64
+	silence  uint64
+
 	mu sync.Mutex
+}
+
+// Stats reports sample frames produced, queued, dropped, or replaced by silence.
+type Stats struct {
+	// Produced is the total number of generated frames.
+	Produced uint64
+	// Queued is the number of frames that wait for playback.
+	Queued int
+	// Dropped is the number of frames removed because the queue was full.
+	Dropped uint64
+	// Silence is the number of playback frames supplied from an empty queue.
+	Silence uint64
 }
 
 // New returns a new output stage for the given sample rate.
@@ -60,20 +76,13 @@ func New(sampleRate int) *Stage {
 // The function writes silence when the queue is empty.
 // It returns the number of sample frames that came from the queue.
 func (s *Stage) Fill(destination []byte) int {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	return s.fill(destination, true)
+}
 
-	clear(destination)
-	frames := len(destination) / 2
-	available := min(frames, s.size)
-
-	for index := range available {
-		binary.LittleEndian.PutUint16(destination[index*2:], uint16(s.ring[s.head]))
-		s.head = (s.head + 1) % len(s.ring)
-	}
-	s.size -= available
-
-	return available
+// Drain removes queued frames for a recording. An empty queue does not count
+// as missing playback because the caller can run more emulation steps.
+func (s *Stage) Drain(destination []byte) int {
+	return s.fill(destination, false)
 }
 
 // Queued returns the number of sample frames that wait for playback.
@@ -82,6 +91,18 @@ func (s *Stage) Queued() int {
 	defer s.mu.Unlock()
 
 	return s.size
+}
+
+// Stats returns a consistent snapshot of the queue counters.
+func (s *Stage) Stats() Stats {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return Stats{
+		Produced: s.produced,
+		Queued:   s.size,
+		Dropped:  s.dropped,
+		Silence:  s.silence,
+	}
 }
 
 // Write adds one sample of the mixed signal level and removes its direct
@@ -97,9 +118,28 @@ func (s *Stage) Write(level float64) {
 	s.push(int16(math.Round(min(max(level, -1), 1) * fullScale)))
 }
 
+func (s *Stage) fill(destination []byte, playback bool) int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	clear(destination)
+	frames := len(destination) / 2
+	available := min(frames, s.size)
+	for index := range available {
+		binary.LittleEndian.PutUint16(destination[index*2:], uint16(s.ring[s.head]))
+		s.head = (s.head + 1) % len(s.ring)
+	}
+	s.size -= available
+	if playback {
+		s.silence += uint64(frames - available)
+	}
+	return available
+}
+
 // push appends one sample and drops the oldest sample when the queue is full.
 func (s *Stage) push(sample int16) {
+	s.produced++
 	if s.size == len(s.ring) {
+		s.dropped++
 		s.ring[s.tail] = sample
 		s.tail = (s.tail + 1) % len(s.ring)
 		s.head = s.tail

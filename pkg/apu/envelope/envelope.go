@@ -54,10 +54,12 @@ func (e *Envelope) Output() byte {
 	return e.decay
 }
 
-// Reset returns the envelope to its power-up state.
+// Reset clears the envelope counters and keeps the register settings.
 // https://www.nesdev.org/wiki/CPU_power_up_state#APU
 func (e *Envelope) Reset() {
-	*e = Envelope{}
+	e.start = false
+	e.divider = 0
+	e.decay = 0
 }
 
 // Start sets the start flag. A channel sets it when it writes a length load
@@ -73,5 +75,4 @@ func (e *Envelope) Write(value byte) {
 	e.loop = value&0x20 != 0
 	e.constant = value&0x10 != 0
 	e.volume = value & 0x0f
-	e.start = true
 }

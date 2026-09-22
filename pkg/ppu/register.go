@@ -68,7 +68,11 @@ func (p *PPU) Write(address uint16, value uint8) {
 		p.addressing.Increment(p.control.VRAMIncrement)
 
 	case register.OAM_DMA:
-		p.sprites.WriteDMA(value)
+		if p.bus.DMA != nil {
+			p.bus.DMA.RequestOAM(value)
+		} else {
+			p.sprites.WriteDMA(value)
+		}
 		p.features.Mark(feature.OAMDMA)
 
 	default:

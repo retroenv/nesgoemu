@@ -19,6 +19,25 @@ func TestFillWritesSilenceWhenEmpty(t *testing.T) {
 	assert.Equal(t, []byte{0, 0, 0, 0, 0, 0, 0, 0}, buffer)
 }
 
+func TestQueueStatistics(t *testing.T) {
+	stage := New(44100)
+	stage.Drain(make([]byte, 8))
+	assert.Equal(t, uint64(0), stage.Stats().Silence)
+	stage.Fill(make([]byte, 8))
+	assert.Equal(t, uint64(4), stage.Stats().Silence)
+	for range ringFrames + 3 {
+		stage.Write(0)
+	}
+	assert.Equal(t, Stats{
+		Produced: ringFrames + 3,
+		Queued:   ringFrames,
+		Dropped:  3,
+		Silence:  4,
+	}, stage.Stats())
+	stage.Fill(make([]byte, 10))
+	assert.Equal(t, ringFrames-5, stage.Stats().Queued)
+}
+
 func TestWriteQueuesSamples(t *testing.T) {
 	stage := New(44100)
 

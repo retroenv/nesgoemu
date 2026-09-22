@@ -10,7 +10,7 @@ func TestClockAdjustsPeriodWhenDividerExpires(t *testing.T) {
 	s := New(OnesComplement)
 	s.Write(0x81) // enabled, divider period 0, shift 1
 
-	assert.Equal(t, uint16(100), s.Clock(100), "the write reloads the divider")
+	assert.Equal(t, uint16(150), s.Clock(100), "a reload does not cancel a due sweep")
 	assert.Equal(t, uint16(150), s.Clock(100), "the target period is applied")
 }
 
@@ -18,6 +18,17 @@ func TestDividerPeriodDelaysAdjustment(t *testing.T) {
 	s := New(OnesComplement)
 	s.Write(0x91) // enabled, divider period 1, shift 1
 
+	assert.Equal(t, uint16(150), s.Clock(100))
+	assert.Equal(t, uint16(100), s.Clock(100))
+	assert.Equal(t, uint16(150), s.Clock(100))
+}
+
+func TestReloadWithRunningDividerDoesNotSweep(t *testing.T) {
+	s := New(OnesComplement)
+	s.Write(0x91)
+	assert.Equal(t, uint16(150), s.Clock(100))
+
+	s.Write(0x91)
 	assert.Equal(t, uint16(100), s.Clock(100))
 	assert.Equal(t, uint16(100), s.Clock(100))
 	assert.Equal(t, uint16(150), s.Clock(100))
@@ -100,9 +111,9 @@ func TestReset(t *testing.T) {
 
 	s.Reset()
 
-	assert.False(t, s.enabled)
-	assert.False(t, s.negate)
-	assert.Equal(t, byte(0), s.shift, "the shift count is cleared")
+	assert.True(t, s.enabled)
+	assert.True(t, s.negate)
+	assert.Equal(t, byte(1), s.shift, "reset keeps the shift register setting")
 	assert.Equal(t, TwosComplement, s.mode, "the negation mode is kept")
-	assert.Equal(t, uint16(100), s.Clock(100))
+	assert.Equal(t, uint16(50), s.Clock(100))
 }
