@@ -44,7 +44,7 @@ type mapperGTROM struct {
 }
 
 func (m *mapperGTROM) getControl(_ uint16) (uint8, error) {
-	return 0, nil // TODO should return open bus value
+	return m.OpenBus(), nil
 }
 
 func (m *mapperGTROM) setBanks(_ uint16, value uint8) error {

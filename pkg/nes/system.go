@@ -61,12 +61,10 @@ func NewSystem(opts *Options) (*System, error) {
 		NameTable:   nametable.New(cart.Mirror),
 	}
 
-	systemMemory := memory.New(systemBus)
-	mem, err := cpu6502.NewMemory(systemMemory)
+	systemMemory, mem, err := initializeMemory(systemBus)
 	if err != nil {
-		return nil, fmt.Errorf("creating memory: %w", err)
+		return nil, err
 	}
-	systemBus.Memory = mem
 
 	systemBus.Mapper, err = mapper.New(systemBus)
 	if err != nil {
@@ -300,4 +298,17 @@ func (sys *System) clockCPUCycle(cycle cpu6502.BusCycle) bool {
 		sys.dma.oamActive = sys.dma.oamOffset < 256
 	}
 	return true
+}
+
+func initializeMemory(systemBus *bus.Bus) (*memory.Memory, *cpu6502.Memory, error) {
+	systemMemory := memory.New(systemBus)
+	cpuMemory, err := cpu6502.NewMemory(systemMemory)
+	if err != nil {
+		return nil, nil, fmt.Errorf("creating memory: %w", err)
+	}
+
+	systemBus.Memory = cpuMemory
+	systemBus.OpenBus = systemMemory
+
+	return systemMemory, cpuMemory, nil
 }

@@ -51,3 +51,23 @@ func TestMapperGTROM(t *testing.T) {
 	m.Write(0x5000, 1<<5) // select bank 1
 	assert.Equal(t, 0x06, nameTable.Read(0x2100))
 }
+
+func TestMapperGTROMControlReadReturnsOpenBus(t *testing.T) {
+	t.Parallel()
+
+	base := mapperbase.New(&bus.Bus{
+		Cartridge: &cartridge.Cartridge{},
+		NameTable: nametable.New(cartridge.Mirror4),
+		OpenBus:   openBusTestValue(0x5A),
+	})
+	m, err := New(base)
+	assert.NoError(t, err)
+
+	assert.Equal(t, byte(0x5A), m.Read(0x5000))
+}
+
+type openBusTestValue byte
+
+func (v openBusTestValue) OpenBus() byte {
+	return byte(v)
+}

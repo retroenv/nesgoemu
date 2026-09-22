@@ -131,6 +131,13 @@ func (b *Base) Read(address uint16) uint8 {
 
 	switch {
 	case address < 0x2000:
+		if len(b.chrBanks) == 0 {
+			// The video memory bus is multiplexed with the low byte of the
+			// address. A read with no CHR memory returns it.
+			// https://www.nesdev.org/wiki/Open_bus_behavior#PPU_open_bus
+			return uint8(address)
+		}
+
 		bankNr, offset := b.chrBankMapper(address)
 		b.mu.RLock()
 		bank := &b.chrBanks[bankNr]
@@ -153,7 +160,9 @@ func (b *Base) Read(address uint16) uint8 {
 		value = bank.data[offset]
 
 	default:
-		panic(fmt.Sprintf("invalid read from address #%0000x", address))
+		// Addresses without memory return the value of the CPU data bus.
+		// https://www.nesdev.org/wiki/Open_bus_behavior#CPU_open_bus
+		value = b.OpenBus()
 	}
 	return value
 }
@@ -209,6 +218,15 @@ func (b *Base) Cartridge() *cartridge.Cartridge {
 // NameTableMemory returns the PPU name-table memory.
 func (b *Base) NameTableMemory() bus.NameTable {
 	return b.bus.NameTable
+}
+
+// OpenBus returns the value of the CPU data bus.
+func (b *Base) OpenBus() byte {
+	if b.bus.OpenBus == nil {
+		return 0
+	}
+
+	return b.bus.OpenBus.OpenBus()
 }
 
 // SetMapperIRQ sets the mapper IRQ input state.

@@ -73,15 +73,16 @@ func TestControllerStrobeAndAdjacentReads(t *testing.T) {
 	}
 	memory.Write(0x4016, 1)
 	memory.Write(0x4016, 0)
+	memory.Write(0, 0x40)
 	for _, address := range []uint16{0x4016, 0x4017} {
 		for range 3 {
 			memory.BeginCycle()
-			assert.Equal(t, byte(1), memory.Read(address), "adjacent reads keep output enable active")
+			assert.Equal(t, byte(0x41), memory.Read(address), "adjacent reads keep output enable active")
 		}
 		memory.BeginCycle()
 		memory.Read(0)
 		memory.BeginCycle()
-		assert.Equal(t, byte(0), memory.Read(address), "a bus access between reads permits a new button bit")
+		assert.Equal(t, byte(0x40), memory.Read(address), "a bus access between reads permits a new button bit")
 	}
 }
 

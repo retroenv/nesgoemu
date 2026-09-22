@@ -106,6 +106,50 @@ The implementation follows these NESdev wiki pages:
 Register writes take effect when the instruction completes. The emulator does
 not model intra-instruction bus timing, and it does not model expansion audio.
 
+## Open Bus
+
+A data bus keeps the last value that was placed on it, so a read from an address
+with no active device repeats that value. The emulator models the buses of the
+NES:
+
+| Bus | Modeled behavior |
+| --- | --- |
+| CPU data bus | `pkg/memory` keeps the last value that the CPU read or wrote. Reads from $4018 to $401F and from cartridge addresses without memory return it. The controller ports drive bits 4-0 and repeat bits 7-5. |
+| PPU I/O bus | `pkg/ppu` keeps the last value written to a PPU port and the byte that a read of $2002, $2004, or $2007 returns. The write-only ports return it, and the status register keeps it in bits 4-0. |
+| Video memory bus | A CHR read without memory repeats the low byte of the address. |
+
+The PPU I/O bus register is the decay register. A bit that is not refreshed with
+a one for about 600 milliseconds decays to zero. A refresh with a one restarts
+the decay time of the bit. A write to a PPU port refreshes all bits, a read of a
+write-only port refreshes no bit, and the readable ports refresh the bits that
+they define.
+
+A sprite attribute byte keeps bits 2-4 clear, the PPU does not have these bits.
+
+A legacy iNES file without a PRG RAM size gets 8 KiB at $6000-$7FFF. A NES 2.0
+file with a size of zero leaves the area without memory, where reads return the
+open bus value.
+
+Mappers read the CPU data bus through `bus.OpenBus`. The GTROM mapper returns it
+for reads of its control register, and mapper reads without memory return it.
+
+The implementation follows these NESdev wiki pages:
+
+| Topic | Page |
+| --- | --- |
+| Open bus behavior of the CPU, PPU, and video memory buses | https://www.nesdev.org/wiki/Open_bus_behavior |
+| Unmapped CPU addresses | https://www.nesdev.org/wiki/CPU_memory_map |
+| Sprite attribute bits | https://www.nesdev.org/wiki/PPU_OAM#Byte_2:_Attributes |
+| PRG RAM sizes | https://www.nesdev.org/wiki/NES_2.0#PRG-RAM/EEPROM |
+| Decay register behavior and timing | https://github.com/christopherpow/nes-test-roms/blob/master/ppu_open_bus/readme.txt |
+
+Known limits:
+
+- Electrical effects are not modeled, for example the weak pull-ups that some
+  cartridges add to the open bus value.
+- A read of OAMDATA during rendering returns the primary OAM value.
+- The APU registers are write-only, the APU stub answers reads with $FF.
+
 ## Related Documentation
 
 - [usage.md](usage.md) - Runtime flags and controls.

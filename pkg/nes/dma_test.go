@@ -36,6 +36,7 @@ func TestOAMDMAUsesBusCycles(t *testing.T) {
 		}
 		assert.Equal(t, cycles, step.CPUCycles, "DMA halt, alignment, 256 transfers, then NOP")
 		assert.Equal(t, expected, sys.InspectOAM())
+		assert.Equal(t, byte(0x5A), sys.Bus.PPU.Read(0x2000), "the last DMA write stays on the PPU I/O bus")
 	}
 }
 

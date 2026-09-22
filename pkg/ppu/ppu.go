@@ -9,6 +9,7 @@ import (
 	"github.com/retroenv/nesgoemu/pkg/ppu/mask"
 	"github.com/retroenv/nesgoemu/pkg/ppu/memory"
 	"github.com/retroenv/nesgoemu/pkg/ppu/nmi"
+	"github.com/retroenv/nesgoemu/pkg/ppu/openbus"
 	"github.com/retroenv/nesgoemu/pkg/ppu/palette"
 	"github.com/retroenv/nesgoemu/pkg/ppu/renderstate"
 	"github.com/retroenv/nesgoemu/pkg/ppu/screen"
@@ -27,6 +28,10 @@ type PPU struct {
 
 	fineX          uint16
 	dataReadBuffer byte
+
+	// openBus is the decay register of the PPU I/O bus.
+	// https://www.nesdev.org/wiki/Open_bus_behavior#PPU_open_bus
+	openBus *openbus.Register
 
 	addressing  *addressing.Addressing
 	control     *control.Control
@@ -90,6 +95,7 @@ func (p *PPU) reset() {
 	p.addressing = addressing.New()
 	p.mask = mask.New()
 	p.nmi = nmi.New()
+	p.openBus = openbus.New()
 	p.palette = palette.New()
 	p.renderState = renderstate.New()
 	p.screen = screen.New()
@@ -112,12 +118,23 @@ func (p *PPU) readData() byte {
 	// gets updated with the newly read data
 	data := p.dataReadBuffer
 
-	p.dataReadBuffer = p.memory.Read(address)
-
 	if address >= 0x3F00 {
-		// Palette data reads are unbuffered, $3F00-$3FFF are Palette RAM indexes and mirrors of it
-		data = p.dataReadBuffer
-		data = p.maskPaletteColor(data)
+		// Palette data reads are unbuffered, $3F00-$3FFF are Palette RAM indexes and mirrors of it.
+		// A palette read refreshes bits 5-0 of the decay register with the data and keeps the other bits.
+		// https://www.nesdev.org/wiki/Open_bus_behavior#PPU_open_bus
+		paletteData := p.memory.Read(address)
+		// The PPU also reads the nametable below palette memory into the delayed
+		// data buffer.
+		// https://www.nesdev.org/wiki/PPU_registers#Reading_palette_RAM
+		p.dataReadBuffer = p.memory.Read(address - 0x1000)
+		p.openBus.SetBits(0b0011_1111, p.maskPaletteColor(paletteData))
+		data = p.openBus.Value()
+	} else {
+		// A $2007 read returns the contents of the read buffer and refreshes the
+		// decay register with the returned value.
+		// https://github.com/christopherpow/nes-test-roms/blob/master/ppu_open_bus/readme.txt
+		p.dataReadBuffer = p.memory.Read(address)
+		p.openBus.Set(data)
 	}
 
 	// TODO handle special case of reading during rendering
@@ -141,6 +158,10 @@ func (p *PPU) getStatus() byte {
 	p.status.SetVerticalBlank(p.nmi.Occurred())
 	p.nmi.SetOccurred(false)
 
-	value := p.status.Value()
-	return value
+	// A status read refreshes bits 7-5 of the decay register with the flags and
+	// keeps the other bits.
+	// https://www.nesdev.org/wiki/Open_bus_behavior#PPU_open_bus
+	p.openBus.SetBits(0b1110_0000, p.status.Value())
+
+	return p.openBus.Value()
 }
