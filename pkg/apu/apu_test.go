@@ -88,9 +88,25 @@ func TestDMCSampleSetsIRQ(t *testing.T) {
 	a.Write(0x4015, 0x10) // enable the DMC, which fetches the byte
 
 	assert.True(t, cpu.irqLine)
+	assert.True(t, a.DMCIRQ())
 	assert.Equal(t, uint16(4), cpu.stalls)
 	assert.Equal(t, byte(0x40), a.Read(0x4015))
 	assert.True(t, cpu.irqLine, "a read does not clear the DMC interrupt")
+}
+
+func TestObserveDMCFetchesReportsCycleAddressAndStallCost(t *testing.T) {
+	a, _ := newTestAPU()
+	var fetches []DMCFetch
+	a.ObserveDMCFetches(func(fetch DMCFetch) {
+		fetches = append(fetches, fetch)
+	})
+	a.Step(17)
+	a.Write(0x4012, 0x03)
+	a.Write(0x4013, 0x00)
+
+	a.Write(0x4015, 0x10)
+
+	assert.Equal(t, []DMCFetch{{Cycle: 17, Address: 0xc0c0, StallCycles: 4}}, fetches)
 }
 
 func TestStepAdvancesCycles(t *testing.T) {

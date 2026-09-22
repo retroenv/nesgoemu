@@ -55,6 +55,14 @@ type APU struct {
 	irqAsserted bool
 
 	writeObserver func(RegisterWrite)
+	dmcObserver   func(DMCFetch)
+}
+
+// DMCFetch records one DMC sample DMA read at an APU cycle.
+type DMCFetch struct {
+	Cycle       uint64
+	Address     uint16
+	StallCycles uint16
 }
 
 // New returns a new APU.
@@ -82,6 +90,16 @@ func (a *APU) DrainSamples(destination []byte) int {
 // The emulation goroutine calls the observer before it applies each write.
 func (a *APU) ObserveRegisterWrites(observer func(RegisterWrite)) {
 	a.writeObserver = observer
+}
+
+// ObserveDMCFetches replaces the optional DMC sample DMA observer.
+func (a *APU) ObserveDMCFetches(observer func(DMCFetch)) {
+	a.dmcObserver = observer
+}
+
+// DMCIRQ reports whether the DMC currently asserts its interrupt flag.
+func (a *APU) DMCIRQ() bool {
+	return a.dmc.IRQ()
 }
 
 // Reset returns the APU to its power-up state. Samples that wait for playback
@@ -152,6 +170,15 @@ func (a *APU) reset() {
 	a.triangle = triangle.New()
 	a.noise = noise.New()
 	a.dmc = dmc.New(a.bus.Mapper, a.bus.CPU)
+	a.dmc.ObserveFetches(func(fetch dmc.Fetch) {
+		if a.dmcObserver != nil {
+			a.dmcObserver(DMCFetch{
+				Cycle:       a.cycle,
+				Address:     fetch.Address,
+				StallCycles: fetch.StallCycles,
+			})
+		}
+	})
 	a.frame = framecounter.New()
 
 	if a.output == nil {

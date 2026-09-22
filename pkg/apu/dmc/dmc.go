@@ -33,6 +33,12 @@ const (
 	sampleBits = 8
 )
 
+// Fetch records one DMC sample DMA read and its modeled CPU stall cost.
+type Fetch struct {
+	Address     uint16
+	StallCycles uint16
+}
+
 // SampleReader reads a byte from the CPU address space.
 type SampleReader interface {
 	Read(address uint16) byte
@@ -66,6 +72,8 @@ type DMC struct {
 	silence    bool
 
 	output byte
+
+	fetchObserver func(Fetch)
 }
 
 // New returns a new delta modulation channel. The reader supplies sample bytes
@@ -105,6 +113,11 @@ func (d *DMC) Clock() {
 // IRQ reports whether the channel asserts an interrupt.
 func (d *DMC) IRQ() bool {
 	return d.irq
+}
+
+// ObserveFetches replaces the optional sample DMA observer.
+func (d *DMC) ObserveFetches(observer func(Fetch)) {
+	d.fetchObserver = observer
 }
 
 // Output returns the channel level between 0 and 127. The channel sends its
@@ -210,9 +223,16 @@ func (d *DMC) fetch() {
 		return
 	}
 
-	d.sample = d.reader.Read(d.address)
+	address := d.address
+	d.sample = d.reader.Read(address)
 	d.sampleFull = true
 	d.cpu.StallCycles(dmaStallCycles)
+	if d.fetchObserver != nil {
+		d.fetchObserver(Fetch{
+			Address:     address,
+			StallCycles: dmaStallCycles,
+		})
+	}
 
 	d.address++
 	if d.address == 0 {
