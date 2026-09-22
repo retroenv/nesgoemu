@@ -66,6 +66,11 @@ func (p *Pulse) ClockQuarterFrame() {
 	p.envelope.Clock()
 }
 
+// CommitLengthWrites applies length register writes after the frame clock.
+func (p *Pulse) CommitLengthWrites() {
+	p.length.Commit()
+}
+
 // LengthActive reports whether the length counter is not zero.
 func (p *Pulse) LengthActive() bool {
 	return p.length.Active()
@@ -82,16 +87,14 @@ func (p *Pulse) Output() byte {
 	return dutySequences[p.duty][p.sequence] * p.envelope.Output()
 }
 
-// Reset returns the channel to its power-up state.
+// Reset clears the channel counters and keeps the register settings.
 // https://www.nesdev.org/wiki/CPU_power_up_state#APU
 func (p *Pulse) Reset() {
 	p.envelope.Reset()
 	p.length.Reset()
 	p.sweep.Reset()
 
-	p.duty = 0
 	p.sequence = 0
-	p.timer = 0
 	p.counter = 0
 }
 

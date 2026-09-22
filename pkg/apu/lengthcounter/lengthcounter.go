@@ -18,6 +18,12 @@ type LengthCounter struct {
 	counter byte
 	enabled bool
 	halt    bool
+
+	load     bool
+	previous byte
+	reload   byte
+
+	nextHalt bool
 }
 
 // New returns a new length counter.
@@ -38,21 +44,35 @@ func (l *LengthCounter) Clock() {
 	l.counter--
 }
 
-// Load sets the counter from bits 3 to 7 of the written value.
-// A disabled channel keeps a counter of zero.
+// Commit applies register writes after the frame clock of the next CPU cycle.
+// A simultaneous decrement cancels a reload of a nonzero counter.
+// https://www.nesdev.org/wiki/APU_Length_Counter
+func (l *LengthCounter) Commit() {
+	if l.load && l.counter == l.previous {
+		l.counter = l.reload
+	}
+	l.load = false
+	l.halt = l.nextHalt
+}
+
+// Load schedules a counter load from bits 3 to 7 of the written value.
+// A disabled channel ignores the load.
 func (l *LengthCounter) Load(value byte) {
 	if !l.enabled {
 		return
 	}
-	l.counter = lengthLoadTable[value>>3]
+	l.load = true
+	l.previous = l.counter
+	l.reload = lengthLoadTable[value>>3]
 }
 
-// Reset returns the counter to its power-up state.
+// Reset disables the counter and keeps the halt register setting.
 // https://www.nesdev.org/wiki/CPU_power_up_state#APU
 func (l *LengthCounter) Reset() {
 	l.counter = 0
 	l.enabled = false
-	l.halt = false
+	l.load = false
+	l.nextHalt = l.halt
 }
 
 // SetEnabled enables the channel. A disabled channel clears its counter.
@@ -60,10 +80,11 @@ func (l *LengthCounter) SetEnabled(enabled bool) {
 	l.enabled = enabled
 	if !enabled {
 		l.counter = 0
+		l.load = false
 	}
 }
 
-// SetHalt sets the halt input of the counter.
+// SetHalt schedules the halt input for the next Commit.
 func (l *LengthCounter) SetHalt(halt bool) {
-	l.halt = halt
+	l.nextHalt = halt
 }

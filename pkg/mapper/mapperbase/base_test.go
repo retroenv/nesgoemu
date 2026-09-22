@@ -46,3 +46,28 @@ func TestPrgRAMSupports64KiB(t *testing.T) {
 	assert.Equal(t, byte(0x5A), base.Read(prgRAMStart))
 	assert.Equal(t, byte(0xA5), base.Read(prgRAMEnd))
 }
+
+func TestReadReturnsOpenBusValue(t *testing.T) {
+	t.Parallel()
+
+	base := New(&bus.Bus{OpenBus: openBusTestValue(0x5A)})
+
+	// $4020 to $5FFF and $6000 to $7FFF without PRG RAM have no memory.
+	assert.Equal(t, byte(0x5A), base.Read(0x4020))
+	assert.Equal(t, byte(0x5A), base.Read(0x6000))
+}
+
+func TestReadWithoutChrMemoryReturnsAddressLowByte(t *testing.T) {
+	t.Parallel()
+
+	base := New(&bus.Bus{})
+
+	// The video memory bus is multiplexed with the low byte of the address.
+	assert.Equal(t, byte(0x35), base.Read(0x0035))
+}
+
+type openBusTestValue byte
+
+func (v openBusTestValue) OpenBus() byte {
+	return byte(v)
+}

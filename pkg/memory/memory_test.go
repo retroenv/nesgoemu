@@ -44,7 +44,7 @@ func TestInspectRAMReadsWithoutBusAccess(t *testing.T) {
 	assert.False(t, ok)
 }
 
-func TestWriteFrameCounterReachesControllerAndAPU(t *testing.T) {
+func TestWriteFrameCounterDoesNotStrobeController(t *testing.T) {
 	apu := &pcmTestAPU{}
 	systemBus := &bus.Bus{
 		APU:         apu,
@@ -53,10 +53,37 @@ func TestWriteFrameCounterReachesControllerAndAPU(t *testing.T) {
 	memory := New(systemBus)
 
 	systemBus.Controller2.SetButtonState(controller.A, true)
+	systemBus.Controller2.SetStrobeMode(1)
+	systemBus.Controller2.SetStrobeMode(0)
+	assert.Equal(t, byte(1), systemBus.Controller2.Read())
 	memory.Write(0x4017, 1)
 
 	assert.Equal(t, []apuWrite{{address: 0x4017, value: 1}}, apu.writes)
-	assert.Equal(t, byte(1), systemBus.Controller2.Read(), "the write strobes controller 2")
+	assert.Equal(t, byte(0), systemBus.Controller2.Read(), "a frame-counter write must not restart controller reads")
+}
+
+func TestControllerStrobeAndAdjacentReads(t *testing.T) {
+	systemBus := &bus.Bus{
+		Controller1: controller.New(),
+		Controller2: controller.New(),
+	}
+	memory := New(systemBus)
+	for _, device := range []bus.Controller{systemBus.Controller1, systemBus.Controller2} {
+		device.SetButtonState(controller.A, true)
+	}
+	memory.Write(0x4016, 1)
+	memory.Write(0x4016, 0)
+	memory.Write(0, 0x40)
+	for _, address := range []uint16{0x4016, 0x4017} {
+		for range 3 {
+			memory.BeginCycle()
+			assert.Equal(t, byte(0x41), memory.Read(address), "adjacent reads keep output enable active")
+		}
+		memory.BeginCycle()
+		memory.Read(0)
+		memory.BeginCycle()
+		assert.Equal(t, byte(0x40), memory.Read(address), "a bus access between reads permits a new button bit")
+	}
 }
 
 func TestWriteOtherAPURegistersSkipsController(t *testing.T) {

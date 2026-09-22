@@ -25,29 +25,27 @@ func TestAddEmitsOneSamplePerPeriod(t *testing.T) {
 	assert.Len(t, samples.values, int(float64(cycles)/s.cyclesPerSample))
 }
 
-func TestAddAveragesOverTheSamplePeriod(t *testing.T) {
+func TestAddPreservesDCGain(t *testing.T) {
 	samples := collect()
 	s := New(44100, samples.add)
-	s.cyclesPerSample = 4
-
-	s.Add(0)
-	s.Add(0.5)
-	s.Add(1)
-	s.Add(0.5)
-
-	assert.Equal(t, []float64{0.5}, samples.values)
+	for range 20_000 {
+		s.Add(0.25)
+	}
+	for _, value := range samples.values[100:] {
+		assert.LessOrEqual(t, math.Abs(value-0.25), 1e-12)
+	}
 }
 
-func TestAddCarriesThePartialPeriod(t *testing.T) {
+func TestAddCarriesTheFractionalPeriod(t *testing.T) {
 	samples := collect()
 	s := New(44100, samples.add)
-	s.cyclesPerSample = 3
 
-	for range 8 {
+	// The exact NTSC ratio is 3125 CPU cycles per 77 output samples.
+	for range 3125 {
 		s.Add(1)
 	}
 
-	assert.Equal(t, []float64{1, 1}, samples.values)
+	assert.Len(t, samples.values, 77)
 }
 
 func TestAddDoesNotDriftOverTime(t *testing.T) {
@@ -60,7 +58,32 @@ func TestAddDoesNotDriftOverTime(t *testing.T) {
 	}
 
 	expected := int(float64(cycles) / s.cyclesPerSample)
-	assert.LessOrEqual(t, math.Abs(float64(len(samples.values)-expected)), 1, "10 seconds at 44100 Hz")
+	assert.LessOrEqual(t, math.Abs(float64(len(samples.values)-expected)), 1)
+}
+
+func TestFrequencyResponse(t *testing.T) {
+	// Measure gain from a sine wave. Expected limits come from the filter contract.
+	for _, rate := range []int{44100, 48000} {
+		for _, frequency := range []float64{1000, 10000, 15000, 24000, 27965.199, 30000, 55930.398} {
+			samples := collect()
+			s := New(rate, samples.add)
+			cycles := int(float64(rate/5) * s.cyclesPerSample)
+			for index := range cycles {
+				s.Add(math.Sin(2 * math.Pi * frequency * float64(index) / ntscCPURate))
+			}
+			var power float64
+			steady := samples.values[256:]
+			for _, sample := range steady {
+				power += sample * sample
+			}
+			gain := math.Sqrt(2 * power / float64(len(steady)))
+			if frequency <= 15000 {
+				assert.LessOrEqual(t, math.Abs(gain-1), 0.003, "passband gain")
+			} else {
+				assert.LessOrEqual(t, gain, 0.0002, "stopband gain")
+			}
+		}
+	}
 }
 
 // sampleSink collects the samples that a sampler produces.

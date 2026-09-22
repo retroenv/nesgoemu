@@ -16,6 +16,7 @@ func TestWriteEnablesChannelsAndReadsStatus(t *testing.T) {
 	a.Write(0x4007, 0x00) // pulse 2
 	a.Write(0x400b, 0x00) // triangle
 	a.Write(0x400f, 0x00) // noise
+	a.Step(1)
 
 	assert.Equal(t, byte(0x0f), a.Read(0x4015))
 }
@@ -24,6 +25,7 @@ func TestWriteStatusDiscardsLengthsWhenDisabled(t *testing.T) {
 	a, _ := newTestAPU()
 	a.Write(0x4015, 0x01)
 	a.Write(0x4003, 0x00)
+	a.Step(1)
 	assert.Equal(t, byte(0x01), a.Read(0x4015))
 
 	a.Write(0x4015, 0x00)
@@ -66,7 +68,7 @@ func TestFrameIRQDrivesCPULine(t *testing.T) {
 	a.Step(29828)
 	assert.True(t, cpu.irqLine)
 
-	assert.Equal(t, byte(0x80), a.Read(0x4015))
+	assert.Equal(t, byte(0x40), a.Read(0x4015))
 	assert.False(t, cpu.irqLine, "the read clears the flag and the line")
 }
 
@@ -85,12 +87,17 @@ func TestDMCSampleSetsIRQ(t *testing.T) {
 	a.Write(0x4010, 0x80) // interrupt enabled
 	a.Write(0x4013, 0x00) // one byte
 
-	a.Write(0x4015, 0x10) // enable the DMC, which fetches the byte
+	a.Write(0x4015, 0x10)
+	assert.False(t, cpu.irqLine)
+	assert.Equal(t, byte(0x10), a.Read(0x4015))
+	a.Step(4)
+	_, pending := a.DMCRequest()
+	assert.True(t, pending)
+	a.CompleteDMCTransfer(0, 4)
 
 	assert.True(t, cpu.irqLine)
 	assert.True(t, a.DMCIRQ())
-	assert.Equal(t, uint16(4), cpu.stalls)
-	assert.Equal(t, byte(0x40), a.Read(0x4015))
+	assert.Equal(t, byte(0x80), a.Read(0x4015))
 	assert.True(t, cpu.irqLine, "a read does not clear the DMC interrupt")
 }
 
@@ -105,8 +112,31 @@ func TestObserveDMCFetchesReportsCycleAddressAndStallCost(t *testing.T) {
 	a.Write(0x4013, 0x00)
 
 	a.Write(0x4015, 0x10)
+	assert.Len(t, fetches, 0)
+	a.Step(4)
+	request, pending := a.DMCRequest()
+	assert.True(t, pending)
+	assert.Equal(t, uint16(0xc0c0), request.Address)
+	a.CompleteDMCTransfer(0, 4)
 
-	assert.Equal(t, []DMCFetch{{Cycle: 17, Address: 0xc0c0, StallCycles: 4}}, fetches)
+	assert.Equal(t, []DMCFetch{{Cycle: 21, Address: 0xc0c0, StallCycles: 4}}, fetches)
+}
+
+func TestStatusReadClearsOnlyFrameIRQ(t *testing.T) {
+	a, cpu := newTestAPU()
+	a.Step(29828)
+	a.Write(0x4010, 0x80)
+	a.Write(0x4015, 0x10)
+	a.Step(4)
+	a.CompleteDMCTransfer(0, 4)
+
+	assert.Equal(t, byte(0xc0), a.Read(0x4015))
+	assert.Equal(t, byte(0x80), a.Read(0x4015))
+	assert.True(t, cpu.irqLine)
+
+	a.Write(0x4015, 0)
+	assert.Equal(t, byte(0), a.Read(0x4015))
+	assert.False(t, cpu.irqLine)
 }
 
 func TestStepAdvancesCycles(t *testing.T) {

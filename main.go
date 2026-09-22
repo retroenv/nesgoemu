@@ -2,6 +2,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -17,6 +18,9 @@ import (
 
 type optionFlags struct {
 	input string
+
+	audioFrames uint64
+	wav         string
 
 	debug        bool
 	debugAddress string
@@ -54,6 +58,8 @@ func readArguments() optionFlags {
 	flags.BoolVar(&options.noAudio, "m", false, "mute audio output")
 	flags.IntVar(&options.stopAt, "s", -1, "stop execution at address")
 	flags.BoolVar(&options.tracing, "t", false, "print CPU tracing")
+	flags.StringVar(&options.wav, "wav", "", "write deterministic audio to a new WAV file")
+	flags.Uint64Var(&options.audioFrames, "audio-frames", 441000, "number of sample frames to record with -wav")
 
 	err := flags.Parse(os.Args[1:])
 	args := flags.Args()
@@ -86,6 +92,9 @@ func emulateFile(options optionFlags) error {
 	if err != nil {
 		return fmt.Errorf("reading file: %w", err)
 	}
+	if options.wav != "" {
+		return recordWAV(context.Background(), cart, options)
+	}
 
 	opts := []nes.Option{
 		nes.WithCartridge(cart),
@@ -117,6 +126,29 @@ func emulateFile(options optionFlags) error {
 
 	if err := nes.Start(opts...); err != nil {
 		return fmt.Errorf("starting emulator: %w", err)
+	}
+	return nil
+}
+
+func recordWAV(ctx context.Context, cart *cartridge.Cartridge, options optionFlags) error {
+	sys, err := nes.NewSystem(nes.NewOptions(nes.WithCartridge(cart), nes.WithSavePath("")))
+	if err != nil {
+		return fmt.Errorf("creating recording system: %w", err)
+	}
+	if options.entrypoint >= 0 {
+		sys.PC = uint16(options.entrypoint)
+	}
+	file, err := os.OpenFile(options.wav, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+	if err != nil {
+		return fmt.Errorf("creating WAV file: %w", err)
+	}
+	err = sys.WriteWAV(ctx, file, options.audioFrames)
+	closeErr := file.Close()
+	if err != nil {
+		return fmt.Errorf("recording WAV file: %w", err)
+	}
+	if closeErr != nil {
+		return fmt.Errorf("closing WAV file: %w", closeErr)
 	}
 	return nil
 }

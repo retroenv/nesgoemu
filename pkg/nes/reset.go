@@ -6,6 +6,7 @@ import "github.com/retroenv/nesgoemu/pkg/bus"
 // The CPU reads its reset vector after the cartridge returns to its reset bank.
 // Call this method while emulation is stopped.
 func (sys *System) Reset() {
+	sys.dma = dmaController{}
 	if mapper, ok := sys.Bus.Mapper.(bus.MapperResetter); ok {
 		mapper.Reset()
 	}

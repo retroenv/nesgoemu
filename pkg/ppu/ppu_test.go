@@ -5,6 +5,7 @@ import (
 
 	"github.com/retroenv/nesgoemu/pkg/bus"
 	"github.com/retroenv/nesgoemu/pkg/mapper"
+	"github.com/retroenv/nesgoemu/pkg/ppu/nametable"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 	"github.com/retroenv/retrogolib/arch/system/nes/register"
 	"github.com/retroenv/retrogolib/assert"
@@ -83,7 +84,13 @@ func TestResetKeepsVRAMAndVBlank(t *testing.T) {
 }
 
 func TestGrayscalePaletteRead(t *testing.T) {
-	sys := &bus.Bus{Cartridge: cartridge.New()}
+	cart := cartridge.New()
+	nameTable := nametable.New(cart.Mirror)
+	nameTable.SetVRAM(make([]byte, nametable.VramSize))
+	sys := &bus.Bus{
+		Cartridge: cart,
+		NameTable: nameTable,
+	}
 	sys.Mapper = mapper.NewMockMapper(sys)
 	p := New(sys)
 

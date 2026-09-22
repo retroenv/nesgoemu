@@ -17,12 +17,6 @@ const (
 	// https://www.nesdev.org/wiki/APU_DMC
 	sampleBaseAddress = 0xc000
 
-	// dmaStallCycles is the number of CPU cycles that a sample fetch stops the
-	// CPU. The hardware stalls one to four cycles depending on the position of
-	// the fetch in the instruction, as described in the DMA article.
-	// https://www.nesdev.org/wiki/DMA
-	dmaStallCycles = 4
-
 	// outputLevelStep is the level change of one sample bit.
 	outputLevelStep = 2
 
@@ -33,26 +27,17 @@ const (
 	sampleBits = 8
 )
 
-// Fetch records one DMC sample DMA read and its modeled CPU stall cost.
-type Fetch struct {
-	Address     uint16
-	StallCycles uint16
-}
-
-// SampleReader reads a byte from the CPU address space.
-type SampleReader interface {
-	Read(address uint16) byte
-}
-
-// CycleStaller stops the CPU for a number of cycles.
-type CycleStaller interface {
-	StallCycles(cycles uint16)
+// Request describes a pending DMC memory transfer.
+type Request struct {
+	// Address is the address of the next sample byte.
+	Address uint16
+	// Load selects the initial transfer after a write to $4015.
+	Load bool
 }
 
 // DMC provides the delta modulation channel.
 type DMC struct {
-	reader SampleReader
-	cpu    CycleStaller
+	cycle uint64 // Elapsed CPU cycles. Reset keeps the clock phase.
 
 	irqEnabled bool
 	loop       bool
@@ -61,27 +46,29 @@ type DMC struct {
 
 	timer   uint16
 	counter uint16
-	irq     bool
 
-	address    uint16
-	remaining  uint16
+	address   uint16
+	remaining uint16
+
+	load       bool // The next transfer is an initial load rather than a refill.
+	loadDelay  byte // CPU cycles before the initial DMA halt attempt.
 	sample     byte
 	sampleFull bool
-	shift      byte
-	bits       byte
-	silence    bool
+
+	bits    byte
+	shift   byte
+	silence bool
 
 	output byte
 
-	fetchObserver func(Fetch)
+	irq bool
 }
 
-// New returns a new delta modulation channel. The reader supplies sample bytes
-// from the CPU address space, and the staller receives the DMA stall cycles.
-func New(reader SampleReader, cpu CycleStaller) *DMC {
+// New returns a new delta modulation channel. The system supplies sample bytes
+// through CompleteDMA after it grants a transfer from DMARequest.
+func New() *DMC {
 	channel := &DMC{
-		reader: reader,
-		cpu:    cpu,
+		timer: ntscRateTable[0],
 	}
 	channel.Reset()
 
@@ -98,10 +85,17 @@ func (d *DMC) ClearIRQ() {
 	d.irq = false
 }
 
-// Clock advances the channel by one APU cycle. The output unit advances when
-// the timer reaches zero.
+// Clock advances the channel by one CPU cycle. The timer advances on every
+// second cycle. DMA requests use the full CPU clock.
 // https://www.nesdev.org/wiki/APU_DMC
 func (d *DMC) Clock() {
+	if d.loadDelay > 0 {
+		d.loadDelay--
+	}
+	d.cycle++
+	if d.cycle&1 == 0 {
+		return
+	}
 	if d.counter == 0 {
 		d.clockOutput()
 		d.counter = d.timer - 1
@@ -110,14 +104,41 @@ func (d *DMC) Clock() {
 	d.counter--
 }
 
+// CompleteDMA stores a byte after the system completes the memory read.
+func (d *DMC) CompleteDMA(value byte) {
+	d.sample = value
+	d.sampleFull = true
+	d.load = false
+	d.address++
+	if d.address == 0 {
+		d.address = 0x8000
+	}
+	if d.remaining == 0 {
+		return
+	}
+	d.remaining--
+	if d.remaining == 0 {
+		if d.loop {
+			d.restart()
+		} else if d.irqEnabled {
+			d.irq = true
+		}
+	}
+}
+
+// DMARequest reports a transfer that the system can attempt on a read cycle.
+// The CPU can delay the transfer with writes or other DMA bus activity.
+func (d *DMC) DMARequest() (Request, bool) {
+	request := Request{
+		Address: d.address,
+		Load:    d.load,
+	}
+	return request, d.loadDelay == 0 && !d.sampleFull && d.remaining > 0
+}
+
 // IRQ reports whether the channel asserts an interrupt.
 func (d *DMC) IRQ() bool {
 	return d.irq
-}
-
-// ObserveFetches replaces the optional sample DMA observer.
-func (d *DMC) ObserveFetches(observer func(Fetch)) {
-	d.fetchObserver = observer
 }
 
 // Output returns the channel level between 0 and 127. The channel sends its
@@ -126,16 +147,9 @@ func (d *DMC) Output() byte {
 	return d.output
 }
 
-// Reset returns the channel to its power-up state.
+// Reset stops playback and keeps the register settings and the DAC low bit.
 // https://www.nesdev.org/wiki/CPU_power_up_state#APU
 func (d *DMC) Reset() {
-	d.irqEnabled = false
-	d.loop = false
-	d.sampleAddr = 0
-	d.sampleLen = 0
-
-	// The rate register powers up as zero and selects the first table entry.
-	d.timer = ntscRateTable[0]
 	d.counter = 0
 	d.irq = false
 
@@ -144,9 +158,11 @@ func (d *DMC) Reset() {
 	d.sample = 0
 	d.sampleFull = false
 	d.shift = 0
-	d.bits = 0
-	d.silence = false
-	d.output = 0
+	d.bits = sampleBits
+	d.silence = true
+	d.loadDelay = 0
+	d.load = false
+	d.output &= 1
 }
 
 // SetEnabled enables or disables automatic sample playback. Disabling the
@@ -157,6 +173,7 @@ func (d *DMC) SetEnabled(enabled bool) {
 	if !enabled {
 		d.remaining = 0
 		d.irq = false
+		d.loadDelay = 0
 		return
 	}
 
@@ -164,7 +181,13 @@ func (d *DMC) SetEnabled(enabled bool) {
 		return
 	}
 	d.restart()
-	d.fetch()
+	if !d.sampleFull {
+		d.load = true
+		// The first halt attempt is on a get cycle, three or four CPU cycles
+		// after the register write. DMARequest runs before the next Clock.
+		// https://www.nesdev.org/wiki/DMA#DMC_DMA
+		d.loadDelay = 2 + byte(d.cycle&1)
+	}
 }
 
 // Write sets a channel register. The low two address bits select the register.
@@ -195,60 +218,19 @@ func (d *DMC) Write(address uint16, value byte) {
 // sample buffer.
 // https://www.nesdev.org/wiki/APU_DMC
 func (d *DMC) clockOutput() {
-	d.fetch()
-
-	if d.bits == 0 {
-		d.bits = sampleBits
-		if d.sampleFull {
-			d.shift = d.sample
-			d.sampleFull = false
-			d.silence = false
-		} else {
-			d.silence = true
-		}
-	}
-
 	if !d.silence {
 		d.changeLevel(d.shift & 1)
 	}
 	d.shift >>= 1
 	d.bits--
-}
-
-// fetch reads one sample byte into the sample buffer. The address and the bytes
-// remaining counter advance, and the sample ends when the counter reaches zero.
-// https://www.nesdev.org/wiki/APU_DMC
-func (d *DMC) fetch() {
-	if d.sampleFull || d.remaining == 0 {
+	if d.bits != 0 {
 		return
 	}
-
-	address := d.address
-	d.sample = d.reader.Read(address)
-	d.sampleFull = true
-	d.cpu.StallCycles(dmaStallCycles)
-	if d.fetchObserver != nil {
-		d.fetchObserver(Fetch{
-			Address:     address,
-			StallCycles: dmaStallCycles,
-		})
-	}
-
-	d.address++
-	if d.address == 0 {
-		d.address = 0x8000
-	}
-
-	d.remaining--
-	if d.remaining > 0 {
-		return
-	}
-
-	switch {
-	case d.loop:
-		d.restart()
-	case d.irqEnabled:
-		d.irq = true
+	d.bits = sampleBits
+	d.silence = !d.sampleFull
+	if d.sampleFull {
+		d.shift = d.sample
+		d.sampleFull = false
 	}
 }
 
@@ -256,7 +238,9 @@ func (d *DMC) fetch() {
 // the range of the 7-bit counter.
 func (d *DMC) changeLevel(bit byte) {
 	if bit != 0 {
-		d.output = min(d.output+outputLevelStep, outputLevelMaximum)
+		if d.output <= outputLevelMaximum-outputLevelStep {
+			d.output += outputLevelStep
+		}
 		return
 	}
 

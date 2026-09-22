@@ -46,7 +46,8 @@ type APU struct {
 	triangle *triangle.Triangle
 	noise    *noise.Noise
 	dmc      *dmc.DMC
-	frame    *framecounter.FrameCounter
+
+	frame *framecounter.FrameCounter
 
 	sampler *sampler.Sampler
 	output  *output.Stage
@@ -77,13 +78,37 @@ func New(systemBus *bus.Bus) *APU {
 // samples at SampleRate. The function writes silence when no samples are
 // queued. The playback worker calls this method.
 func (a *APU) FillSamples(destination []byte) {
-	a.DrainSamples(destination)
+	a.output.Fill(destination)
 }
 
 // DrainSamples fills the destination and returns the number of queued sample
 // frames that it removed. It writes silence after the queued samples.
 func (a *APU) DrainSamples(destination []byte) int {
-	return a.output.Fill(destination)
+	return a.output.Drain(destination)
+}
+
+// AudioStats returns the sample queue counters.
+func (a *APU) AudioStats() output.Stats {
+	return a.output.Stats()
+}
+
+// CompleteDMCTransfer supplies a sample byte and the DMA duration.
+func (a *APU) CompleteDMCTransfer(value byte, stallCycles uint16) {
+	request, _ := a.dmc.DMARequest()
+	a.dmc.CompleteDMA(value)
+	a.updateIRQ()
+	if a.dmcObserver != nil {
+		a.dmcObserver(DMCFetch{
+			Cycle:       a.cycle,
+			Address:     request.Address,
+			StallCycles: stallCycles,
+		})
+	}
+}
+
+// DMCRequest reports a pending memory transfer to the system bus controller.
+func (a *APU) DMCRequest() (dmc.Request, bool) {
+	return a.dmc.DMARequest()
 }
 
 // ObserveRegisterWrites replaces the optional APU register-write observer.
@@ -102,11 +127,17 @@ func (a *APU) DMCIRQ() bool {
 	return a.dmc.IRQ()
 }
 
-// Reset returns the APU to its power-up state. Samples that wait for playback
-// are kept.
+// Reset clears the channel counters and interrupts. It keeps the register
+// settings and samples that wait for playback.
 // https://www.nesdev.org/wiki/CPU_power_up_state#APU
 func (a *APU) Reset() {
-	a.reset()
+	a.pulse1.Reset()
+	a.pulse2.Reset()
+	a.triangle.Reset()
+	a.noise.Reset()
+	a.dmc.Reset()
+	a.frame.Reset()
+	a.setIRQ(false)
 }
 
 // Step advances the APU by the given number of CPU cycles.
@@ -122,14 +153,18 @@ func (a *APU) clock() {
 		a.pulse1.Clock()
 		a.pulse2.Clock()
 		a.noise.Clock()
-		a.dmc.Clock()
 	}
+	a.dmc.Clock()
 	a.triangle.Clock()
 
 	quarter, half := a.frame.Clock()
 	if quarter || half {
 		a.clockFrames(quarter, half)
 	}
+	a.pulse1.CommitLengthWrites()
+	a.pulse2.CommitLengthWrites()
+	a.triangle.CommitLengthWrites()
+	a.noise.CommitLengthWrites()
 
 	a.cycle++
 	a.sampler.Add(a.mix())
@@ -169,16 +204,7 @@ func (a *APU) reset() {
 	a.pulse2 = pulse.New(sweep.TwosComplement)
 	a.triangle = triangle.New()
 	a.noise = noise.New()
-	a.dmc = dmc.New(a.bus.Mapper, a.bus.CPU)
-	a.dmc.ObserveFetches(func(fetch dmc.Fetch) {
-		if a.dmcObserver != nil {
-			a.dmcObserver(DMCFetch{
-				Cycle:       a.cycle,
-				Address:     fetch.Address,
-				StallCycles: fetch.StallCycles,
-			})
-		}
-	})
+	a.dmc = dmc.New()
 	a.frame = framecounter.New()
 
 	if a.output == nil {
@@ -188,13 +214,10 @@ func (a *APU) reset() {
 
 	a.cycle = 0
 	a.irqAsserted = false
-	a.bus.CPU.SetIRQ(false)
+	a.bus.SetAPUIRQ(false)
 }
 
-// updateIRQ drives the CPU interrupt line from the interrupt flags.
-// The frame counter and the DMC channel share the line with the mapper
-// interrupt, so a mapper that changes the line at the same time can overwrite
-// the level of the APU.
+// updateIRQ sets the APU source from the two interrupt flags.
 func (a *APU) updateIRQ() {
 	a.setIRQ(a.frame.IRQ() || a.dmc.IRQ())
 }
@@ -206,5 +229,5 @@ func (a *APU) setIRQ(active bool) {
 	}
 
 	a.irqAsserted = active
-	a.bus.CPU.SetIRQ(active)
+	a.bus.SetAPUIRQ(active)
 }

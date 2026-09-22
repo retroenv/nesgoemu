@@ -27,22 +27,30 @@ var (
 		{cycle: 14913, quarter: true, half: true},
 		{cycle: 22371, quarter: true},
 		{cycle: 29828, irq: true},
-		{cycle: 29829, quarter: true, half: true},
+		{cycle: 29829, quarter: true, half: true, irq: true},
+		{cycle: 29830, irq: true},
 	}
 	fiveStepSequence = [...]step{
 		{cycle: 7457, quarter: true},
 		{cycle: 14913, quarter: true, half: true},
 		{cycle: 22371, quarter: true},
 		{cycle: 37281, quarter: true, half: true},
+		{cycle: 37282},
 	}
 )
 
 // FrameCounter generates the low frequency clocks of the APU.
 type FrameCounter struct {
-	step    int
-	cycles  uint64
+	cycles uint64
+	step   int
+	mode   bool
+
+	elapsed uint64 // CPU cycles, independent of sequencer resets.
+	block   byte   // Prevent adjacent quarter-frame clocks after a mode write.
+
 	delay   byte
-	mode    bool
+	pending bool
+
 	inhibit bool
 	irq     bool
 }
@@ -61,35 +69,25 @@ func (f *FrameCounter) ClearIRQ() {
 // clock after this cycle.
 // https://www.nesdev.org/wiki/APU_Frame_Counter
 func (f *FrameCounter) Clock() (quarter, half bool) {
+	quarter, half = f.clockSequence()
 	if f.delay > 0 {
 		f.delay--
-		if f.delay > 0 {
-			return false, false
+		if f.delay == 0 {
+			f.mode = f.pending
+			f.restart()
+			if f.mode && f.block == 0 {
+				quarter, half = true, true
+			}
 		}
-		f.restart()
-		if f.mode {
-			// The 5-step mode clocks both units at the start of the sequence.
-			return true, true
-		}
-		return false, false
 	}
-
-	f.cycles++
-	current := f.current()
-	if f.cycles != current.cycle {
-		return false, false
+	if quarter {
+		f.block = 2
 	}
-
-	if current.irq && !f.inhibit {
-		f.irq = true
+	if f.block > 0 {
+		f.block--
 	}
-
-	f.step++
-	if f.step == f.sequenceLength() {
-		f.restart()
-	}
-
-	return current.quarter, current.half
+	f.elapsed++
+	return quarter, half
 }
 
 // IRQ reports whether the frame interrupt flag is set.
@@ -97,14 +95,14 @@ func (f *FrameCounter) IRQ() bool {
 	return f.irq
 }
 
-// Reset returns the counter to its power-up state.
+// Reset restarts the sequence and keeps the last register settings.
 // https://www.nesdev.org/wiki/CPU_power_up_state#APU
 func (f *FrameCounter) Reset() {
 	f.step = 0
 	f.cycles = 0
 	f.delay = 0
-	f.mode = false
-	f.inhibit = false
+	f.block = 0
+	f.mode = f.pending
 	f.irq = false
 }
 
@@ -113,12 +111,32 @@ func (f *FrameCounter) Reset() {
 // inhibit flag set clears the frame interrupt flag.
 // https://www.nesdev.org/wiki/APU_Frame_Counter
 func (f *FrameCounter) Write(value byte) {
-	f.mode = value&0x80 != 0
+	f.pending = value&0x80 != 0
 	f.inhibit = value&0x40 != 0
 	if f.inhibit {
 		f.irq = false
 	}
-	f.delay = resetDelayCycles
+	f.delay = resetDelayCycles + byte(f.elapsed&1)
+}
+
+// clockSequence advances the current mode while a register write is pending.
+func (f *FrameCounter) clockSequence() (quarter, half bool) {
+	f.cycles++
+	current := f.current()
+	if f.cycles != current.cycle {
+		return false, false
+	}
+	if current.irq && !f.inhibit {
+		f.irq = true
+	}
+	f.step++
+	if f.step == f.sequenceLength() {
+		f.restart()
+	}
+	if f.block != 0 {
+		return false, false
+	}
+	return current.quarter, current.half
 }
 
 // current returns the step that the counter is at.

@@ -2,7 +2,8 @@ package apu
 
 import "github.com/retroenv/retrogolib/arch/system/nes/register"
 
-// RegisterWrite describes one APU register write at an APU CPU-cycle offset.
+// RegisterWrite describes an APU register write. Cycle is the number of APU
+// CPU clocks completed before the write takes effect, including reset clocks.
 type RegisterWrite struct {
 	Cycle   uint64
 	Address uint16
@@ -78,10 +79,10 @@ func (a *APU) readStatus() byte {
 		value |= 0x10
 	}
 	if a.dmc.IRQ() {
-		value |= 0x40
+		value |= 0x80
 	}
 	if a.frame.IRQ() {
-		value |= 0x80
+		value |= 0x40
 	}
 
 	a.frame.ClearIRQ()

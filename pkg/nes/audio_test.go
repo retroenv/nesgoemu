@@ -180,6 +180,46 @@ func TestWithDisabledAudio(t *testing.T) {
 	assert.True(t, opts.noAudio)
 }
 
+func TestIRQSourcesRemainIndependent(t *testing.T) {
+	for _, clearAPU := range []bool{false, true} {
+		sys := newAudioTestSystem(t, loopProgram)
+		sys.Bus.SetMapperIRQ(true)
+		sys.Bus.APU.Step(29828)
+
+		if clearAPU {
+			sys.Bus.APU.Read(0x4015)
+		} else {
+			sys.Bus.SetMapperIRQ(false)
+			sys.Bus.APU.Step(1)
+		}
+		sys.CPU.Flags.I = 0
+		assert.NoError(t, sys.CPU.Step())
+		assert.True(t, sys.CPU.CheckInterrupts())
+
+		sys.Bus.SetMapperIRQ(false)
+		sys.Bus.APU.Read(0x4015)
+		sys.CPU.Flags.I = 0
+		assert.False(t, sys.CPU.CheckInterrupts())
+	}
+}
+
+func TestUltrasonicTriangleDoesNotAlias(t *testing.T) {
+	for _, period := range []byte{0, 1} {
+		sys := newAudioTestSystem(t, loopProgram)
+		sys.Bus.APU.Write(0x4015, 4)
+		sys.Bus.APU.Write(0x4008, 0xff)
+		sys.Bus.APU.Write(0x400a, period)
+		sys.Bus.APU.Write(0x400b, 0)
+		sys.Bus.APU.Write(0x4017, 0xc0)
+		sys.Bus.APU.Step(400_000)
+
+		samples := drainSamples(t, sys, 2048)
+		for _, sample := range samples {
+			assert.LessOrEqual(t, math.Abs(float64(sample)), 4.0, "ultrasonic output must not become an audible tone")
+		}
+	}
+}
+
 // newAudioTestSystem returns a system that runs the given program from $8000.
 func newAudioTestSystem(t *testing.T, program []byte) *System {
 	t.Helper()
@@ -242,18 +282,26 @@ func drainSamples(t *testing.T, sys *System, frames int) []int16 {
 	return samples
 }
 
-// measureFrequency returns the frequency of a square wave from its zero
-// crossings.
+// measureFrequency finds the strongest frequency in a windowed spectrum.
+// Filter ringing can add zero crossings without changing the tone frequency.
 func measureFrequency(samples []int16, sampleRate int) float64 {
-	crossings := 0
-	for index := 1; index < len(samples); index++ {
-		if (samples[index-1] < 0) != (samples[index] < 0) {
-			crossings++
+	var best, frequency float64
+	for bin := 1; bin < len(samples)/2; bin++ {
+		var realPart, imaginaryPart float64
+		for index, sample := range samples {
+			window := 0.5 - 0.5*math.Cos(2*math.Pi*float64(index)/float64(len(samples)-1))
+			phase := 2 * math.Pi * float64(bin*index) / float64(len(samples))
+			value := float64(sample) * window
+			realPart += value * math.Cos(phase)
+			imaginaryPart += value * math.Sin(phase)
+		}
+		power := realPart*realPart + imaginaryPart*imaginaryPart
+		if power > best {
+			best = power
+			frequency = float64(bin*sampleRate) / float64(len(samples))
 		}
 	}
-
-	periods := float64(crossings) / 2
-	return periods * float64(sampleRate) / float64(len(samples))
+	return frequency
 }
 
 // peak returns the highest sample value.

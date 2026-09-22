@@ -14,6 +14,17 @@ import (
 type Memory struct {
 	bus *bus.Bus
 	ram *RAM
+
+	cycle uint64
+
+	controllerAddress uint16
+	controllerCycle   uint64
+	controllerValue   byte
+
+	// openBus is the last value on the CPU data bus. A read from an address
+	// with no active device repeats it.
+	// https://www.nesdev.org/wiki/Open_bus_behavior#CPU_open_bus
+	openBus byte
 }
 
 // New returns a new memory instance, embedded it has
@@ -25,8 +36,18 @@ func New(bus *bus.Bus) *Memory {
 	}
 }
 
-// Write a byte to a memory address.
+// BeginCycle advances the bus clock. Adjacent reads of the same controller
+// keep its output enable active and must not shift a second button bit.
+// https://www.nesdev.org/wiki/DMA#Register_conflicts
+func (m *Memory) BeginCycle() {
+	m.cycle++
+}
+
+// Write a byte to a memory address. A write places the value on the CPU data bus.
+// https://www.nesdev.org/wiki/Open_bus_behavior#CPU_open_bus
 func (m *Memory) Write(address uint16, value byte) {
+	m.openBus = value
+
 	switch {
 	case address < register.PPU_CTRL:
 		m.ram.Write(address&nes.RAMEndAddress, value)
@@ -39,11 +60,7 @@ func (m *Memory) Write(address uint16, value byte) {
 
 	case address == register.JOYPAD1:
 		m.bus.Controller1.SetStrobeMode(value)
-
-	case address == register.JOYPAD2:
-		// $4017 is both the controller 2 port and the APU frame counter.
 		m.bus.Controller2.SetStrobeMode(value)
-		m.bus.APU.Write(address, value)
 
 	case address <= register.APU_FRAME:
 		m.bus.APU.Write(address, value)
@@ -51,13 +68,39 @@ func (m *Memory) Write(address uint16, value byte) {
 	case address >= 0x4020: // mappers like GTROM allow writes starting 0x5000
 		m.bus.Mapper.Write(address, value)
 
+	case address <= nes.IORegisterEndAddress: // $4018 to $401F are not mapped
+		// The APU and I/O test mode registers are disabled, writes are ignored.
+		// https://www.nesdev.org/wiki/CPU_memory_map
+
 	default:
 		panic(fmt.Sprintf("unhandled memory write at address: 0x%04X", address))
 	}
 }
 
-// Read a byte from a memory address.
+// Read a byte from a memory address. A read places the value on the CPU data bus.
+// https://www.nesdev.org/wiki/Open_bus_behavior#CPU_open_bus
 func (m *Memory) Read(address uint16) byte {
+	m.openBus = m.read(address)
+
+	return m.openBus
+}
+
+// OpenBus returns the value of the CPU data bus.
+func (m *Memory) OpenBus() byte {
+	return m.openBus
+}
+
+// InspectRAM reads internal CPU RAM without access to MMIO or mapper state.
+func (m *Memory) InspectRAM(address uint16) (byte, bool) {
+	if address >= register.PPU_CTRL {
+		return 0, false
+	}
+
+	return m.ram.Read(address & nes.RAMEndAddress), true
+}
+
+// read returns the value of a memory address without updating the data bus.
+func (m *Memory) read(address uint16) byte {
 	switch {
 	case address < register.PPU_CTRL:
 		return m.ram.Read(address & nes.RAMEndAddress)
@@ -66,10 +109,10 @@ func (m *Memory) Read(address uint16) byte {
 		return m.bus.PPU.Read(address)
 
 	case address == controller.JOYPAD1:
-		return m.bus.Controller1.Read()
+		return m.readController(address, m.bus.Controller1)
 
 	case address == controller.JOYPAD2:
-		return m.bus.Controller2.Read()
+		return m.readController(address, m.bus.Controller2)
 
 	case address <= register.APU_FRAME:
 		if address == 0x4011 {
@@ -82,16 +125,25 @@ func (m *Memory) Read(address uint16) byte {
 	case address >= 0x4020: // GTROM allow writes starting 0x5000, MMC1 has RAM starting at 0x6000
 		return m.bus.Mapper.Read(address)
 
+	case address <= nes.IORegisterEndAddress: // $4018 to $401F are not mapped
+		return m.openBus
+
 	default:
 		panic(fmt.Sprintf("unhandled memory read at address: 0x%04X", address))
 	}
 }
 
-// InspectRAM reads internal CPU RAM without access to MMIO or mapper state.
-func (m *Memory) InspectRAM(address uint16) (byte, bool) {
-	if address >= register.PPU_CTRL {
-		return 0, false
+// readController reads a controller and combines it with the open bus value.
+// The controller port drives bits 4-0. Bits 7-5 repeat the previous value on the
+// bus, which is usually 010 from the high byte $40 of an absolute address. Games
+// by Mindscape rely on the value $41 for a pressed button.
+// https://www.nesdev.org/wiki/Open_bus_behavior#CPU_open_bus
+func (m *Memory) readController(address uint16, device bus.Controller) byte {
+	if m.cycle == 0 || m.controllerCycle+1 != m.cycle || m.controllerAddress != address {
+		m.controllerValue = device.Read()
 	}
+	m.controllerCycle = m.cycle
+	m.controllerAddress = address
 
-	return m.ram.Read(address & nes.RAMEndAddress), true
+	return m.openBus&0xE0 | m.controllerValue&0x1F
 }

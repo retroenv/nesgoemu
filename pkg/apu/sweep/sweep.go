@@ -40,19 +40,16 @@ func New(mode NegateMode) *Sweep {
 // zero, and the unit does not mute the channel.
 // https://www.nesdev.org/wiki/APU_Sweep
 func (s *Sweep) Clock(period uint16) uint16 {
-	switch {
-	case s.reload:
+	// Apply a due sweep before the reload flag resets the divider.
+	if s.divider == 0 && s.enabled && s.shift > 0 && !s.Muted(period) {
+		period = uint16(s.target(period))
+	}
+
+	if s.reload || s.divider == 0 {
 		s.reload = false
 		s.divider = s.period
-
-	case s.divider > 0:
+	} else {
 		s.divider--
-
-	default:
-		s.divider = s.period
-		if s.enabled && s.shift > 0 && !s.Muted(period) {
-			return uint16(s.target(period))
-		}
 	}
 
 	return period
@@ -68,11 +65,11 @@ func (s *Sweep) Muted(period uint16) bool {
 	return s.target(period) > 0x7ff
 }
 
-// Reset returns the unit to its power-up state.
+// Reset clears the divider and keeps the register settings.
 // https://www.nesdev.org/wiki/CPU_power_up_state#APU
 func (s *Sweep) Reset() {
-	mode := s.mode
-	*s = Sweep{mode: mode}
+	s.divider = 0
+	s.reload = false
 }
 
 // Write sets the unit parameters from the sweep register value.
