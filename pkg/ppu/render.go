@@ -11,6 +11,8 @@ func (p *PPU) Image() *image.RGBA {
 
 // Step executes PPU cycles.
 func (p *PPU) Step(cycles int) {
+	p.openBus.Tick(cycles)
+
 	for range cycles {
 		p.step()
 	}

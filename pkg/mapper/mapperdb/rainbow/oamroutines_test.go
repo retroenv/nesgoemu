@@ -29,6 +29,9 @@ func TestOAMGeneratedUpdates(t *testing.T) {
 			expected := byte(0)
 			if i < (int(limit)+1)*4 {
 				expected = byte(i)
+				if i%4 == 2 { // the unimplemented attribute bits read back as zero
+					expected &= 0xE3
+				}
 			}
 			assert.Equal(t, expected, system.PPU.Read(0x2004))
 		}
@@ -52,7 +55,8 @@ func TestOAMSlowUpdatePreservesStartAddress(t *testing.T) {
 	system.PPU.Write(0x2003, 0xFE)
 
 	assert.Equal(t, uint64(36), runOAMRoutine(t, m, cpu, oamRoutineStart))
-	for i, expected := range []byte{0x11, 0x22, 0x33, 0x44} {
+	// The first value is an attribute byte, its unimplemented bits read back as zero.
+	for i, expected := range []byte{0x11 & 0xE3, 0x22, 0x33, 0x44} {
 		system.PPU.Write(0x2003, byte(0xFE+i))
 		assert.Equal(t, expected, system.PPU.Read(0x2004))
 	}

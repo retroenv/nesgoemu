@@ -35,6 +35,18 @@ func TestClockComponentsWithoutMapperClock(t *testing.T) {
 	assert.Equal(t, []int{3, 3}, ppu.cycles)
 }
 
+func TestNewSystemWiresOpenBus(t *testing.T) {
+	t.Parallel()
+
+	sys, err := NewSystem(NewOptions(WithCartridge(cartridge.New())))
+	assert.NoError(t, err)
+
+	sys.Bus.Memory.Write(0x0000, 0x5A)
+
+	// The mapper reads the CPU data bus for addresses without memory.
+	assert.Equal(t, byte(0x5A), sys.Bus.Mapper.Read(0x4020))
+}
+
 type plainMapper struct{}
 
 func (plainMapper) MirrorMode() cartridge.MirrorMode {

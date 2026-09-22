@@ -3,7 +3,6 @@ package status
 
 // Status implements a PPU status fields manager.
 type Status struct {
-	openBus        byte // 0001 1111
 	spriteOverflow bool // 0010 0000
 	spriteZeroHit  bool // 0100 0000
 	verticalBlank  bool // 1000 0000
@@ -14,9 +13,10 @@ func New() *Status {
 	return &Status{}
 }
 
-// Value returns the status fields encoded as byte.
+// Value returns the status flags encoded as byte. Bits 4-0 are not defined by
+// the status. They keep the value of the PPU open bus.
 func (s *Status) Value() byte {
-	value := s.openBus // TODO implement support for open bus value reading
+	var value byte
 	if s.spriteOverflow {
 		value |= 1 << 5
 	}

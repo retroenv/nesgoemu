@@ -87,6 +87,19 @@ The tracked nestest fixture validates CPU execution against a checked-in trace:
 go test ./internal/testroms/nestest
 ```
 
+`nestest_no_ppu.log` is the official nestest log without the PPU column. The
+trailing `= XX` fields show the value that a read of the instruction operand
+returns, which includes the open bus value for I/O registers. The trace read is
+a real bus access and changes the open bus state.
+
+The openbus fixture runs the PPU open-bus test ROM by blargg:
+
+```bash
+go test ./internal/testroms/openbus
+```
+
+The ROM reports its result in PRG RAM at $6000, a result of zero means passed.
+
 Run the fixture through the command-line binary:
 
 ```bash

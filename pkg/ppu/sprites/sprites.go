@@ -81,13 +81,22 @@ func (s *Sprites) Data() [oamMemorySize]byte {
 }
 
 // Read a sprite field, based on the previously set address.
+// The three unimplemented bits of a sprite attribute byte always read back as
+// zero.
+// https://www.nesdev.org/wiki/PPU_OAM#Byte_2:_Attributes
 func (s *Sprites) Read() byte {
 	// TODO handle special case of reading during rendering
 	index := s.address / spriteStructSize
 	field := s.address % spriteStructSize
 
 	sprite := &s.sprites[index]
-	return sprite.field(field)
+	value := sprite.field(field)
+
+	if field == 2 { // attribute byte
+		value &= 0xE3
+	}
+
+	return value
 }
 
 // Write to a sprite field, based on the previously set address.
@@ -103,13 +112,16 @@ func (s *Sprites) Write(value byte) {
 	// TODO handle scroll glitch
 }
 
-// WriteDMA writes all sprite fields using Direct memory access mode.
-func (s *Sprites) WriteDMA(value byte) {
+// WriteDMA writes all sprite fields using Direct memory access mode and returns
+// the last value written to OAM, which stays on the PPU I/O bus.
+func (s *Sprites) WriteDMA(value byte) byte {
 	address := uint16(value) << 8
 
+	var last byte
 	for range oamMemorySize {
 		data := s.memory.Read(address)
 		s.Write(data)
+		last = data
 		address++
 	}
 
@@ -120,6 +132,8 @@ func (s *Sprites) WriteDMA(value byte) {
 		stall++
 	}
 	s.cpu.StallCycles(stall)
+
+	return last
 }
 
 // Render executes a sprites render cycle.

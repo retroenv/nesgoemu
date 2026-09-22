@@ -20,5 +20,12 @@ type Bus struct {
 	Mapper      Mapper              // used by Memory and PPU
 	Memory      cpu6502.BasicMemory // used by CPU
 	NameTable   NameTable           // used by CPU and Mapper
+	OpenBus     OpenBus             // used by Mapper
 	PPU         PPU                 // used by Memory
+}
+
+// OpenBus provides the value of the CPU data bus latch.
+// https://www.nesdev.org/wiki/Open_bus_behavior#CPU_open_bus
+type OpenBus interface {
+	OpenBus() byte
 }

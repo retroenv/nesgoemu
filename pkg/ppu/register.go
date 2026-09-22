@@ -14,17 +14,20 @@ func (p *PPU) Read(address uint16) uint8 {
 	base := mirroredRegisterAddressToBase(address)
 
 	switch base {
-	case register.PPU_CTRL:
-		return p.control.Value()
-
-	case register.PPU_MASK:
-		return p.mask.Value()
+	case register.PPU_CTRL, register.PPU_MASK, register.OAM_ADDR, register.PPU_SCROLL, register.PPU_ADDR:
+		// Write-only ports return the decay register value and do not refresh it.
+		// https://www.nesdev.org/wiki/Open_bus_behavior#PPU_open_bus
+		return p.openBus.Value()
 
 	case register.PPU_STATUS:
 		return p.getStatus()
 
 	case register.OAM_DATA:
-		return p.sprites.Read()
+		// A read of $2004 refreshes the decay register with the value from OAM.
+		// https://www.nesdev.org/wiki/Open_bus_behavior#PPU_open_bus
+		value := p.sprites.Read()
+		p.openBus.Set(value)
+		return value
 
 	case register.PPU_DATA:
 		return p.readData()
@@ -38,6 +41,12 @@ func (p *PPU) Read(address uint16) uint8 {
 func (p *PPU) Write(address uint16, value uint8) {
 	base := mirroredRegisterAddressToBase(address)
 
+	if address != register.OAM_DMA {
+		// A write to a PPU port refreshes the decay register with the value.
+		// https://www.nesdev.org/wiki/Open_bus_behavior#PPU_open_bus
+		p.openBus.Set(value)
+	}
+
 	switch base {
 	case register.PPU_CTRL:
 		p.control.Set(value)
@@ -46,6 +55,11 @@ func (p *PPU) Write(address uint16, value uint8) {
 	case register.PPU_MASK:
 		p.mask.Set(value)
 		p.markMaskFeatures(value)
+
+	case register.PPU_STATUS:
+		// The status port takes a write and refreshes the decay register, which
+		// the write above does. The register itself is not changed.
+		// https://www.nesdev.org/wiki/Open_bus_behavior#PPU_open_bus
 
 	case register.OAM_ADDR:
 		p.sprites.SetAddress(value)
@@ -68,7 +82,8 @@ func (p *PPU) Write(address uint16, value uint8) {
 		p.addressing.Increment(p.control.VRAMIncrement)
 
 	case register.OAM_DMA:
-		p.sprites.WriteDMA(value)
+		// The transfer writes each byte to $2004, the last byte refreshes the register.
+		p.openBus.Set(p.sprites.WriteDMA(value))
 		p.features.Mark(feature.OAMDMA)
 
 	default:

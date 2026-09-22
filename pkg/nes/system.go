@@ -64,6 +64,7 @@ func NewSystem(opts *Options) (*System, error) {
 		return nil, fmt.Errorf("creating memory: %w", err)
 	}
 	systemBus.Memory = mem
+	systemBus.OpenBus = systemMemory
 
 	systemBus.Mapper, err = mapper.New(systemBus)
 	if err != nil {

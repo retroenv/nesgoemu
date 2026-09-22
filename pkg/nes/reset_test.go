@@ -20,7 +20,10 @@ func TestResetUsesCartridgeVector(t *testing.T) {
 
 	assert.True(t, mapper.reset)
 	assert.Equal(t, uint16(0x8000), sys.PC)
-	assert.Equal(t, byte(0), sys.Bus.PPU.Read(register.PPU_MASK))
+	// $2001 is write-only and returns the value of the PPU I/O bus, which keeps
+	// the last value written to a PPU port.
+	// https://www.nesdev.org/wiki/Open_bus_behavior#PPU_open_bus
+	assert.Equal(t, byte(0x18), sys.Bus.PPU.Read(register.PPU_MASK))
 }
 
 func TestResetWithoutMapperHook(t *testing.T) {
