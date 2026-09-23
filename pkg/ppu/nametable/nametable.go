@@ -3,6 +3,7 @@ package nametable
 
 import (
 	"sync"
+	"sync/atomic"
 
 	"github.com/retroenv/retrogolib/arch/system/nes"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
@@ -16,6 +17,10 @@ const (
 	// allowing up to 4 simultaneous nametables
 	VramSize = nes.NameTableCount * nes.NameTableSize
 )
+
+type readHook struct {
+	call func(uint16) (uint8, bool)
+}
 
 // NameTable routes PPU background reads and writes.
 // Each nametable has 1024 bytes. The first 960 bytes select tiles in 32 columns
@@ -33,10 +38,10 @@ type NameTable struct {
 
 	mirrorMode cartridge.MirrorMode
 
-	readHook  func(uint16) (uint8, bool) // optional mapper read interception
+	readHook  atomic.Pointer[readHook] // optional mapper read interception
 	writeHook func(uint16, byte) bool
 
-	value byte
+	value atomic.Uint32
 }
 
 // New returns a new nametable manager.
@@ -88,9 +93,11 @@ func (n *NameTable) SetMirrorMode(mirrorMode cartridge.MirrorMode) {
 // The hook receives the raw PPU address and returns (value, true) if it handles
 // the read, or (0, false) to fall through to the default CIRAM read.
 func (n *NameTable) SetReadHook(hook func(uint16) (uint8, bool)) {
-	n.mu.Lock()
-	n.readHook = hook
-	n.mu.Unlock()
+	if hook == nil {
+		n.readHook.Store(nil)
+		return
+	}
+	n.readHook.Store(&readHook{call: hook})
 }
 
 // SetWriteHook installs a mapper write hook. A true result stops the default write.
@@ -116,19 +123,15 @@ func (n *NameTable) WriteCIRAM(address uint16, value byte) {
 
 // Read a value from the nametable address.
 func (n *NameTable) Read(address uint16) byte {
-	n.mu.RLock()
-	hook := n.readHook
-	n.mu.RUnlock()
-
+	hook := n.readHook.Load()
 	if hook != nil {
-		if v, ok := hook(address); ok {
+		if v, ok := hook.call(address); ok {
 			return v
 		}
 	}
 
-	base := n.mirroredNameTableAddressToBase(address)
-
 	n.mu.RLock()
+	base := n.mirroredNameTableAddressToBase(address)
 	value := n.vram[base]
 	n.mu.RUnlock()
 	return value
@@ -143,9 +146,8 @@ func (n *NameTable) Write(address uint16, value byte) {
 		return
 	}
 
-	base := n.mirroredNameTableAddressToBase(address)
-
 	n.mu.Lock()
+	base := n.mirroredNameTableAddressToBase(address)
 	n.vram[base] = value
 	n.mu.Unlock()
 }
@@ -153,17 +155,12 @@ func (n *NameTable) Write(address uint16, value byte) {
 // Fetch a byte from the address and store it in the internal value storage for later retrieval.
 func (n *NameTable) Fetch(address uint16) {
 	value := n.Read(address)
-	n.mu.Lock()
-	n.value = value
-	n.mu.Unlock()
+	n.value.Store(uint32(value))
 }
 
 // Value returns the earlier fetched value.
 func (n *NameTable) Value() byte {
-	n.mu.RLock()
-	defer n.mu.RUnlock()
-
-	return n.value
+	return byte(n.value.Load())
 }
 
 func (n *NameTable) mirroredNameTableAddressToBase(address uint16) uint16 {
