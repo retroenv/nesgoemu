@@ -2,9 +2,9 @@
 
 ## Overview
 
-The branch adds NTSC APU emulation, SDL2 audio playback, and deterministic WAV
-recording. It also adds CPU-cycle bus timing and shared DMA behavior that the
-APU, OAM, interrupts, controllers, and open-bus logic require.
+The branch adds NTSC APU emulation, Rainbow mapper expansion audio, SDL2
+playback, and deterministic WAV recording. It also adds CPU-cycle bus timing
+and shared DMA behavior for the APU, OAM, interrupts, and controllers.
 
 ## Changes
 
@@ -15,6 +15,11 @@ APU, OAM, interrupts, controllers, and open-bus logic require.
   Convert the NTSC CPU-rate signal to 44100 Hz with a windowed-sinc filter.
   Apply the analog output filters and store signed 16-bit mono samples in a
   bounded, thread-safe queue.
+- **Rainbow expansion audio:** Clock two mapper pulse channels and a saw
+  channel, route their output into the APU mix, and expose IPCM reads and
+  cycle-stamped register writes. Save their state in Rainbow snapshot format 3.
+- **DMC telemetry:** Report each completed sample fetch with its APU cycle,
+  source address, and CPU stall duration.
 - **Playback and recording:** Connect GUI mode to the retrogolib SDL2 audio
   backend. Add `-m` to disable playback. Add `-wav` and `-audio-frames` to write
   deterministic WAV output without an audio device. Report audio-device errors
@@ -47,15 +52,17 @@ notes below.
 | Foundation | Modified | `go.mod` | Select retrogolib with CPU bus-cycle and audio APIs. |
 | Foundation | Modified | `go.sum` | Record checksums for that dependency revision. |
 | Foundation | Modified | `pkg/bus/bus.go` | Add an OAM request interface and combine APU and mapper IRQ sources. |
+| Rainbow audio | Modified | `pkg/bus/mapper_capabilities.go` | Add the optional mapper expansion audio output interface. |
 | Foundation | Modified | `pkg/bus/ppu.go` | Require an APU step method on the bus interface. |
+| Rainbow audio | Modified | `pkg/feature/feature.go` | Add an expansion audio feature label. |
 | Foundation | Modified | `pkg/mapper/mapperbase/base.go` | Route mapper IRQ changes through the shared bus line. |
 | Foundation | Modified | `pkg/nes/system.go` | Clock devices from the CPU cycle hook and run DMA bus actions. Also wires the APU and renderer errors. |
 | Foundation | Modified | `pkg/nes/reset.go` | Clear pending DMA and reset the APU before the CPU reads its reset vector. |
 | Foundation | Modified | `pkg/nes/system_test.go` | Check per-cycle APU, PPU, and mapper clocks. |
 | Foundation | Modified | `pkg/nes/rainbow_test.go` | Adapt mapper IRQ timing test to APU frame IRQ and instruction sampling. |
 | Foundation | Modified | `internal/testroms/nestest/nestest_no_ppu.log` | Update the expected trace for the new APU status read. |
-| DMA | Added | `pkg/nes/dma.go` | Schedule OAM and DMC bus ownership, stalls, alignment, and transfer order. |
-| DMA | Added | `pkg/nes/dma_test.go` | Check OAM transfer cycles and delayed DMC fetch. |
+| DMA | Added | `pkg/nes/dma.go` | Schedule OAM and DMC bus ownership, stalls, alignment, transfer order, and DMC stall counts. |
+| DMA | Added | `pkg/nes/dma_test.go` | Check OAM transfer cycles, delayed DMC fetch, and reported stall cost. |
 | DMA | Modified | `pkg/ppu/register.go` | Queue OAM DMA through the bus scheduler, with the existing direct path for an unconnected scheduler. |
 | DMA | Modified | `pkg/memory/memory.go` | Track bus cycles and retain controller output on adjacent DMA reads; also correct `$4016` and `$4017` strobing. |
 | DMA | Modified | `pkg/memory/memory_test.go` | Check adjacent controller reads, strobing, and APU register routing. |
@@ -66,9 +73,9 @@ notes below.
 
 | Slice | Status | File | Role |
 | --- | --- | --- | --- |
-| APU core | Modified | `pkg/apu/apu.go` | Connect channels, frame clocks, sample output, DMC requests, IRQ state, and reset. |
+| APU core, Rainbow audio | Modified | `pkg/apu/apu.go` | Connect channels, frames, output, DMC requests, IRQ, reset, DMC fetch telemetry, and optional mapper audio. |
 | APU core | Modified | `pkg/apu/register.go` | Decode channel registers, status bits, frame counter writes, and write observations. |
-| APU core | Added | `pkg/apu/apu_test.go` | Check status, IRQ, sample drain, write observations, and reset. |
+| APU core, Rainbow audio | Added | `pkg/apu/apu_test.go` | Check status, IRQ, sample drain, write observations, reset, DMC telemetry, and mapper mixing. |
 | APU core | Added | `pkg/apu/dmc/dmc.go` | Implement DMC output, sample reader requests, loop, and IRQ state. |
 | APU core | Added | `pkg/apu/dmc/dmc_test.go` | Check DMC DAC, reader, timing, and IRQ behavior. |
 | APU core | Added | `pkg/apu/envelope/envelope.go` | Implement envelope start, decay, loop, and constant volume. |
@@ -93,6 +100,20 @@ notes below.
 | Audio signal | Added | `pkg/apu/filter/filter_test.go` | Check filter response and state. |
 | Audio signal | Added | `pkg/apu/output/output.go` | Hold signed 16-bit samples in a bounded queue and report queue statistics. |
 | Audio signal | Added | `pkg/apu/output/output_test.go` | Check sample conversion, queue limits, and drain behavior. |
+
+| Slice | Status | File | Role |
+| --- | --- | --- | --- |
+| Rainbow audio | Added | `pkg/mapper/mapperdb/rainbow/audio.go` | Decode audio registers, expose mapper output and IPCM data, and observe writes. |
+| Rainbow audio | Added | `pkg/mapper/mapperdb/rainbow/audio_state.go` | Clock two pulse channels and one saw channel and hold their register state. |
+| Rainbow audio | Added | `pkg/mapper/mapperdb/rainbow/audio_test.go` | Check channel sequences, output routing, volume, defaults, and write observations. |
+| Rainbow audio | Modified | `pkg/mapper/mapperdb/rainbow/features.go` | Declare expansion audio as a mapper feature. |
+| Rainbow audio | Modified | `pkg/mapper/mapperdb/rainbow/features_test.go` | Check that an audio register write marks the feature used. |
+| Rainbow audio | Modified | `pkg/mapper/mapperdb/rainbow/irq.go` | Clock audio each CPU cycle and return IPCM data on PCM reads. |
+| Rainbow audio | Modified | `pkg/mapper/mapperdb/rainbow/rainbow.go` | Store audio state and set power-on output and volume defaults. |
+| Rainbow audio | Modified | `pkg/mapper/mapperdb/rainbow/register.go` | Dispatch writes to Rainbow audio registers. |
+| Rainbow audio | Modified | `pkg/mapper/mapperdb/rainbow/registers.go` | Define Rainbow audio register addresses. |
+| Rainbow audio | Modified | `pkg/mapper/mapperdb/rainbow/reset.go` | Reset audio routing and master volume registers. |
+| Rainbow audio | Modified | `pkg/mapper/mapperdb/rainbow/state.go` | Save and validate audio state; advance the snapshot format to version 3. |
 
 | Slice | Status | File | Role |
 | --- | --- | --- | --- |
@@ -145,8 +166,8 @@ notes below.
 | Slice | Status | File | Role |
 | --- | --- | --- | --- |
 | Documentation | Modified | `README.md` | Advertise SDL2 audio playback. |
-| Documentation | Modified | `docs/architecture.md` | Describe APU units, clocks, signal path, and audio backend. |
-| Documentation | Added | `docs/audio-review.md` | Record accuracy findings, measurements, test results, and open limits. |
+| Documentation | Modified | `docs/architecture.md` | Describe APU units, clocks, signal path, Rainbow audio, and audio backend. |
+| Documentation | Added | `docs/audio-review.md` | Record accuracy findings, measurements, test results, and open limits, including the Rainbow-only expansion audio scope. |
 | Documentation | Modified | `docs/development.md` | Describe APU architecture and hardware ROM test procedure. |
 | Documentation | Modified | `docs/gui.md` | Describe GUI audio and the mute flag. |
 | Documentation | Modified | `docs/usage.md` | Describe mute and WAV recording options and output behavior. |
@@ -162,30 +183,37 @@ notes below.
 3. **Playback and recording:** SDL2 output, mute control, deterministic WAV
    writer, command-line flags, and tests. Playback and recording can be separate
    commits if the shared APU sample output lands first.
-4. **ROM validation and documentation:** Fixture runner, ROMs, hashes, timeout,
+4. **Rainbow expansion audio:** Mapper channels, routing, IPCM, feature tracking,
+   and snapshot format 3. This needs the APU mixer and the optional mapper
+   interface. Existing version 2 Rainbow snapshots cannot load as version 3.
+5. **ROM validation and documentation:** Fixture runner, ROMs, hashes, timeout,
    user guides, and accuracy review. Keep the runner with the fixtures it uses.
    The legacy CHR RAM fix can be its own small commit with its test.
 
 `pkg/nes/system.go` mixes cycle timing, DMA, APU setup, and renderer error
 handling. `main.go` mixes playback and recording. `pkg/apu/apu.go` and
-`pkg/apu/apu_test.go` mix channel behavior with output APIs. `pkg/nes/audio_test.go`
-mixes playback, IRQ, and signal tests. Those files need hunk-level separation
-for the suggested commit boundaries. The slices are review candidates, not a
-claim that each can build or pass tests without further checks.
+`pkg/apu/apu_test.go` mix channel behavior with output APIs and Rainbow audio.
+`pkg/nes/audio_test.go` mixes playback, IRQ, and signal tests. The DMC telemetry
+also touches `pkg/nes/dma.go`, `pkg/nes/dma_test.go`, and `pkg/nes/system.go`.
+Those files need hunk-level separation for the suggested commit boundaries.
+The slices are review candidates. Build and test each slice before treating it
+as an independent commit.
 
 ## Verification
 
 - Recorded in `docs/audio-review.md`: `make lint` and `make test` passed during
-  the audio review. The review reports that all 25 APU ROM fixtures passed.
+  the earlier audio review. The review reports that all 25 APU ROM fixtures
+  passed. These results precede the Rainbow audio and DMC telemetry commits.
 - Not run for this summary: build, lint, and test commands. This update changes
   documentation only.
 
 ## Notes
 
 - This summary uses the clean-worktree fallback range `main...HEAD`. Local
-  `main` exists. The range contains 94 source, test, fixture, and documentation
-  files after this generated summary is excluded.
-- Audio timing is NTSC-only. Expansion audio is not implemented.
+  `main` exists. The range contains 107 files after this generated summary is
+  excluded.
+- Audio timing is NTSC-only. Rainbow expansion audio is implemented; other
+  mappers do not supply expansion audio.
 - The audio review records remaining limits for NMI/IRQ overlap, adjacent
   PPUDATA reads, DMC abort quirks, internal-register DMA conflicts, and live SDL
   queue measurements.
