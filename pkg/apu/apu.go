@@ -147,6 +147,18 @@ func (a *APU) Step(cycles int) {
 	}
 }
 
+// StartAudioWorker moves output filtering to a worker. The emulation goroutine
+// must call this method before it starts stepping and call StopAudioWorker when
+// it stops. Channel clocks and the mixer stay on the emulation goroutine.
+func (a *APU) StartAudioWorker() {
+	a.sampler.StartWorker()
+}
+
+// StopAudioWorker drains pending samples and waits for the worker to stop.
+func (a *APU) StopAudioWorker() {
+	a.sampler.StopWorker()
+}
+
 // clock advances the APU by one CPU cycle.
 func (a *APU) clock() {
 	if a.cycle&1 == 0 {

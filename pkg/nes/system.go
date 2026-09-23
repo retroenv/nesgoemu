@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"image"
+	"sync/atomic"
 	"time"
 
 	"github.com/retroenv/nesgoemu/pkg/apu"
@@ -33,6 +34,8 @@ type System struct {
 	Bus *bus.Bus
 
 	dimensions gui.Dimensions
+
+	audioReady atomic.Bool // Playback starts after the initial sample buffer is ready.
 }
 
 // StepResult reports the time advanced by one system step.
@@ -157,6 +160,7 @@ func (sys *System) StepSystem() (StepResult, error) {
 const (
 	ntscCPUCyclesPerFrame = 29781
 	ntscFrameDuration     = time.Second * 1000 / 60099 // ~16.64ms
+	maxFrameLag           = 250 * time.Millisecond
 )
 
 // runEmulatorSteps runs until cancellation or the given stop address.
@@ -203,11 +207,7 @@ func (sys *System) runEmulatorSteps(ctx context.Context, stopAt int) error {
 			if sleep := time.Until(nextFrame); sleep > 0 {
 				time.Sleep(sleep)
 			}
-			nextFrame = nextFrame.Add(ntscFrameDuration)
-			// If we've fallen far behind (e.g. paused/breakpoint), resync.
-			if time.Until(nextFrame) < -ntscFrameDuration {
-				nextFrame = time.Now().Add(ntscFrameDuration)
-			}
+			nextFrame = nextFrameDeadline(nextFrame, time.Now())
 		}
 	}
 }
@@ -241,6 +241,8 @@ func (sys *System) runRenderer(ctx context.Context, opts *Options, guiStarter gu
 	var cpuError error
 	go func() {
 		defer close(done)
+		sys.apu.StartAudioWorker()
+		defer sys.apu.StopAudioWorker()
 		cpuError = sys.runEmulatorSteps(ctx, opts.stopAt)
 	}()
 	defer func() {
@@ -311,4 +313,14 @@ func initializeMemory(systemBus *bus.Bus) (*memory.Memory, *cpu6502.Memory, erro
 	systemBus.OpenBus = systemMemory
 
 	return systemMemory, cpuMemory, nil
+}
+
+// nextFrameDeadline permits catch-up after short scheduling delays. A long
+// pause resets the deadline to prevent a large burst after a breakpoint.
+func nextFrameDeadline(previous, now time.Time) time.Time {
+	next := previous.Add(ntscFrameDuration)
+	if now.Sub(next) > maxFrameLag {
+		return now.Add(ntscFrameDuration)
+	}
+	return next
 }

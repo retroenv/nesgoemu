@@ -40,7 +40,13 @@ func TestAudioFormat(t *testing.T) {
 
 func TestAudioPaused(t *testing.T) {
 	sys := newAudioTestSystem(t, loopProgram)
-
+	assert.True(t, sys.AudioPaused())
+	for sys.AudioStats().Queued < 2*audioSamplesPerCallback {
+		_, err := sys.StepSystem()
+		assert.NoError(t, err)
+	}
+	assert.False(t, sys.AudioPaused())
+	sys.AudioCallback(make([]byte, 8192))
 	assert.False(t, sys.AudioPaused())
 }
 
@@ -82,6 +88,25 @@ func TestAudioCallbackIsSilentWithoutChannels(t *testing.T) {
 	for index := 1024; index < len(samples); index++ {
 		assert.Equal(t, int16(0), samples[index])
 	}
+}
+
+func TestAudioWorkerPreservesPCM(t *testing.T) {
+	async := newAudioTestSystem(t, toneProgram)
+	reference := newAudioTestSystem(t, toneProgram)
+	async.apu.StartAudioWorker()
+	defer async.apu.StopAudioWorker()
+	for range 20_000 {
+		_, err := async.StepSystem()
+		assert.NoError(t, err)
+		_, err = reference.StepSystem()
+		assert.NoError(t, err)
+	}
+	async.apu.StopAudioWorker()
+	assert.Equal(t, reference.AudioStats(), async.AudioStats())
+	actual, expected := make([]byte, 8192), make([]byte, 8192)
+	async.AudioCallback(actual)
+	reference.AudioCallback(expected)
+	assert.Equal(t, expected, actual)
 }
 
 func TestAudioEnabled(t *testing.T) {

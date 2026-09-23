@@ -29,8 +29,8 @@ const (
 )
 
 // Stage filters the mixed signal of the APU and holds mono 16-bit signed
-// samples for playback. It is safe for concurrent use: the emulation goroutine
-// calls Write, and the playback worker calls Fill.
+// samples for playback. One sample producer calls Write. The playback worker
+// can call Fill concurrently with that producer.
 type Stage struct {
 	highPass1 *filter.HighPass
 	highPass2 *filter.HighPass

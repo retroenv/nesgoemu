@@ -29,9 +29,15 @@ func (sys *System) AudioCallback(buffer []byte) {
 	sys.apu.FillSamples(buffer)
 }
 
-// AudioPaused reports whether audio output is paused. The system plays audio
-// while the playback is active.
+// AudioPaused delays playback until two callback buffers are ready. Playback
+// then stays active so a temporary underrun does not pause the device.
 func (sys *System) AudioPaused() bool {
+	if !sys.audioReady.Load() {
+		if sys.AudioStats().Queued < 2*audioSamplesPerCallback {
+			return true
+		}
+		sys.audioReady.Store(true)
+	}
 	return false
 }
 
@@ -48,6 +54,7 @@ func audioEnabled(opts *Options) bool {
 
 // startAudio opens the audio device and starts playback.
 func startAudio(sys *System) (*audio.Playback, error) {
+	sys.audioReady.Store(false)
 	playback, err := audio.Setup(sys)
 	if err != nil {
 		return nil, fmt.Errorf("setting up audio output: %w", err)
