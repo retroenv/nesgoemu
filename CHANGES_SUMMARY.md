@@ -172,32 +172,45 @@ notes below.
 | Documentation | Modified | `docs/gui.md` | Describe GUI audio and the mute flag. |
 | Documentation | Modified | `docs/usage.md` | Describe mute and WAV recording options and output behavior. |
 
-## Possible commit slices
+## Commit extraction plan
 
-1. **Foundation and DMA:** Dependency update, CPU cycle clocks, IRQ aggregation,
-   DMC/OAM scheduler, and bus integration. This is a coupled change. The
-   controller corrections fit here because the DMA checks expose them.
-2. **APU channels and signal path:** Channels, frame and length timing, mixer,
-   sampler, filters, queue, and focused tests. This slice needs the foundation
-   APIs. A separate signal-path commit may be possible after the APU core.
-3. **Playback and recording:** SDL2 output, mute control, deterministic WAV
-   writer, command-line flags, and tests. Playback and recording can be separate
-   commits if the shared APU sample output lands first.
-4. **Rainbow expansion audio:** Mapper channels, routing, IPCM, feature tracking,
-   and snapshot format 3. This needs the APU mixer and the optional mapper
-   interface. Existing version 2 Rainbow snapshots cannot load as version 3.
-5. **ROM validation and documentation:** Fixture runner, ROMs, hashes, timeout,
-   user guides, and accuracy review. Keep the runner with the fixtures it uses.
-   The legacy CHR RAM fix can be its own small commit with its test.
+The branch already has focused commits for register-write observations
+(`2bfb22d`), sample draining (`eff4280`), Rainbow audio (`4ad68ad`), and DMC
+fetch telemetry (`ebc5c0a`). The main extraction targets are the broad initial
+APU commit (`d295273`) and the hardware-validation commit (`f5ca079`). The
+following order gives each proposed commit one reason to exist.
 
-`pkg/nes/system.go` mixes cycle timing, DMA, APU setup, and renderer error
-handling. `main.go` mixes playback and recording. `pkg/apu/apu.go` and
-`pkg/apu/apu_test.go` mix channel behavior with output APIs and Rainbow audio.
-`pkg/nes/audio_test.go` mixes playback, IRQ, and signal tests. The DMC telemetry
-also touches `pkg/nes/dma.go`, `pkg/nes/dma_test.go`, and `pkg/nes/system.go`.
-Those files need hunk-level separation for the suggested commit boundaries.
-The slices are review candidates. Build and test each slice before treating it
-as an independent commit.
+| Order | Proposed commit | Extracted content | Check before the next commit |
+| --- | --- | --- | --- |
+| 1 | `apu: add channel and signal units` | Add the channel, envelope, sweep, frame-counter, length-counter, mixer, sampler, filter, and output packages with their paired tests under `pkg/apu/`. Leave system wiring for order 3. | Run package tests for each new APU unit. |
+| 2 | `mapper: provide legacy chr ram` | Move `pkg/mapper/mapper.go` and `pkg/mapper/mapper_test.go` together. This fix has no audio dependency. | Run `go test ./pkg/mapper -count=1`. |
+| 3 | `nes: clock apu and schedule dma by cpu cycle` | Add the retrogolib dependency update, top-level APU and register logic, CPU cycle hook, IRQ aggregation, OAM/DMC scheduler, reset, PPU DMA request, controller bus fixes, and their tests. Include `internal/testroms/nestest/nestest_no_ppu.log`. | Run focused `pkg/apu`, `pkg/nes`, `pkg/memory`, `pkg/controller`, and `pkg/ppu` tests, then `make test`. |
+| 4 | `apu: expose register write observations` | Keep the focused `2bfb22d` API and its tests before the timing review. | Run `go test ./pkg/apu -count=1`. |
+| 5 | `apu: expose deterministic sample drain` | Keep the focused `eff4280` API and its tests before WAV recording. | Run `go test ./pkg/apu -count=1`. |
+| 6 | `nes: play apu audio through sdl2` | Add `pkg/nes/audio.go`, the `-m` flag, playback setup and error handling, and playback tests. Split these changes from `main.go`, `pkg/nes/system.go`, and `pkg/nes/audio_test.go`. | Run `go test ./pkg/nes -count=1`, then `make test`. |
+| 7 | `nes: record deterministic wav audio` | Add `pkg/nes/recording.go` and its tests. Add the `-wav` and `-audio-frames` parts of `main.go`. | Run `go test ./pkg/nes -count=1`. |
+| 8 | `apu: correct hardware timing and signal output` | Extract the frame, length, envelope, sweep, DMC, sampler, and bus-timing corrections from `f5ca079`, with their regression tests. Keep the DMC scheduler and APU changes in the same checkpoint when they depend on each other. | Run `make test` and `make lint`. |
+| 9 | `testroms: add apu hardware fixtures` | Add the 25 ROMs, upstream notes, hashes, `internal/testroms/apu/apu_test.go`, the `.gitignore` exception, and the Makefile timeout. Keep fixture files with the runner that reads them. | Run `go test -race -timeout 2m ./internal/testroms/apu -count=1`, then `make test`. |
+| 10 | `rainbow: emulate expansion audio` | Keep the mapper audio implementation, optional bus interface, feature flag, APU mix hook, and tests together. Keep snapshot version 3 with its new audio fields. | Run `go test ./pkg/mapper/mapperdb/rainbow -count=1`, `go test ./pkg/apu -count=1`, then `make test`. |
+| 11 | `apu: expose dmc fetch telemetry` | Keep the observer API with the DMA stall count and tests in `pkg/apu` and `pkg/nes`. | Run `go test ./pkg/apu -count=1` and `go test ./pkg/nes -count=1`. |
+| 12 | `docs: describe audio behavior and limits` | Add the user and architecture guides, hardware review, and this summary after the code and results that they describe are in place. | Check links, review the diff, and run `git diff --check`. |
+
+Orders 4, 5, 10, and 11 already have useful commit boundaries. Keep them in
+the dependency order shown in the table. Extract orders 1 to 3 and 6 to 9
+from the broad implementation commits.
+
+Split `main.go` between playback flags and WAV recording. Split
+`pkg/nes/system.go` between CPU bus timing and renderer audio errors. Split
+`pkg/apu/apu.go` and `pkg/apu/apu_test.go` between core behavior, later timing
+corrections, Rainbow mixing, and telemetry. Split `pkg/nes/audio_test.go`
+between playback, IRQ, and signal tests. Place each test hunk with the behavior
+it checks. Rebuild each proposed boundary from the final diff, then run its
+checks; file-only grouping is insufficient for these files.
+
+This plan changes existing committed history if executed. The branch contains
+merge commits, so extraction needs a separate history-rewrite task with its
+own validation. This document does not authorize a rebase, reset, staging,
+or new commits.
 
 ## Verification
 
