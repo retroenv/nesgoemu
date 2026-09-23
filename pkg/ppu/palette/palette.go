@@ -2,15 +2,14 @@
 package palette
 
 import (
-	"sync"
+	"sync/atomic"
 
 	"github.com/retroenv/retrogolib/arch/system/nes"
 )
 
 // Palette implements PPU palette support.
 type Palette struct {
-	mu   sync.RWMutex
-	data [nes.PaletteSize]byte // contains color indexes
+	data [nes.PaletteSize]atomic.Uint32 // contains color indexes
 }
 
 // New returns a new palette manager.
@@ -21,25 +20,22 @@ func New() *Palette {
 // Read a value from the palette address.
 func (p *Palette) Read(address uint16) byte {
 	base := mirroredPaletteAddressToBase(address)
-	p.mu.RLock()
-	value := p.data[base]
-	p.mu.RUnlock()
-	return value
+	return byte(p.data[base].Load())
 }
 
 // Write a value to a palette address.
 func (p *Palette) Write(address uint16, value byte) {
 	base := mirroredPaletteAddressToBase(address)
-	p.mu.Lock()
-	p.data[base] = value
-	p.mu.Unlock()
+	p.data[base].Store(uint32(value))
 }
 
-// Data returns the palette data as byte array.
+// Data returns the palette data as a byte array. Concurrent writes can make
+// the result contain values from different points in time.
 func (p *Palette) Data() [nes.PaletteSize]byte {
-	p.mu.RLock()
-	data := p.data
-	p.mu.RUnlock()
+	var data [nes.PaletteSize]byte
+	for index := range data {
+		data[index] = byte(p.data[index].Load())
+	}
 	return data
 }
 
