@@ -56,6 +56,14 @@ type APU struct {
 	irqAsserted bool
 
 	writeObserver func(RegisterWrite)
+	dmcObserver   func(DMCFetch)
+}
+
+// DMCFetch records one DMC sample DMA read at an APU cycle.
+type DMCFetch struct {
+	Cycle       uint64
+	Address     uint16
+	StallCycles uint16
 }
 
 // New returns a new APU.
@@ -84,10 +92,18 @@ func (a *APU) AudioStats() output.Stats {
 	return a.output.Stats()
 }
 
-// CompleteDMCTransfer supplies the sample byte from a completed DMA read.
-func (a *APU) CompleteDMCTransfer(value byte) {
+// CompleteDMCTransfer supplies a sample byte and the DMA duration.
+func (a *APU) CompleteDMCTransfer(value byte, stallCycles uint16) {
+	request, _ := a.dmc.DMARequest()
 	a.dmc.CompleteDMA(value)
 	a.updateIRQ()
+	if a.dmcObserver != nil {
+		a.dmcObserver(DMCFetch{
+			Cycle:       a.cycle,
+			Address:     request.Address,
+			StallCycles: stallCycles,
+		})
+	}
 }
 
 // DMCRequest reports a pending memory transfer to the system bus controller.
@@ -99,6 +115,16 @@ func (a *APU) DMCRequest() (dmc.Request, bool) {
 // The emulation goroutine calls the observer before it applies each write.
 func (a *APU) ObserveRegisterWrites(observer func(RegisterWrite)) {
 	a.writeObserver = observer
+}
+
+// ObserveDMCFetches replaces the optional DMC sample DMA observer.
+func (a *APU) ObserveDMCFetches(observer func(DMCFetch)) {
+	a.dmcObserver = observer
+}
+
+// DMCIRQ reports whether the DMC currently asserts its interrupt flag.
+func (a *APU) DMCIRQ() bool {
+	return a.dmc.IRQ()
 }
 
 // Reset clears the channel counters and interrupts. It keeps the register
@@ -165,7 +191,11 @@ func (a *APU) clockFrames(quarter, half bool) {
 // mix returns the mixed level of all channels.
 // https://www.nesdev.org/wiki/APU_Mixer
 func (a *APU) mix() float64 {
-	return mixer.Mix(a.pulse1.Output(), a.pulse2.Output(), a.triangle.Output(), a.noise.Output(), a.dmc.Output())
+	level := mixer.Mix(a.pulse1.Output(), a.pulse2.Output(), a.triangle.Output(), a.noise.Output(), a.dmc.Output())
+	if source, ok := a.bus.Mapper.(bus.ExpansionAudioSource); ok {
+		level += source.ExpansionAudioOutput()
+	}
+	return level
 }
 
 // reset creates the channel units and clears their state.

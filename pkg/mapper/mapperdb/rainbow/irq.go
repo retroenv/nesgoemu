@@ -36,6 +36,7 @@ func (m *Mapper) ClockCPU(cycles uint64) {
 		}
 		m.scanIRQ.jitter++
 		m.clockESP()
+		m.clockAudio()
 
 		// Zero holds. Underflow to $FFFF would create a spurious long IRQ period.
 		if !m.cycleIRQ.enabled || m.cycleIRQ.counter == 0 {
@@ -88,12 +89,12 @@ func (m *Mapper) TickPPU(cycle, scanLine int, rendering bool) {
 	}
 }
 
-// ReadPCM acknowledges the cycle IRQ when enabled. Audio synthesis is not implemented.
+// ReadPCM returns IPCM data and acknowledges the cycle IRQ when enabled.
 func (m *Mapper) ReadPCM() byte {
 	if m.cycleIRQ.ackOn4011 {
 		m.ackCycleIRQ()
 	}
-	return 0
+	return m.audio.pcmOutput()
 }
 
 func (m *Mapper) ackCycleIRQ() {

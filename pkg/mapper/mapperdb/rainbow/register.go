@@ -62,6 +62,9 @@ func (m *Mapper) writeRegister(address uint16, value uint8) {
 	case address <= regFPGAAutoData:
 		m.writeIRQAndFPGARegister(address, value)
 
+	case address >= regAudioPulse1Control && address <= regAudioMasterVolume:
+		m.writeAudioRegister(address, value)
+
 	case address >= regPlatformVersion:
 		m.writeExtRegister(address, value)
 	}

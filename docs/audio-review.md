@@ -123,7 +123,8 @@ The following items remain open:
   separate `dma_2007_read` trace matches the documented `5E3DF9C4` result.
 - DMC stop/restart abort quirks and all internal-register DMA bus conflicts
   are not fully modeled.
-- Timing remains NTSC-only. PAL and expansion audio require separate work.
+- Timing remains NTSC-only. PAL audio requires separate work. The Rainbow
+  mapper supplies expansion audio; other mappers do not.
 - Live SDL queue drift and device underruns were not measured. `AudioStats`
   now exposes produced, queued, dropped, and empty-queue playback frames.
   These counters describe the APU queue; SDL has a separate queue.

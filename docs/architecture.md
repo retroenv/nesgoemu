@@ -103,8 +103,8 @@ The implementation follows these NESdev wiki pages:
 | Power-up register values | https://www.nesdev.org/wiki/CPU_power_up_state#APU |
 | NTSC clock rates | https://www.nesdev.org/wiki/Cycle_reference_chart |
 
-Register writes take effect when the instruction completes. The emulator does
-not model intra-instruction bus timing, and it does not model expansion audio.
+The CPU makes each register access on its bus cycle. The Rainbow mapper adds
+its expansion audio level to the APU output.
 
 ## Open Bus
 

@@ -45,7 +45,9 @@ func TestDMCEnableDefersFetchAndIRQ(t *testing.T) {
 	sys := newAudioTestSystem(t, program)
 	sys.Bus.APU.Write(0x4010, 0x80)
 	var writes []apu.RegisterWrite
+	var fetches []apu.DMCFetch
 	sys.apu.ObserveRegisterWrites(func(write apu.RegisterWrite) { writes = append(writes, write) })
+	sys.apu.ObserveDMCFetches(func(fetch apu.DMCFetch) { fetches = append(fetches, fetch) })
 	for range 2 {
 		_, err := sys.StepSystem()
 		assert.NoError(t, err)
@@ -59,4 +61,7 @@ func TestDMCEnableDefersFetchAndIRQ(t *testing.T) {
 	}
 	assert.Equal(t, uint64(9), sys.CPU.Cycles()-before, "three NOPs and a three-cycle load DMA")
 	assert.Equal(t, byte(0x80), sys.Bus.APU.Read(0x4015), "the last fetched byte sets DMC IRQ")
+	assert.Len(t, fetches, 1)
+	assert.Equal(t, uint16(0xc000), fetches[0].Address)
+	assert.Equal(t, uint16(3), fetches[0].StallCycles)
 }

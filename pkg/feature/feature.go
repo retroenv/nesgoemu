@@ -47,6 +47,7 @@ const (
 	// Mapper: timing and system.
 	PPUBusTiming
 	ESPMessages
+	ExpansionAudio
 
 	// PPU: control register.
 	NMI
@@ -91,6 +92,7 @@ var names = [count]string{
 	VectorRedirection:     "Vector redirection",
 	PPUBusTiming:          "PPU bus timing",
 	ESPMessages:           "ESP/Wi-Fi messages",
+	ExpansionAudio:        "expansion audio",
 	NMI:                   "NMI",
 	BackgroundTableHigh:   "Background pattern table $1000",
 	SpriteTableHigh:       "Sprite pattern table $1000",

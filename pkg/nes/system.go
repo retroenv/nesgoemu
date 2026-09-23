@@ -286,7 +286,7 @@ func (sys *System) clockCPUCycle(cycle cpu6502.BusCycle) bool {
 		sys.Bus.Memory.Read(cycle.Address)
 	case dmcRead:
 		value := sys.Bus.Memory.Read(sys.dma.dmcAddress)
-		sys.apu.CompleteDMCTransfer(value)
+		sys.apu.CompleteDMCTransfer(value, sys.dma.dmcCycles)
 	case oamRead:
 		address := uint16(sys.dma.oamPage)<<8 | sys.dma.oamOffset
 		sys.dma.oamValue = sys.Bus.Memory.Read(address)

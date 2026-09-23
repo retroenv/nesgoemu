@@ -93,11 +93,33 @@ func TestDMCSampleSetsIRQ(t *testing.T) {
 	a.Step(4)
 	_, pending := a.DMCRequest()
 	assert.True(t, pending)
-	a.CompleteDMCTransfer(0)
+	a.CompleteDMCTransfer(0, 4)
 
 	assert.True(t, cpu.irqLine)
+	assert.True(t, a.DMCIRQ())
 	assert.Equal(t, byte(0x80), a.Read(0x4015))
 	assert.True(t, cpu.irqLine, "a read does not clear the DMC interrupt")
+}
+
+func TestObserveDMCFetchesReportsCycleAddressAndStallCost(t *testing.T) {
+	a, _ := newTestAPU()
+	var fetches []DMCFetch
+	a.ObserveDMCFetches(func(fetch DMCFetch) {
+		fetches = append(fetches, fetch)
+	})
+	a.Step(17)
+	a.Write(0x4012, 0x03)
+	a.Write(0x4013, 0x00)
+
+	a.Write(0x4015, 0x10)
+	assert.Len(t, fetches, 0)
+	a.Step(4)
+	request, pending := a.DMCRequest()
+	assert.True(t, pending)
+	assert.Equal(t, uint16(0xc0c0), request.Address)
+	a.CompleteDMCTransfer(0, 4)
+
+	assert.Equal(t, []DMCFetch{{Cycle: 21, Address: 0xc0c0, StallCycles: 4}}, fetches)
 }
 
 func TestStatusReadClearsOnlyFrameIRQ(t *testing.T) {
@@ -106,7 +128,7 @@ func TestStatusReadClearsOnlyFrameIRQ(t *testing.T) {
 	a.Write(0x4010, 0x80)
 	a.Write(0x4015, 0x10)
 	a.Step(4)
-	a.CompleteDMCTransfer(0)
+	a.CompleteDMCTransfer(0, 4)
 
 	assert.Equal(t, byte(0xc0), a.Read(0x4015))
 	assert.Equal(t, byte(0x80), a.Read(0x4015))
@@ -131,6 +153,14 @@ func TestStepProducesSamples(t *testing.T) {
 	a.Step(44100)
 
 	assert.Equal(t, 1086, a.output.Queued(), "44100 CPU cycles at 44100 Hz")
+}
+
+func TestMixAddsMapperExpansionAudio(t *testing.T) {
+	a, _ := newTestAPU()
+	base := a.mix()
+	a.bus.Mapper.(*testMapper).expansionAudio = 0.25
+
+	assert.Equal(t, base+0.25, a.mix())
 }
 
 func TestFillSamplesWritesSilence(t *testing.T) {
@@ -194,10 +224,15 @@ func (c *testCPU) TriggerNMI() {}
 // testMapper supplies sample bytes to the DMC channel.
 type testMapper struct {
 	bus.Mapper
+	expansionAudio float64
 }
 
 func (m *testMapper) Read(_ uint16) byte {
 	return 0
+}
+
+func (m *testMapper) ExpansionAudioOutput() float64 {
+	return m.expansionAudio
 }
 
 // newTestAPU returns an APU that is connected to a test CPU and mapper.

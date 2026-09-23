@@ -31,6 +31,7 @@ type dmaController struct {
 
 	dmcAddress uint16
 	dmcArmed   bool
+	dmcCycles  uint16
 	dmcPhase   dmcPhase
 
 	oamActive  bool
@@ -74,6 +75,7 @@ func (d *dmaController) next(cycle cpu6502.BusCycle, get bool, request dmc.Reque
 		d.oamFull = false
 		if startDMC {
 			d.dmcAddress = request.Address
+			d.dmcCycles = 1
 			d.dmcPhase = dmcDummy
 		}
 		return repeatRead
@@ -86,12 +88,17 @@ func (d *dmaController) transfer(get bool, request dmc.Request, startDMC bool) d
 	switch {
 	case startDMC:
 		d.dmcAddress = request.Address
+		d.dmcCycles = 1
 		d.dmcPhase = dmcDummy
 	case d.dmcPhase == dmcDummy:
+		d.dmcCycles++
 		d.dmcPhase = dmcReady
 	case d.dmcPhase == dmcReady && get:
+		d.dmcCycles++
 		d.dmcPhase = dmcIdle
 		return dmcRead
+	case d.dmcPhase == dmcReady:
+		d.dmcCycles++
 	}
 	if d.oamActive {
 		if get {
