@@ -4,6 +4,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/retroenv/retrogolib/arch/cpu/cpu6502"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 )
 
@@ -19,6 +20,9 @@ type Options struct {
 	noGui bool
 
 	cartridge *cartridge.Cartridge
+
+	cpuPreExecutionHook func(*cpu6502.CPU, *cpu6502.Instruction, ...any)
+	cpuOptions          []cpu6502.Option
 
 	tracing       bool
 	tracingTarget io.Writer
@@ -44,6 +48,30 @@ func NewOptions(optionList ...Option) *Options {
 	}
 
 	return opts
+}
+
+func (opts *Options) runCPUPreExecutionHooks(cpu *cpu6502.CPU, ins *cpu6502.Instruction, params ...any) {
+	if opts.tracing {
+		tracePreExecutionHook(cpu, ins, params...)
+	}
+	if opts.cpuPreExecutionHook != nil {
+		opts.cpuPreExecutionHook(cpu, ins, params...)
+	}
+}
+
+// WithCPUOptions passes CPU options to the new system.
+func WithCPUOptions(values ...cpu6502.Option) Option {
+	return func(options *Options) {
+		options.cpuOptions = append(options.cpuOptions, values...)
+	}
+}
+
+// WithCPUPreExecutionHook sets a hook for each CPU instruction.
+// It replaces a previous hook. The tracing hook runs first when tracing is on.
+func WithCPUPreExecutionHook(hook func(*cpu6502.CPU, *cpu6502.Instruction, ...any)) Option {
+	return func(options *Options) {
+		options.cpuPreExecutionHook = hook
+	}
 }
 
 // WithCartridge sets a cartridge to load.

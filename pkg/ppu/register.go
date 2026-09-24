@@ -40,6 +40,21 @@ func (p *PPU) Read(address uint16) uint8 {
 // Write to a PPU memory register address.
 func (p *PPU) Write(address uint16, value uint8) {
 	base := mirroredRegisterAddressToBase(address)
+	if p.writeObserver != nil {
+		var cpuCycles uint64
+		if p.bus.CPU != nil {
+			cpuCycles = p.bus.CPU.Cycles()
+		}
+		p.writeObserver(WriteEvent{
+			Frame:      p.renderState.Frame(),
+			CPUCycles:  cpuCycles,
+			Scanline:   p.renderState.ScanLine(),
+			Dot:        p.renderState.Cycle(),
+			Register:   base,
+			PPUAddress: p.addressing.Address(),
+			Value:      value,
+		})
+	}
 
 	if address != register.OAM_DMA {
 		// A write to a PPU port refreshes the decay register with the value.

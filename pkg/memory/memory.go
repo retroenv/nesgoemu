@@ -19,6 +19,8 @@ type Memory struct {
 	// with no active device repeats it.
 	// https://www.nesdev.org/wiki/Open_bus_behavior#CPU_open_bus
 	openBus byte
+
+	writeObserver func(WriteEvent)
 }
 
 // New returns a new memory instance, embedded it has
@@ -33,6 +35,22 @@ func New(bus *bus.Bus) *Memory {
 // Write a byte to a memory address. A write places the value on the CPU data bus.
 // https://www.nesdev.org/wiki/Open_bus_behavior#CPU_open_bus
 func (m *Memory) Write(address uint16, value byte) {
+	if m.writeObserver != nil {
+		var cycles uint64
+		if m.bus.CPU != nil {
+			cycles = m.bus.CPU.Cycles()
+		}
+		var frame uint64
+		if m.bus.PPU != nil {
+			frame = m.bus.PPU.Frame()
+		}
+		m.writeObserver(WriteEvent{
+			Address:   address,
+			Value:     value,
+			CPUCycles: cycles,
+			Frame:     frame,
+		})
+	}
 	m.openBus = value
 
 	switch {
