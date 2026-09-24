@@ -43,6 +43,18 @@ func TestInspectRAMReadsWithoutBusAccess(t *testing.T) {
 	assert.False(t, ok)
 }
 
+func TestInternalRAMMirrorsEveryTwoKiB(t *testing.T) {
+	memory := New(&bus.Bus{})
+	memory.Write(0x0007, 0xa5)
+	for _, address := range []uint16{0x0007, 0x0807, 0x1007, 0x1807} {
+		assert.Equal(t, byte(0xa5), memory.Read(address))
+	}
+	memory.Write(0x0fff, 0x5a)
+	value, ok := memory.InspectRAM(0x07ff)
+	assert.True(t, ok)
+	assert.Equal(t, byte(0x5a), value)
+}
+
 type pcmTestAPU struct {
 	bus.APU
 	reads int
