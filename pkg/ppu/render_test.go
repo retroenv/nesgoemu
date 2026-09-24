@@ -33,6 +33,17 @@ func TestUnusedNametableReads(t *testing.T) {
 		289, 291, 297, 299, 305, 307, 313, 315, 337, 339}, readCycles)
 }
 
+func TestLineCycleTables(t *testing.T) {
+	for cycle := range 341 {
+		read := cycle == 337 || cycle == 339 ||
+			(cycle >= 257 && cycle <= 320 && (cycle%8 == 1 || cycle%8 == 3))
+		fetch := (cycle >= 1 && cycle <= 256) || (cycle >= 321 && cycle <= 336)
+		update := (fetch && cycle%8 == 0) || read
+		assert.Equal(t, read, lineReadCycles[cycle], "read cycle %d", cycle)
+		assert.Equal(t, update, lineUpdateCycles[cycle], "update cycle %d", cycle)
+	}
+}
+
 func TestFirstSpriteFetchMixedAddress(t *testing.T) {
 	nt := &recordNameTable{}
 	p := &PPU{

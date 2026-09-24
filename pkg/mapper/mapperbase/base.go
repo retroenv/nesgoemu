@@ -138,11 +138,11 @@ func (b *Base) Read(address uint16) uint8 {
 			return uint8(address)
 		}
 
-		bankNr, offset := b.chrBankMapper(address)
 		b.mu.RLock()
+		bankNr, offset := b.chrBankMapper(address)
 		bank := &b.chrBanks[bankNr]
-		b.mu.RUnlock()
 		value = bank.data[offset]
+		b.mu.RUnlock()
 
 	case address >= prgRAMStart && address <= prgRAMEnd && len(b.prgRAM) > 0:
 		b.MarkFeature(feature.PRGRAM)
@@ -153,11 +153,11 @@ func (b *Base) Read(address uint16) uint8 {
 		value = b.prgRAM[offset]
 
 	case address >= nes.CodeBaseAddress:
-		bankNr, offset := b.prgBankMapper(address)
 		b.mu.RLock()
+		bankNr, offset := b.prgBankMapper(address)
 		bank := &b.prgBanks[bankNr]
-		b.mu.RUnlock()
 		value = bank.data[offset]
+		b.mu.RUnlock()
 
 	default:
 		// Addresses without memory return the value of the CPU data bus.
@@ -182,9 +182,11 @@ func (b *Base) Write(address uint16, value uint8) {
 
 	switch {
 	case address < 0x2000 && len(b.chrRAM) > 0:
+		b.mu.Lock()
 		bankNr, offset := b.chrBankMapper(address)
 		bank := &b.chrBanks[bankNr]
 		bank.data[offset] = value
+		b.mu.Unlock()
 
 	case address >= prgRAMStart && address <= prgRAMEnd && len(b.prgRAM) > 0:
 		b.MarkFeature(feature.PRGRAM)
@@ -235,9 +237,6 @@ func (b *Base) SetMapperIRQ(active bool) {
 }
 
 func (b *Base) defaultChrBankMapper(address uint16) (int, uint16) {
-	b.mu.RLock()
-	defer b.mu.RUnlock()
-
 	offset := address % uint16(b.chrWindowSize)
 	windowNr := address / uint16(b.chrWindowSize)
 	bankNr := b.chrWindows[windowNr]
@@ -245,9 +244,6 @@ func (b *Base) defaultChrBankMapper(address uint16) (int, uint16) {
 }
 
 func (b *Base) defaultPrgBankMapper(address uint16) (int, uint16) {
-	b.mu.RLock()
-	defer b.mu.RUnlock()
-
 	address -= nes.CodeBaseAddress
 	offset := address % uint16(b.prgWindowSize)
 	windowNr := address / uint16(b.prgWindowSize)

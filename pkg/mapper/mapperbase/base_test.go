@@ -66,6 +66,42 @@ func TestReadWithoutChrMemoryReturnsAddressLowByte(t *testing.T) {
 	assert.Equal(t, byte(0x35), base.Read(0x0035))
 }
 
+func TestReadDuringBankSwitches(t *testing.T) {
+	cart := &cartridge.Cartridge{
+		CHR: make([]byte, 0x4000),
+		PRG: make([]byte, 0x8000),
+	}
+	cart.CHR[0], cart.CHR[0x2000] = 1, 2
+	cart.PRG[0], cart.PRG[0x4000] = 3, 4
+	base := New(&bus.Bus{
+		Cartridge: cart,
+		NameTable: nametable.New(cart.Mirror),
+	})
+	base.Initialize()
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for range 1000 {
+			base.SetChrWindow(0, 1)
+			base.SetPrgWindow(0, 1)
+			base.SetChrWindow(0, 0)
+			base.SetPrgWindow(0, 0)
+		}
+	}()
+	for {
+		select {
+		case <-done:
+			assert.Equal(t, byte(1), base.Read(0))
+			assert.Equal(t, byte(3), base.Read(0x8000))
+			return
+		default:
+			chr, prg := base.Read(0), base.Read(0x8000)
+			assert.True(t, chr == 1 || chr == 2)
+			assert.True(t, prg == 3 || prg == 4)
+		}
+	}
+}
+
 type openBusTestValue byte
 
 func (v openBusTestValue) OpenBus() byte {

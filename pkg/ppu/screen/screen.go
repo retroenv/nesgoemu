@@ -27,7 +27,16 @@ func New() *Screen {
 
 // SetPixel sets a pixel in the rendering image.
 func (s *Screen) SetPixel(x, y int, color color.RGBA) {
-	s.back.SetRGBA(x, y, color)
+	if uint(x) >= Width || uint(y) >= Height {
+		return
+	}
+
+	index := y*s.back.Stride + x*4
+	pixels := s.back.Pix[index : index+4]
+	pixels[0] = color.R
+	pixels[1] = color.G
+	pixels[2] = color.B
+	pixels[3] = color.A
 }
 
 // Image returns the rendered image to display.

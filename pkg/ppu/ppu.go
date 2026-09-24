@@ -26,8 +26,8 @@ type PPU struct {
 
 	features *feature.Set
 
-	fineX          uint16
 	dataReadBuffer byte
+	fineX          uint16
 
 	// openBus is the decay register of the PPU I/O bus.
 	// https://www.nesdev.org/wiki/Open_bus_behavior#PPU_open_bus
@@ -43,8 +43,11 @@ type PPU struct {
 	screen      *screen.Screen
 	sprites     *sprites.Sprites
 	status      *status.Status
-	ticker      bus.PPUTicker // optional mapper hook for each PPU cycle
 	tiles       *tiles.Tiles
+
+	ticker bus.PPUTicker // optional mapper hook for each PPU cycle
+
+	writeObserver func(WriteEvent)
 }
 
 // New returns a new PPU.

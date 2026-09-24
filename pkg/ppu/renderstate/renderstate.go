@@ -23,7 +23,12 @@ func New() *RenderState {
 
 // Tick updates cycle, scanLine and frame counters.
 func (r *RenderState) Tick(mask mask) {
-	if mask.RenderBackground() || mask.RenderSprites() {
+	r.TickRendering(mask.RenderBackground() || mask.RenderSprites())
+}
+
+// TickRendering updates the counters with the current rendering state.
+func (r *RenderState) TickRendering(rendering bool) {
+	if rendering {
 		// for odd frames, the cycle at the end of the scanline is skipped
 		if r.scanLine == 261 && r.cycle == 339 && r.frame%2 == 1 {
 			r.nextFrame()

@@ -20,24 +20,28 @@ func (p *PPU) Step(cycles int) {
 
 func (p *PPU) step() {
 	p.nmi.Trigger(p.bus.CPU)
-	p.renderState.Tick(p.mask)
+	rendering := p.mask.RenderBackground() || p.mask.RenderSprites()
+	p.renderState.TickRendering(rendering)
+	cycle := p.renderState.Cycle()
+	scanLine := p.renderState.ScanLine()
 
 	if p.ticker != nil {
-		p.ticker.TickPPU(p.renderState.Cycle(), p.renderState.ScanLine(),
-			p.mask.RenderBackground() || p.mask.RenderSprites())
+		p.ticker.TickPPU(cycle, scanLine, rendering)
 	}
 
-	if p.mask.RenderBackground() || p.mask.RenderSprites() {
-		p.renderBackground()
+	if rendering {
+		p.renderBackground(cycle, scanLine)
 		// sprite evaluation occurs if either the sprite layer or background layer is enabled
-		p.sprites.Render()
+		if cycle >= 257 && cycle <= 320 && (scanLine < 240 || scanLine == 261) {
+			p.sprites.Render()
+		}
 	}
 
-	if p.renderState.Cycle() != 1 {
+	if cycle != 1 {
 		return
 	}
 
-	switch p.renderState.ScanLine() {
+	switch scanLine {
 	case 241:
 		// the vertical blank flag of the PPU is set at tick 1 (the second tick) of scanline 241,
 		// where the vertical blank NMI also occurs
@@ -51,10 +55,7 @@ func (p *PPU) step() {
 	}
 }
 
-func (p *PPU) renderBackground() {
-	cycle := p.renderState.Cycle()
-	scanLine := p.renderState.ScanLine()
-
+func (p *PPU) renderBackground(cycle, scanLine int) {
 	preLine := scanLine == 261
 	visibleLine := scanLine < 240
 	renderLine := preLine || visibleLine
@@ -76,7 +77,7 @@ func (p *PPU) renderBackground() {
 		p.addressing.CopyY()
 	}
 
-	if renderLine {
+	if renderLine && lineUpdateCycles[cycle] {
 		p.renderLine(cycle, fetchCycle)
 	}
 }
@@ -88,6 +89,11 @@ func (p *PPU) renderLine(cycle int, fetchCycle bool) {
 
 	if cycle == 256 {
 		p.addressing.IncrementY()
+	}
+
+	// Only the sprite fetch phases and the final two reads use this address.
+	if !lineReadCycles[cycle] {
+		return
 	}
 
 	// Bits 0-11 select the nametable and tile. Fine Y must not enter this address.
@@ -118,10 +124,8 @@ func (p *PPU) renderLine(cycle int, fetchCycle bool) {
 	// calls renderBackground only when background or sprite rendering is enabled.
 	// https://www.nesdev.org/wiki/PPU_rendering#Cycles_257-320
 	// https://www.nesdev.org/wiki/PPU_rendering#Cycles_337-340
-	if cycle == 337 || cycle == 339 || (cycle >= 257 && cycle <= 320 && (cycle%8 == 1 || cycle%8 == 3)) {
-		nameTableAddress := 0x2000 | (address & 0x0FFF)
-		p.memory.Read(nameTableAddress)
-	}
+	nameTableAddress := 0x2000 | (address & 0x0FFF)
+	p.memory.Read(nameTableAddress)
 }
 
 func (p *PPU) renderPixel() {

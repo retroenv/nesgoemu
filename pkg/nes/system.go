@@ -95,8 +95,12 @@ func NewSystem(opts *Options) (*System, error) {
 		cpu6502.WithCycleHook(sys.clockCPUCycle),
 	}
 	if opts.tracing {
-		cpuOpts = append(cpuOpts, cpu6502.WithTracing(), cpu6502.WithPreExecutionHook(tracePreExecutionHook))
+		cpuOpts = append(cpuOpts, cpu6502.WithTracing())
 	}
+	if opts.tracing || opts.cpuPreExecutionHook != nil {
+		cpuOpts = append(cpuOpts, cpu6502.WithPreExecutionHook(opts.runCPUPreExecutionHooks))
+	}
+	cpuOpts = append(cpuOpts, opts.cpuOptions...)
 	sys.CPU = cpu6502.New(mem, cpuOpts...)
 	systemBus.CPU = sys.CPU
 	systemBus.DMA = &sys.dma
@@ -131,6 +135,13 @@ func (sys *System) InspectRAM(address uint16) (byte, bool) {
 // InspectOAM returns a copy of primary OAM without changing PPU state.
 func (sys *System) InspectOAM() [256]byte {
 	return sys.Bus.PPU.OAM()
+}
+
+// ObserveCPUWrites replaces the optional CPU bus write observer.
+// The emulation goroutine calls it before it applies each write.
+// A nil observer disables it.
+func (sys *System) ObserveCPUWrites(observer func(memory.WriteEvent)) {
+	sys.memory.ObserveWrites(observer)
 }
 
 // StepSystem services one interrupt or CPU instruction and clocks the other components.
