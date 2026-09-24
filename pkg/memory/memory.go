@@ -10,6 +10,11 @@ import (
 	"github.com/retroenv/retrogolib/arch/system/nes/register"
 )
 
+// internalRAMMask reduces the CPU RAM window $0000 to $1FFF to the 2 KB
+// internal RAM. The RAM mirrors at $0800, $1000, and $1800.
+// https://www.nesdev.org/wiki/CPU_memory_map
+const internalRAMMask uint16 = 0x07ff
+
 // Memory represents the memory controller.
 type Memory struct {
 	bus *bus.Bus
@@ -34,7 +39,7 @@ type Memory struct {
 func New(bus *bus.Bus) *Memory {
 	return &Memory{
 		bus: bus,
-		ram: NewRAM(0, 0x2000),
+		ram: NewRAM(0, 0x0800),
 	}
 }
 
@@ -68,7 +73,7 @@ func (m *Memory) Write(address uint16, value byte) {
 
 	switch {
 	case address < register.PPU_CTRL:
-		m.ram.Write(address&nes.RAMEndAddress, value)
+		m.ram.Write(address&internalRAMMask, value)
 
 	case address < register.APU_PL1_VOL:
 		m.bus.PPU.Write(address, value)
@@ -114,14 +119,14 @@ func (m *Memory) InspectRAM(address uint16) (byte, bool) {
 		return 0, false
 	}
 
-	return m.ram.Read(address & nes.RAMEndAddress), true
+	return m.ram.Read(address & internalRAMMask), true
 }
 
 // read returns the value of a memory address without updating the data bus.
 func (m *Memory) read(address uint16) byte {
 	switch {
 	case address < register.PPU_CTRL:
-		return m.ram.Read(address & nes.RAMEndAddress)
+		return m.ram.Read(address & internalRAMMask)
 
 	case address < register.APU_PL1_VOL:
 		return m.bus.PPU.Read(address)
