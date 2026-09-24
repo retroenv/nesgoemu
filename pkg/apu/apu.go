@@ -31,6 +31,7 @@ import (
 	"github.com/retroenv/nesgoemu/pkg/apu/sweep"
 	"github.com/retroenv/nesgoemu/pkg/apu/triangle"
 	"github.com/retroenv/nesgoemu/pkg/bus"
+	"github.com/retroenv/nesgoemu/pkg/feature"
 )
 
 // SampleRate is the output sample rate of the APU in samples per second.
@@ -47,7 +48,8 @@ type APU struct {
 	noise    *noise.Noise
 	dmc      *dmc.DMC
 
-	frame *framecounter.FrameCounter
+	frame    *framecounter.FrameCounter
+	features *feature.Set
 
 	sampler *sampler.Sampler
 	output  *output.Stage
@@ -69,6 +71,8 @@ type DMCFetch struct {
 // New returns a new APU.
 func New(systemBus *bus.Bus) *APU {
 	apu := &APU{bus: systemBus}
+	apu.features = feature.NewSet()
+	apu.declareFeatures()
 	apu.reset()
 
 	return apu

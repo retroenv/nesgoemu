@@ -25,6 +25,8 @@ func (a *APU) Read(address uint16) byte {
 // Write sets an APU register.
 // https://www.nesdev.org/wiki/APU_registers
 func (a *APU) Write(address uint16, value byte) {
+	a.markFeatures(address, value)
+
 	if a.writeObserver != nil && isRegister(address) {
 		a.writeObserver(RegisterWrite{
 			Cycle:   a.cycle,

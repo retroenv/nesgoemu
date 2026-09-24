@@ -65,6 +65,18 @@ const (
 	// PPU: OAM.
 	OAMDMA
 
+	// APU: channels and modes.
+	Pulse1
+	Pulse2
+	Triangle
+	Noise
+	DMC
+	PulseSweep
+	NoiseShortMode
+	DMCLoop
+	DMCIRQ
+	FrameFiveStep
+
 	count
 )
 
@@ -103,6 +115,16 @@ var names = [count]string{
 	Grayscale:             "Grayscale",
 	ColorEmphasis:         "Color emphasis",
 	OAMDMA:                "OAM DMA",
+	Pulse1:                "Pulse 1",
+	Pulse2:                "Pulse 2",
+	Triangle:              "Triangle",
+	Noise:                 "Noise",
+	DMC:                   "DMC",
+	PulseSweep:            "Pulse sweep",
+	NoiseShortMode:        "Noise short mode",
+	DMCLoop:               "DMC loop",
+	DMCIRQ:                "DMC IRQ",
+	FrameFiveStep:         "Five-step frame counter",
 }
 
 // Usage reports whether one supported feature was used during a run.

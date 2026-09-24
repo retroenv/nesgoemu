@@ -27,12 +27,14 @@ func TestSummaryReportsRomAndFeatures(t *testing.T) {
 	sys := newSummarySystem(t)
 
 	sys.Bus.PPU.Write(register.PPU_CTRL, 0x20) // Enable 8x16 sprites.
-	sys.Bus.Mapper.Write(0x6000, 0x5A)         // Touch PRG RAM.
+	sys.Bus.APU.Write(register.APU_SND_CHN, 0x01)
+	sys.Bus.Mapper.Write(0x6000, 0x5A) // Touch PRG RAM.
 
 	summary := sys.Summary()
-	assert.Len(t, summary.Groups, 2)
+	assert.Len(t, summary.Groups, 3)
 	assert.Equal(t, "PPU", summary.Groups[0].Name)
-	assert.Equal(t, "Mapper", summary.Groups[1].Name)
+	assert.Equal(t, "APU", summary.Groups[1].Name)
+	assert.Equal(t, "Mapper", summary.Groups[2].Name)
 
 	text := summary.String()
 
@@ -42,6 +44,9 @@ func TestSummaryReportsRomAndFeatures(t *testing.T) {
 	assert.Contains(t, text, "vertical")
 	assert.Contains(t, text, "Mapper features")
 	assert.Contains(t, text, "PPU features")
+	assert.Contains(t, text, "APU features")
+	assert.Contains(t, text, "[x] Pulse 1")
+	assert.Contains(t, text, "[ ] Pulse 2")
 	assert.Contains(t, text, "[x] PRG RAM")
 	assert.Contains(t, text, "[x] 8x16 sprites")
 	assert.Contains(t, text, "[ ] NMI")
@@ -71,4 +76,5 @@ func TestStartWritesSummaryWhenEnabled(t *testing.T) {
 	)
 	assert.NoError(t, err)
 	assert.Contains(t, out.String(), "Run summary")
+	assert.Contains(t, out.String(), "APU features")
 }
