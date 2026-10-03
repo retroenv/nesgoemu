@@ -15,6 +15,11 @@ import (
 // mapper that sets its own RAM replaces this default.
 func New(bus *bus.Bus) (bus.Mapper, error) {
 	base := mapperbase.New(bus)
+	// A legacy iNES file with no CHR ROM specifies 8 KiB of CHR RAM.
+	// https://www.nesdev.org/wiki/INES
+	if bus.Cartridge.NES2 == nil && len(bus.Cartridge.CHR) == 0 {
+		base.SetChrRAM(make([]byte, 0x2000))
+	}
 	if size := mapperbase.PrgRAMSize(bus.Cartridge); size > 0 {
 		base.SetPrgRAM(make([]byte, size))
 	}
