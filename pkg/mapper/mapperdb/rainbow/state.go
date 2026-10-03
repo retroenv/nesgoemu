@@ -7,7 +7,7 @@ import (
 	"io"
 )
 
-const stateFormatVersion = 2
+const stateFormatVersion = 3
 
 // SaveState writes Rainbow-owned memory, registers, and transfer state.
 // Stop emulation before calling this method. CPU, PPU, and console CIRAM state
@@ -62,7 +62,7 @@ func (m *Mapper) LoadState(reader io.Reader) error {
 	return nil
 }
 
-// stateFields defines the version 2 record order. Keep private state private:
+// stateFields defines the version 3 record order. Keep private state private:
 // encode its fields explicitly instead of exposing registers as a public API.
 // A change to this order or its types requires a new state format version.
 func (m *Mapper) stateFields() []any {
@@ -88,6 +88,13 @@ func (m *Mapper) stateFields() []any {
 		&m.espEnabled, &m.wifiIrqEnable, &m.wifiRegs,
 		&m.esp.pending, &m.esp.queue, &m.esp.received, &m.esp.sent, &m.esp.debug, &m.esp.random,
 		&m.esp.server.protocol, &m.esp.server.port, &m.esp.server.hostname, &m.esp.server.connected,
+		&m.audio.pulse1.period, &m.audio.pulse1.timer, &m.audio.pulse1.sequence,
+		&m.audio.pulse1.duty, &m.audio.pulse1.volume, &m.audio.pulse1.mode, &m.audio.pulse1.enabled,
+		&m.audio.pulse2.period, &m.audio.pulse2.timer, &m.audio.pulse2.sequence,
+		&m.audio.pulse2.duty, &m.audio.pulse2.volume, &m.audio.pulse2.mode, &m.audio.pulse2.enabled,
+		&m.audio.saw.period, &m.audio.saw.timer, &m.audio.saw.rate, &m.audio.saw.step,
+		&m.audio.saw.accumulator, &m.audio.saw.enabled, &m.audio.outputControl,
+		&m.audio.masterVolume, &m.audio.cycle,
 	}
 }
 
@@ -117,6 +124,7 @@ func (m *Mapper) validStateRegisters() bool {
 		m.fpgaBankSelect <= fpgaBankMask && m.fpgaAutoAddr < fpgaRAMSize && m.activeSpriteIndex >= -1 &&
 		m.activeSpriteIndex < len(m.spriteBankLower) && m.bgTileSlotIdx >= 0 && m.bgTileSlotIdx < len(m.ntBank) &&
 		m.validStateOAM() && m.esp.server.protocol <= espProtocolUDPPool &&
+		m.audio.valid() &&
 		m.prgFlash.Phase <= flashBypassExit && m.chrFlash.Phase <= flashBypassExit
 }
 

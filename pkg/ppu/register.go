@@ -40,21 +40,7 @@ func (p *PPU) Read(address uint16) uint8 {
 // Write to a PPU memory register address.
 func (p *PPU) Write(address uint16, value uint8) {
 	base := mirroredRegisterAddressToBase(address)
-	if p.writeObserver != nil {
-		var cpuCycles uint64
-		if p.bus.CPU != nil {
-			cpuCycles = p.bus.CPU.Cycles()
-		}
-		p.writeObserver(WriteEvent{
-			Frame:      p.renderState.Frame(),
-			CPUCycles:  cpuCycles,
-			Scanline:   p.renderState.ScanLine(),
-			Dot:        p.renderState.Cycle(),
-			Register:   base,
-			PPUAddress: p.addressing.Address(),
-			Value:      value,
-		})
-	}
+	p.observeWrite(base, value)
 
 	if address != register.OAM_DMA {
 		// A write to a PPU port refreshes the decay register with the value.
@@ -97,8 +83,12 @@ func (p *PPU) Write(address uint16, value uint8) {
 		p.addressing.Increment(p.control.VRAMIncrement)
 
 	case register.OAM_DMA:
-		// The transfer writes each byte to $2004, the last byte refreshes the register.
-		p.openBus.Set(p.sprites.WriteDMA(value))
+		if p.bus.DMA != nil {
+			p.bus.DMA.RequestOAM(value)
+		} else {
+			// The transfer writes each byte to $2004. The last byte refreshes the register.
+			p.openBus.Set(p.sprites.WriteDMA(value))
+		}
 		p.features.Mark(feature.OAMDMA)
 
 	default:

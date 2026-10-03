@@ -8,6 +8,7 @@ func (m *Mapper) declareFeatures() {
 	m.DeclareFeature(feature.CHRSourceSelect)
 	m.DeclareFeature(feature.CPUCycleIRQ)
 	m.DeclareFeature(feature.ESPMessages)
+	m.DeclareFeature(feature.ExpansionAudio)
 	m.DeclareFeature(feature.ExtendedAttributes)
 	m.DeclareFeature(feature.FlashProgramming)
 	m.DeclareFeature(feature.FPGARAM)

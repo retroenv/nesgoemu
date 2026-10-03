@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"image"
+	"sync/atomic"
 	"time"
 
 	"github.com/retroenv/nesgoemu/pkg/apu"
@@ -24,12 +25,17 @@ import (
 type System struct {
 	opts    *Options
 	storage batteryStorage
-	memory  *memory.Memory
+
+	apu    *apu.APU
+	dma    dmaController
+	memory *memory.Memory
 
 	*cpu6502.CPU
 	Bus *bus.Bus
 
 	dimensions gui.Dimensions
+
+	audioReady atomic.Bool // Playback starts after the initial sample buffer is ready.
 }
 
 // StepResult reports the time advanced by one system step.
@@ -58,13 +64,10 @@ func NewSystem(opts *Options) (*System, error) {
 		NameTable:   nametable.New(cart.Mirror),
 	}
 
-	systemMemory := memory.New(systemBus)
-	mem, err := cpu6502.NewMemory(systemMemory)
+	systemMemory, mem, err := initializeMemory(systemBus)
 	if err != nil {
-		return nil, fmt.Errorf("creating memory: %w", err)
+		return nil, err
 	}
-	systemBus.Memory = mem
-	systemBus.OpenBus = systemMemory
 
 	systemBus.Mapper, err = mapper.New(systemBus)
 	if err != nil {
@@ -87,19 +90,13 @@ func NewSystem(opts *Options) (*System, error) {
 		return nil, err
 	}
 
-	cpuOpts := []cpu6502.Option{cpu6502.WithVariant(cpu6502.VariantNES6502)}
-	if opts.tracing {
-		cpuOpts = append(cpuOpts, cpu6502.WithTracing())
-	}
-	if opts.tracing || opts.cpuPreExecutionHook != nil {
-		cpuOpts = append(cpuOpts, cpu6502.WithPreExecutionHook(opts.runCPUPreExecutionHooks))
-	}
-	cpuOpts = append(cpuOpts, opts.cpuOptions...)
-	sys.CPU = cpu6502.New(mem, cpuOpts...)
-	systemBus.CPU = sys.CPU
+	sys.initializeCPU(mem)
+	systemBus.DMA = &sys.dma
 
-	systemBus.APU = apu.New(systemBus)
+	sys.apu = apu.New(systemBus)
+	systemBus.APU = sys.apu
 	systemBus.PPU = ppu.New(systemBus)
+	sys.clockComponents(sys.CPU.Cycles())
 	return sys, nil
 }
 
@@ -148,7 +145,6 @@ func (sys *System) StepSystem() (StepResult, error) {
 	}
 
 	cpuCycles := sys.CPU.Cycles() - cyclesBefore
-	sys.clockComponents(cpuCycles)
 	frame := sys.Bus.PPU.Frame()
 
 	return StepResult{
@@ -163,6 +159,7 @@ func (sys *System) StepSystem() (StepResult, error) {
 const (
 	ntscCPUCyclesPerFrame = 29781
 	ntscFrameDuration     = time.Second * 1000 / 60099 // ~16.64ms
+	maxFrameLag           = 250 * time.Millisecond
 )
 
 // runEmulatorSteps runs until cancellation or the given stop address.
@@ -209,11 +206,7 @@ func (sys *System) runEmulatorSteps(ctx context.Context, stopAt int) error {
 			if sleep := time.Until(nextFrame); sleep > 0 {
 				time.Sleep(sleep)
 			}
-			nextFrame = nextFrame.Add(ntscFrameDuration)
-			// If we've fallen far behind (e.g. paused/breakpoint), resync.
-			if time.Until(nextFrame) < -ntscFrameDuration {
-				nextFrame = time.Now().Add(ntscFrameDuration)
-			}
+			nextFrame = nextFrameDeadline(nextFrame, time.Now())
 		}
 	}
 }
@@ -226,12 +219,16 @@ func (sys *System) clockComponents(cycles uint64) {
 			clocker.ClockCPU(1)
 		}
 
+		sys.Bus.APU.Step(1)
 		sys.Bus.PPU.Step(3)
 	}
 }
 
-// runRenderer starts the chosen GUI renderer.
-func (sys *System) runRenderer(ctx context.Context, opts *Options, guiStarter gui.Initializer) error {
+// runRenderer starts the chosen GUI renderer. It stops when the renderer stops,
+// the context is cancelled, or the audio playback fails.
+func (sys *System) runRenderer(ctx context.Context, opts *Options, guiStarter gui.Initializer,
+	audioErrors <-chan error) error {
+
 	render, cleanup, err := guiStarter(sys)
 	if err != nil {
 		return err
@@ -243,6 +240,8 @@ func (sys *System) runRenderer(ctx context.Context, opts *Options, guiStarter gu
 	var cpuError error
 	go func() {
 		defer close(done)
+		sys.apu.StartAudioWorker()
+		defer sys.apu.StopAudioWorker()
 		cpuError = sys.runEmulatorSteps(ctx, opts.stopAt)
 	}()
 	defer func() {
@@ -256,6 +255,8 @@ func (sys *System) runRenderer(ctx context.Context, opts *Options, guiStarter gu
 			return cpuError
 		case <-ctx.Done():
 			return nil
+		case err := <-audioErrors:
+			return err
 		default:
 		}
 
@@ -268,4 +269,74 @@ func (sys *System) runRenderer(ctx context.Context, opts *Options, guiStarter gu
 		}
 		time.Sleep(time.Second / ppu.FPS)
 	}
+}
+
+// clockCPUCycle selects a bus owner, clocks the devices, and completes a DMA
+// transfer. A false return value lets the CPU complete its own bus access.
+func (sys *System) clockCPUCycle(cycle cpu6502.BusCycle) bool {
+	request, pending := sys.apu.DMCRequest()
+	get := sys.CPU.Cycles()&1 == 0
+	action := sys.dma.next(cycle, get, request, pending)
+	sys.clockComponents(1)
+	sys.memory.BeginCycle()
+
+	switch action {
+	case cpuAccess:
+		return false
+	case repeatRead:
+		sys.Bus.Memory.Read(cycle.Address)
+	case dmcRead:
+		value := sys.Bus.Memory.Read(sys.dma.dmcAddress)
+		sys.apu.CompleteDMCTransfer(value, sys.dma.dmcCycles)
+	case oamRead:
+		address := uint16(sys.dma.oamPage)<<8 | sys.dma.oamOffset
+		sys.dma.oamValue = sys.Bus.Memory.Read(address)
+		sys.dma.oamFull = true
+	case oamWrite:
+		sys.Bus.PPU.Write(0x2004, sys.dma.oamValue)
+		sys.dma.oamFull = false
+		sys.dma.oamOffset++
+		sys.dma.oamActive = sys.dma.oamOffset < 256
+	}
+	return true
+}
+
+func (sys *System) initializeCPU(mem *cpu6502.Memory) {
+	opts := sys.opts
+	cpuOpts := []cpu6502.Option{
+		cpu6502.WithVariant(cpu6502.VariantNES6502),
+		cpu6502.WithCycleHook(sys.clockCPUCycle),
+	}
+	if opts.tracing {
+		cpuOpts = append(cpuOpts, cpu6502.WithTracing())
+	}
+	if opts.tracing || opts.cpuPreExecutionHook != nil {
+		cpuOpts = append(cpuOpts, cpu6502.WithPreExecutionHook(opts.runCPUPreExecutionHooks))
+	}
+	cpuOpts = append(cpuOpts, opts.cpuOptions...)
+	sys.CPU = cpu6502.New(mem, cpuOpts...)
+	sys.Bus.CPU = sys.CPU
+}
+
+func initializeMemory(systemBus *bus.Bus) (*memory.Memory, *cpu6502.Memory, error) {
+	systemMemory := memory.New(systemBus)
+	cpuMemory, err := cpu6502.NewMemory(systemMemory)
+	if err != nil {
+		return nil, nil, fmt.Errorf("creating memory: %w", err)
+	}
+
+	systemBus.Memory = cpuMemory
+	systemBus.OpenBus = systemMemory
+
+	return systemMemory, cpuMemory, nil
+}
+
+// nextFrameDeadline permits catch-up after short scheduling delays. A long
+// pause resets the deadline to prevent a large burst after a breakpoint.
+func nextFrameDeadline(previous, now time.Time) time.Time {
+	next := previous.Add(ntscFrameDuration)
+	if now.Sub(next) > maxFrameLag {
+		return now.Add(ntscFrameDuration)
+	}
+	return next
 }

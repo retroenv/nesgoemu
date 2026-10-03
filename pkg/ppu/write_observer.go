@@ -2,7 +2,7 @@ package ppu
 
 // WriteEvent records a PPU register write before the register changes.
 // Frame, Scanline, and Dot report the current PPU state when the callback runs.
-// The system clocks the PPU after each CPU instruction.
+// The system clocks the PPU before each CPU bus access.
 type WriteEvent struct {
 	CPUCycles uint64
 	Dot       int
@@ -19,4 +19,23 @@ type WriteEvent struct {
 // A nil observer disables it. The observer must not change system state.
 func (p *PPU) ObserveWrites(observer func(WriteEvent)) {
 	p.writeObserver = observer
+}
+
+func (p *PPU) observeWrite(register uint16, value byte) {
+	if p.writeObserver == nil {
+		return
+	}
+	var cpuCycles uint64
+	if p.bus.CPU != nil {
+		cpuCycles = p.bus.CPU.Cycles()
+	}
+	p.writeObserver(WriteEvent{
+		Frame:      p.renderState.Frame(),
+		CPUCycles:  cpuCycles,
+		Scanline:   p.renderState.ScanLine(),
+		Dot:        p.renderState.Cycle(),
+		Register:   register,
+		PPUAddress: p.addressing.Address(),
+		Value:      value,
+	})
 }

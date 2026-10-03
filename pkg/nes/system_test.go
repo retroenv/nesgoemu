@@ -17,7 +17,9 @@ import (
 func TestClockComponents(t *testing.T) {
 	mapper := &clockMapper{}
 	ppu := &clockPPU{}
+	apu := &clockAPU{}
 	sys := &System{Bus: &bus.Bus{
+		APU:    apu,
 		Mapper: mapper,
 		PPU:    ppu,
 	}}
@@ -25,20 +27,38 @@ func TestClockComponents(t *testing.T) {
 	sys.clockComponents(3)
 
 	assert.Equal(t, []uint64{1, 1, 1}, mapper.cycles)
+	assert.Equal(t, []int{1, 1, 1}, apu.cycles)
 	assert.Equal(t, []int{3, 3, 3}, ppu.cycles)
 }
 
 func TestClockComponentsWithoutMapperClock(t *testing.T) {
 	ppu := &clockPPU{}
+	apu := &clockAPU{}
 	sys := &System{Bus: &bus.Bus{
+		APU:    apu,
 		Mapper: plainMapper{},
 		PPU:    ppu,
 	}}
 
 	sys.clockComponents(2)
 
+	assert.Equal(t, []int{1, 1}, apu.cycles)
 	assert.Equal(t, []int{3, 3}, ppu.cycles)
 }
+
+type clockAPU struct {
+	cycles []int
+}
+
+func (apu *clockAPU) Read(_ uint16) byte {
+	return 0
+}
+
+func (apu *clockAPU) Step(cycles int) {
+	apu.cycles = append(apu.cycles, cycles)
+}
+
+func (apu *clockAPU) Write(_ uint16, _ byte) {}
 
 func TestNewSystemWiresOpenBus(t *testing.T) {
 	t.Parallel()
@@ -140,8 +160,9 @@ func TestCPUInstructionWriteReportsCurrentPPUPosition(t *testing.T) {
 	assert.Equal(t, uint16(0x2010), ppuWrites[1].PPUAddress)
 	assert.Equal(t, cpuWrites[0].CPUCycles, ppuWrites[1].CPUCycles)
 	assert.Equal(t, ppuWrites[0].Scanline, ppuWrites[1].Scanline)
-	assert.Equal(t, ppuWrites[0].Dot, ppuWrites[1].Dot)
-	assert.NotEqual(t, ppuWrites[1].Dot, ppuWrites[2].Dot)
+	// STA absolute writes on its fourth CPU cycle, after 12 PPU cycles.
+	assert.Equal(t, ppuWrites[0].Dot+12, ppuWrites[1].Dot)
+	assert.Equal(t, ppuWrites[1].Dot, ppuWrites[2].Dot)
 }
 
 type cpuHookRecorder struct {

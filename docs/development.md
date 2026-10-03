@@ -54,7 +54,7 @@ Core NES hardware components:
 
 - **CPU** (`pkg/bus/cpu.go`): 6502 processor integration through retrogolib.
 - **PPU** (`pkg/ppu/`): Picture Processing Unit registers, memory, and rendering.
-- **APU** (`pkg/apu/`): Audio Processing Unit register structure.
+- **APU** (`pkg/apu/`): Audio Processing Unit registers, sound channels, frame counter, and audio output.
 - **Bus** (`pkg/bus/`): System interconnect for CPU, PPU, controllers, mapper, and cartridge state.
 - **Mappers** (`pkg/mapper/`): Mapper construction, catalog selection, cartridge banking, and nametable mirroring.
 - **System** (`pkg/nes/`): Emulator startup, options, tracing, GUI toggle, and debugger setup.
@@ -80,6 +80,17 @@ go test ./pkg/controller -v
 ```
 
 ### Test ROMs
+
+The 25 APU ROM fixtures run as part of `make test`. They check channel status,
+frame timing, IRQ timing, and reset behavior. Their files and hashes are in
+the repository, so tests do not download data:
+
+```bash
+go test -race -timeout 2m ./internal/testroms/apu -count=1
+```
+
+See the [APU fixture guide](../internal/testroms/apu/README.md) for result
+protocols and the [audio review](audio-review.md) for accuracy limits.
 
 The tracked nestest fixture validates CPU execution against a checked-in trace:
 

@@ -10,10 +10,14 @@ import (
 
 func TestBatteryRoundTrip(t *testing.T) {
 	m := newTestMapper(t, 0x8000, 0x2000)
-	m.Cartridge().NES2 = &cartridge.NES2Metadata{RAMSizes: cartridge.RAMSizes{
-		PRGVolatile: 16384, PRGNonvolatile: 16384,
-		CHRVolatile: 16384, CHRNonvolatile: 16384,
-	}}
+	m.Cartridge().NES2 = &cartridge.NES2Metadata{
+		RAMSizes: cartridge.RAMSizes{
+			PRGVolatile:    16384,
+			PRGNonvolatile: 16384,
+			CHRVolatile:    16384,
+			CHRNonvolatile: 16384,
+		},
+	}
 	m.prgROM[0], m.chrROM[0] = 0xAB, 0xCD
 	m.prgRAM[16384], m.chrRAM[16384] = 0x12, 0x34
 	var saved bytes.Buffer

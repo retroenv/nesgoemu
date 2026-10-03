@@ -11,6 +11,8 @@ import (
 // APU represents the Audio Processing Unit.
 type APU interface {
 	cpu6502.BasicMemory
+
+	Step(cycles int)
 }
 
 // PPU represents the Picture Processing Unit.

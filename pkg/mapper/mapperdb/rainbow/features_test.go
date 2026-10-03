@@ -43,11 +43,13 @@ func TestFeaturesMarkRegisterHandlers(t *testing.T) {
 	m.Write(regWindowSplitStart, 0)
 	m.Write(regScanIRQLatch, 0)
 	m.Write(regESPControl, 0)
+	m.Write(regAudioPulse1Control, 0)
 
 	used := usedFeatures(m)
 	assert.True(t, used.Contains(feature.WindowSplit))
 	assert.True(t, used.Contains(feature.ScanlineIRQ))
 	assert.True(t, used.Contains(feature.ESPMessages))
+	assert.True(t, used.Contains(feature.ExpansionAudio))
 	assert.False(t, used.Contains(feature.OAMRoutines), "an untouched feature must stay unused")
 	assert.False(t, used.Contains(feature.FPGARAM), "an untouched feature must stay unused")
 }

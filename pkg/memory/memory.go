@@ -20,6 +20,12 @@ type Memory struct {
 	bus *bus.Bus
 	ram *RAM
 
+	cycle uint64
+
+	controllerAddress uint16
+	controllerCycle   uint64
+	controllerValue   byte
+
 	// openBus is the last value on the CPU data bus. A read from an address
 	// with no active device repeats it.
 	// https://www.nesdev.org/wiki/Open_bus_behavior#CPU_open_bus
@@ -35,6 +41,13 @@ func New(bus *bus.Bus) *Memory {
 		bus: bus,
 		ram: NewRAM(0, 0x0800),
 	}
+}
+
+// BeginCycle advances the bus clock. Adjacent reads of the same controller
+// keep its output enable active and must not shift a second button bit.
+// https://www.nesdev.org/wiki/DMA#Register_conflicts
+func (m *Memory) BeginCycle() {
+	m.cycle++
 }
 
 // Write a byte to a memory address. A write places the value on the CPU data bus.
@@ -70,8 +83,6 @@ func (m *Memory) Write(address uint16, value byte) {
 
 	case address == register.JOYPAD1:
 		m.bus.Controller1.SetStrobeMode(value)
-
-	case address == register.JOYPAD2:
 		m.bus.Controller2.SetStrobeMode(value)
 
 	case address <= register.APU_FRAME:
@@ -121,10 +132,10 @@ func (m *Memory) read(address uint16) byte {
 		return m.bus.PPU.Read(address)
 
 	case address == controller.JOYPAD1:
-		return m.readController(m.bus.Controller1)
+		return m.readController(address, m.bus.Controller1)
 
 	case address == controller.JOYPAD2:
-		return m.readController(m.bus.Controller2)
+		return m.readController(address, m.bus.Controller2)
 
 	case address <= register.APU_FRAME:
 		if address == 0x4011 {
@@ -150,6 +161,12 @@ func (m *Memory) read(address uint16) byte {
 // bus, which is usually 010 from the high byte $40 of an absolute address. Games
 // by Mindscape rely on the value $41 for a pressed button.
 // https://www.nesdev.org/wiki/Open_bus_behavior#CPU_open_bus
-func (m *Memory) readController(controller bus.Controller) byte {
-	return m.openBus&0xE0 | controller.Read()&0x1F
+func (m *Memory) readController(address uint16, device bus.Controller) byte {
+	if m.cycle == 0 || m.controllerCycle+1 != m.cycle || m.controllerAddress != address {
+		m.controllerValue = device.Read()
+	}
+	m.controllerCycle = m.cycle
+	m.controllerAddress = address
+
+	return m.openBus&0xE0 | m.controllerValue&0x1F
 }

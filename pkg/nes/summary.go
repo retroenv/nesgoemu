@@ -52,6 +52,7 @@ func (sys *System) Summary() Summary {
 		summary.Battery = backer.BatteryBacked()
 	}
 	summary.Groups = appendFeatureGroup(summary.Groups, "PPU", sys.Bus.PPU)
+	summary.Groups = appendFeatureGroup(summary.Groups, "APU", sys.Bus.APU)
 	summary.Groups = appendFeatureGroup(summary.Groups, "Mapper", sys.Bus.Mapper)
 
 	return summary

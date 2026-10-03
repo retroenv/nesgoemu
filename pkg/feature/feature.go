@@ -47,6 +47,7 @@ const (
 	// Mapper: timing and system.
 	PPUBusTiming
 	ESPMessages
+	ExpansionAudio
 
 	// PPU: control register.
 	NMI
@@ -63,6 +64,18 @@ const (
 
 	// PPU: OAM.
 	OAMDMA
+
+	// APU: channels and modes.
+	Pulse1
+	Pulse2
+	Triangle
+	Noise
+	DMC
+	PulseSweep
+	NoiseShortMode
+	DMCLoop
+	DMCIRQ
+	FrameFiveStep
 
 	count
 )
@@ -91,6 +104,7 @@ var names = [count]string{
 	VectorRedirection:     "Vector redirection",
 	PPUBusTiming:          "PPU bus timing",
 	ESPMessages:           "ESP/Wi-Fi messages",
+	ExpansionAudio:        "expansion audio",
 	NMI:                   "NMI",
 	BackgroundTableHigh:   "Background pattern table $1000",
 	SpriteTableHigh:       "Sprite pattern table $1000",
@@ -101,6 +115,16 @@ var names = [count]string{
 	Grayscale:             "Grayscale",
 	ColorEmphasis:         "Color emphasis",
 	OAMDMA:                "OAM DMA",
+	Pulse1:                "Pulse 1",
+	Pulse2:                "Pulse 2",
+	Triangle:              "Triangle",
+	Noise:                 "Noise",
+	DMC:                   "DMC",
+	PulseSweep:            "Pulse sweep",
+	NoiseShortMode:        "Noise short mode",
+	DMCLoop:               "DMC loop",
+	DMCIRQ:                "DMC IRQ",
+	FrameFiveStep:         "Five-step frame counter",
 }
 
 // Usage reports whether one supported feature was used during a run.

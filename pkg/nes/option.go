@@ -17,7 +17,8 @@ type Options struct {
 	debug        bool
 	debugAddress string
 
-	noGui bool
+	noAudio bool
+	noGui   bool
 
 	cartridge *cartridge.Cartridge
 
@@ -122,6 +123,13 @@ func WithStopAt(address int) func(*Options) {
 func WithDisabledGUI() func(*Options) {
 	return func(options *Options) {
 		options.noGui = true
+	}
+}
+
+// WithDisabledAudio disables the audio output.
+func WithDisabledAudio() func(*Options) {
+	return func(options *Options) {
+		options.noAudio = true
 	}
 }
 

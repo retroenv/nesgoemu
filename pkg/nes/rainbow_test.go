@@ -57,6 +57,7 @@ func TestRainbowBusTimingAndIRQDelivery(t *testing.T) {
 	cart.Mapper = rainbowMapperID
 	sys, err := NewSystem(NewOptions(WithCartridge(cart)))
 	assert.NoError(t, err)
+	sys.Bus.APU.Write(0x4017, 0x40)
 	mapper := sys.Bus.Mapper
 	mapper.Write(rainbowRegScanIRQLatch, 5)
 	mapper.Write(rainbowRegScanIRQControl, 0)
@@ -75,6 +76,9 @@ func TestRainbowBusTimingAndIRQDelivery(t *testing.T) {
 	mapper.Write(rainbowRegCycleIRQControl, 1)
 	sys.clockComponents(2)
 	sys.Flags.I = 0
+	sys.PC = 0
+	sys.Bus.Memory.Write(0, 0xea)
+	assert.NoError(t, sys.CPU.Step())
 	assert.True(t, sys.CheckInterrupts())
 	assert.Equal(t, uint16(0x9234), sys.PC)
 	mapper.Write(rainbowRegCycleIRQAck, 0)

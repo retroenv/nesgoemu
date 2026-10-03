@@ -20,6 +20,12 @@ type CPUClocker interface {
 	ClockCPU(cycles uint64)
 }
 
+// ExpansionAudioSource supplies a mapper's current normalized audio level.
+// The APU samples this after the mapper has advanced for the same CPU cycle.
+type ExpansionAudioSource interface {
+	ExpansionAudioOutput() float64
+}
+
 // MapperResetter resets mapper registers and bank state.
 // The system resets the mapper before it resets the PPU and CPU.
 type MapperResetter interface {
