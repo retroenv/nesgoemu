@@ -6,6 +6,8 @@ func (b *Base) ChrBankCount() int {
 }
 
 // SetChrWindow sets a CHR window to a specific bank.
+// A negative bank counts from the end of the CHR memory. -1 is the last bank,
+// and -2 is the bank before it. A bank that is too large wraps around.
 func (b *Base) SetChrWindow(window, bank int) {
 	if bank < 0 {
 		bank = len(b.chrBanks) + bank

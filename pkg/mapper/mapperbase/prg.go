@@ -11,6 +11,8 @@ func (b *Base) PrgBankCount() int {
 }
 
 // SetPrgWindow sets a PRG window to a specific bank.
+// A negative bank counts from the end of the PRG ROM. -1 is the last bank,
+// and -2 is the bank before it. A bank that is too large wraps around.
 func (b *Base) SetPrgWindow(window, bank int) {
 	if bank < 0 {
 		bank = len(b.prgBanks) + bank
