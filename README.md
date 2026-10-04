@@ -32,9 +32,10 @@ links to its NESdev documentation.
       <td><a href="https://www.nesdev.org/wiki/MMC1">001 MMC1</a></td>
       <td><a href="https://www.nesdev.org/wiki/UxROM">002 UxROM OR</a></td>
       <td><a href="https://www.nesdev.org/wiki/CNROM">003 CNROM</a></td>
-      <td><a href="https://www.nesdev.org/wiki/AxROM">007 AxROM</a></td>
+      <td><a href="https://www.nesdev.org/wiki/MMC3">004 MMC3</a></td>
     </tr>
     <tr>
+      <td><a href="https://www.nesdev.org/wiki/AxROM">007 AxROM</a></td>
       <td><a href="https://www.nesdev.org/wiki/UNROM_512">030 UNROM-512</a></td>
       <td><a href="https://www.nesdev.org/wiki/INES_Mapper_094">094 UN1ROM</a></td>
       <td><a href="https://www.nesdev.org/wiki/GTROM">111 GTROM</a></td>

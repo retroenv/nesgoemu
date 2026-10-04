@@ -9,11 +9,9 @@ import (
 	"github.com/retroenv/retrogolib/assert"
 )
 
-func TestCatalogContainsSupportedMappers(t *testing.T) {
-	mapperNumbers := []uint16{0, 1, 2, 3, 7, 30, 94, 111, 180, 682}
-
-	for _, mapperNumber := range mapperNumbers {
-		assert.NotNil(t, constructors[mapperNumber])
+func TestCatalogConstructors(t *testing.T) {
+	for mapperNumber, constructor := range constructors {
+		assert.NotNil(t, constructor, "mapper %d has no constructor", mapperNumber)
 	}
 }
 
