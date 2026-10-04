@@ -78,9 +78,7 @@ func (p *PPU) Write(address uint16, value uint8) {
 		p.addressing.SetAddress(value)
 
 	case register.PPU_DATA:
-		address := p.addressing.Address()
-		p.memory.Write(address, value)
-		p.addressing.Increment(p.control.VRAMIncrement)
+		p.writeData(value)
 
 	case register.OAM_DMA:
 		if p.bus.DMA != nil {

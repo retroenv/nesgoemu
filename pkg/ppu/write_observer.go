@@ -39,3 +39,9 @@ func (p *PPU) observeWrite(register uint16, value byte) {
 		Value:      value,
 	})
 }
+
+func (p *PPU) writeData(value byte) {
+	address := p.addressing.Address()
+	p.memory.Write(address, value)
+	p.addressing.Increment(p.control.VRAMIncrement)
+}
