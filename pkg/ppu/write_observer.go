@@ -21,6 +21,14 @@ func (p *PPU) ObserveWrites(observer func(WriteEvent)) {
 	p.writeObserver = observer
 }
 
+// ObserveVRAMWrites replaces the optional observer for writes through PPUDATA.
+// The callback receives the PPU address before the write and address increment.
+// It runs on the emulation goroutine and must not change system state.
+// This observer is independent of ObserveWrites. A nil observer disables it.
+func (p *PPU) ObserveVRAMWrites(observer func(uint16)) {
+	p.vramWriteObserver = observer
+}
+
 func (p *PPU) observeWrite(register uint16, value byte) {
 	if p.writeObserver == nil {
 		return
@@ -42,6 +50,9 @@ func (p *PPU) observeWrite(register uint16, value byte) {
 
 func (p *PPU) writeData(value byte) {
 	address := p.addressing.Address()
+	if p.vramWriteObserver != nil {
+		p.vramWriteObserver(address)
+	}
 	p.memory.Write(address, value)
 	p.addressing.Increment(p.control.VRAMIncrement)
 }

@@ -15,8 +15,12 @@ func (b *Base) SetChrWindow(window, bank int) {
 	bank %= len(b.chrBanks)
 
 	b.mu.Lock()
+	changed := b.chrWindows[window] != bank
 	b.chrWindows[window] = bank
 	b.mu.Unlock()
+	if changed {
+		b.notifyCHRMapping(window, bank)
+	}
 }
 
 // SetChrWindowSize sets the CHR window size.

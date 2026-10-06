@@ -53,13 +53,14 @@ such as `mapper0001_mmc1.go`.
 ### Optional Mapper Capabilities
 
 All mappers implement `bus.Mapper`. A mapper can also implement one or more
-small interfaces from `pkg/bus/mapper_capabilities.go`:
+small interfaces from `pkg/bus/mapper_capabilities.go` and `pkg/bus/graphics.go`:
 
 | Interface | Behavior |
 | --- | --- |
 | `BatteryMapper` | Loads and saves persistent cartridge data while emulation is stopped. |
 | `CPUClocker` | Receives each elapsed CPU cycle before the system advances the PPU. |
 | `MapperResetter` | Resets mapper registers and bank state before the PPU and CPU reset. |
+| `MapperGraphicsObserver` | Reports mapper graphics events: effective CHR mappings, graphics memory uploads, and nametable page fetches. |
 | `PCMReader` | Supplies the value for a CPU read from `$4011` instead of the APU. |
 | `PPUTicker` | Receives the current cycle, scanline, and rendering state after each PPU clock advances. |
 | `SpriteExtFetcher` | Receives the OAM index and sprite height before each sprite pattern read. An index of `-1` identifies an empty sprite slot. The PPU clears the active entry with `(-1, 0)` after the read. |
@@ -67,6 +68,10 @@ small interfaces from `pkg/bus/mapper_capabilities.go`:
 
 Components detect these interfaces at run time. A mapper that does not implement
 an optional interface keeps the standard emulator behavior.
+
+Graphics events run on the emulation goroutine without a mapper lock held.
+The shared mapper base reports effective CHR mapping changes. Events do not
+declare game frame boundaries.
 
 ## Audio
 

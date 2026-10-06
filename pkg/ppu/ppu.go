@@ -47,7 +47,8 @@ type PPU struct {
 
 	ticker bus.PPUTicker // optional mapper hook for each PPU cycle
 
-	writeObserver func(WriteEvent)
+	writeObserver     func(WriteEvent)
+	vramWriteObserver func(uint16)
 }
 
 // New returns a new PPU.

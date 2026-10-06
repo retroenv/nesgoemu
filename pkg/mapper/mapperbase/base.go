@@ -55,6 +55,8 @@ type Base struct {
 
 	readHooks  []*readHook
 	writeHooks []*writeHook
+
+	graphicsObserver func(bus.GraphicsEvent)
 }
 
 // New creates a new mapper base.

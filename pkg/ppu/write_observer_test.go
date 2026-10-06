@@ -48,3 +48,24 @@ func TestObserveWritesReportsPPUAddressBeforeIncrement(t *testing.T) {
 	p.Write(register.PPU_DATA, 0x2c)
 	assert.Equal(t, 1, replaced)
 }
+
+func TestObserveVRAMWritesIsIndependent(t *testing.T) {
+	p := newOpenBusTestPPU()
+	var addresses []uint16
+	p.ObserveVRAMWrites(func(address uint16) { addresses = append(addresses, address) })
+	var events int
+	p.ObserveWrites(func(WriteEvent) { events++ })
+	p.Write(register.PPU_CTRL, 4)
+	p.Write(register.PPU_ADDR, 0x20)
+	p.Write(register.PPU_ADDR, 0x10)
+	p.Write(register.PPU_DATA, 0x2a)
+	p.ObserveWrites(nil)
+	p.Write(register.PPU_DATA, 0x2a)
+	assert.Equal(t, []uint16{0x2010, 0x2030}, addresses)
+	assert.Equal(t, 4, events)
+	assert.Equal(t, uint16(0x2050), p.addressing.Address())
+
+	p.ObserveVRAMWrites(nil)
+	p.Write(register.PPU_DATA, 0x2b)
+	assert.Len(t, addresses, 2)
+}
