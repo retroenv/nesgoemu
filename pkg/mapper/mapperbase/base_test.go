@@ -94,10 +94,14 @@ func TestReadDuringBankSwitches(t *testing.T) {
 			assert.Equal(t, byte(1), base.Read(0))
 			assert.Equal(t, byte(3), base.Read(0x8000))
 			return
+
 		default:
 			chr, prg := base.Read(0), base.Read(0x8000)
 			assert.True(t, chr == 1 || chr == 2)
 			assert.True(t, prg == 3 || prg == 4)
+			physical, ok := base.PRGROMOffset(0x8000)
+			assert.True(t, ok)
+			assert.True(t, physical == 0 || physical == 0x4000)
 		}
 	}
 }

@@ -19,7 +19,25 @@ const (
 	GraphicsFPGARAM GraphicsMemory = iota
 	GraphicsCHRRAM
 	GraphicsCHRROM
+	GraphicsCIRAM
 )
+
+// GraphicsMapping identifies a physical memory byte.
+// Offset is measured from the start of Memory.
+type GraphicsMapping struct {
+	Memory GraphicsMemory
+	Offset int
+}
+
+// PPUMappingInspector reports pattern-table mappings at $0000-$1FFF.
+// Read mappings use the current graphics context. Write mappings report RAM
+// or flash targets. Unmapped addresses and generated read data return false.
+// Queries do not read memory or change state. The caller must stop emulation
+// or call the queries on the emulation goroutine.
+type PPUMappingInspector interface {
+	PPUReadMapping(address uint16) (GraphicsMapping, bool)
+	PPUWriteMapping(address uint16) (GraphicsMapping, bool)
+}
 
 // GraphicsPage identifies a physical 1 KiB memory page.
 type GraphicsPage struct {

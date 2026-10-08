@@ -49,6 +49,13 @@ type PPUTicker interface {
 	TickPPU(cycle, scanLine int, rendering bool)
 }
 
+// PRGROMMapper reports the physical PRG ROM offset at a CPU address.
+// Addresses outside $8000-$FFFF, RAM, and register data return false.
+// The query does not read memory or change mapper state.
+type PRGROMMapper interface {
+	PRGROMOffset(address uint16) (int, bool)
+}
+
 // SpriteExtFetcher identifies the OAM entry for a sprite pattern read.
 // The PPU uses an OAM index of -1 for an empty slot. It clears the active
 // entry with an OAM index of -1 and a sprite size of 0 after each read.

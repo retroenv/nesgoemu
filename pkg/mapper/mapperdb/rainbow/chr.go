@@ -54,12 +54,7 @@ func (m *Mapper) bgExtCHROffset(address uint16) int {
 
 func (m *Mapper) readCHR(address uint16) uint8 {
 	m.observePPURead(address)
-	if m.windowEnabled && m.activeSpriteIndex < 0 {
-		if _, line, inside := m.windowPosition(); inside {
-			address = address&^(ppuTileSize-1) |
-				uint16((line+int(m.windowSplitRegs[windowSplitYScrollIndex]))%ppuVisibleHeight&(ppuTileSize-1))
-		}
-	}
+	address = m.chrReadAddress(address)
 	if m.chrSource == chrSourceNT {
 		return m.NameTableMemory().ReadCIRAM(address & ciramAddressMask)
 	}
@@ -67,8 +62,23 @@ func (m *Mapper) readCHR(address uint16) uint8 {
 		m.MarkFeature(feature.FPGARAM)
 		return m.fpgaRAM[address&(chrWindowSize4K-1)]
 	}
+	offset := m.chrReadOffset(address)
+	return m.readCHRSource(offset)
+}
+
+func (m *Mapper) chrReadAddress(address uint16) uint16 {
+	if m.windowEnabled && m.activeSpriteIndex < 0 {
+		if _, line, inside := m.windowPosition(); inside {
+			return address&^(ppuTileSize-1) |
+				uint16((line+int(m.windowSplitRegs[windowSplitYScrollIndex]))%ppuVisibleHeight&(ppuTileSize-1))
+		}
+	}
+	return address
+}
+
+func (m *Mapper) chrReadOffset(address uint16) int {
 	if m.spriteExtMode && m.activeSpriteIndex >= 0 {
-		return m.readSpriteCHR(address)
+		return m.spriteCHROffset(address)
 	}
 
 	regIdx, offset, windowSize := m.chrBankMapping(address)
@@ -79,10 +89,10 @@ func (m *Mapper) readCHR(address uint16) uint8 {
 		byteOffset = m.bgExtCHROffset(address)
 	}
 
-	return m.readCHRSource(byteOffset)
+	return byteOffset
 }
 
-func (m *Mapper) readSpriteCHR(address uint16) uint8 {
+func (m *Mapper) spriteCHROffset(address uint16) int {
 	i := m.activeSpriteIndex
 	var addr uint32
 	if m.activeSpriteSize == spriteSize8x16 {
@@ -94,7 +104,7 @@ func (m *Mapper) readSpriteCHR(address uint16) uint8 {
 			(uint32(m.spriteBankLower[i]) << spriteBankLowerShift8x8) |
 			(uint32(address) & (chrWindowSize4K - 1))
 	}
-	return m.readCHRSource(int(addr))
+	return int(addr)
 }
 
 func (m *Mapper) writeCHR(address uint16, value uint8) {
@@ -116,8 +126,10 @@ func (m *Mapper) writeCHR(address uint16, value uint8) {
 	case chrSourceROM:
 		m.MarkFeature(feature.FlashProgramming)
 		m.chrFlash.write(m.chrROM, byteOffset, value)
+
 	case chrSourceRAM:
 		m.writeToRAM(m.chrRAM, byteOffset, value)
+
 	case chrSourceNT:
 		m.NameTableMemory().WriteCIRAM(uint16(byteOffset&ciramAddressMask), value)
 	}
