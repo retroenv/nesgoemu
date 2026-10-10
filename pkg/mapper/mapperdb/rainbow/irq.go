@@ -80,10 +80,12 @@ func (m *Mapper) TickPPU(cycle, scanLine int, rendering bool) {
 	switch {
 	case cycle == 0:
 		m.handleNewScanline(scanLine)
+
 	case m.scanIRQ.readyToFire && cycle == int(m.scanIRQ.offset)*2-1:
 		m.scanIRQ.readyToFire = false
 		m.scanIRQ.pending = true
 		m.updateIRQStatus()
+
 	case cycle == ppuHBlankStartCycle && scanLine >= 0 && scanLine <= ppuLastVisibleLine:
 		m.scanIRQ.inHBlank = true
 	}

@@ -110,6 +110,7 @@ func (m *Mapper) readLowBank(bank uint16, offset, windowSize int) uint8 {
 	case prgLowBankSourceRAM:
 		// PRG-RAM.
 		return m.readFromPRGRAM(byteOffset)
+
 	case prgLowBankSourceFPGA:
 		// FPGA-RAM.
 		m.MarkFeature(feature.FPGARAM)
@@ -129,10 +130,12 @@ func (m *Mapper) writeLowBank(bank uint16, offset, windowSize int, value uint8) 
 	case prgLowBankSourceROM0, prgLowBankSourceROM1:
 		m.MarkFeature(feature.FlashProgramming)
 		m.prgFlash.write(m.prgROM, byteOffset, value)
+
 	case prgLowBankSourceRAM:
 		// PRG-RAM.
 		m.MarkFeature(feature.PRGRAM)
 		m.writeToRAM(m.prgRAM, byteOffset, value)
+
 	case prgLowBankSourceFPGA:
 		// FPGA-RAM.
 		m.MarkFeature(feature.FPGARAM)

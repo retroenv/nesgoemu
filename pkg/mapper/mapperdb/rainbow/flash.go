@@ -77,6 +77,7 @@ func (fl *flash) read(data []byte, offset int) byte {
 	switch offset & flashIDAddressMask {
 	case flashManufacturerIDOffset:
 		return flashManufacturerID
+
 	case flashDeviceIDOffset:
 		switch len(data) {
 		case flashSize1MB:
@@ -86,6 +87,7 @@ func (fl *flash) read(data []byte, offset int) byte {
 		case flashSize4MB, flashSize8MB:
 			return flashDeviceID4To8MB
 		}
+
 	case flashDeviceID2Offset:
 		switch len(data) {
 		case flashSize4MB:
@@ -93,10 +95,12 @@ func (fl *flash) read(data []byte, offset int) byte {
 		case flashSize8MB:
 			return flashDeviceID2For8MB
 		}
+
 	case flashDeviceID3Offset:
 		if len(data) == flashSize4MB || len(data) == flashSize8MB {
 			return 0
 		}
+
 	case flashProtectionIDOffset:
 		return 0
 	}
@@ -127,24 +131,30 @@ func (fl *flash) advance(data []byte, offset int, value byte) {
 	switch phase {
 	case flashIdle:
 		fl.unlock(address, value)
+
 	case flashUnlock:
 		if flashUnlockByte(address, value) {
 			fl.Phase = flashCommand
 		}
+
 	case flashCommand:
 		if address == flashFirstUnlockAddress {
 			fl.command(value)
 		}
+
 	case flashEraseUnlock:
 		if address == flashFirstUnlockAddress && value == flashFirstUnlockValue {
 			fl.Phase = flashEraseConfirm
 		}
+
 	case flashEraseConfirm:
 		if flashUnlockByte(address, value) {
 			fl.Phase = flashErase
 		}
+
 	case flashErase:
 		fl.erase(data, offset, value)
+
 	case flashBypassExit:
 		if value == 0 {
 			fl.Bypass = false
@@ -198,6 +208,7 @@ func flashSector(size, offset int) (int, int) {
 				}
 				start += length
 			}
+
 		case flashSize4MB, flashSize8MB:
 			start = offset &^ (flashSectorSize8K - 1)
 			return start, start + flashSectorSize8K

@@ -43,9 +43,11 @@ func (m *Mapper) writeESPRegister(address uint16, value byte) {
 			m.esp.received, m.esp.sent = false, false
 		}
 		m.updateIRQStatus()
+
 	case regESPStatus:
 		m.esp.received = false
 		m.updateIRQStatus()
+
 	case regESPStart:
 		m.startESPTransfer()
 	case regESPReceivePage, regESPTransmitPage:
@@ -99,22 +101,28 @@ func (m *Mapper) executeESP(message []byte) {
 		m.replyESP(espReady, 0)
 	case espGetDebug:
 		m.replyESP(espDebugLevel, m.esp.debug)
+
 	case espSetDebug:
 		if len(message) == 2 {
 			m.esp.debug = message[1] & espDebugMask
 		}
+
 	case espClearBuffers:
 		m.esp.queue = nil
+
 	case espDropMessages:
 		if len(message) == 3 {
 			m.dropESPMessages(message[1], int(message[2]))
 		}
+
 	case espGetVersion:
 		version := "nesgoemu"
 		m.replyESP(espFirmwareVersion, append([]byte{byte(len(version))}, version...)...)
+
 	case espRestart:
 		m.esp.queue = nil
 		m.esp.debug = 0
+
 	case espGetRandomByte, espGetByteRange, espGetRandomWord, espGetWordRange:
 		m.replyESPRandom(message)
 	case espServerGetStatus, espServerSetProtocol, espServerGetSettings, espServerSetSettings,
@@ -303,9 +311,11 @@ func espRandomRange(message []byte, word bool) (uint32, uint32, bool) {
 	switch {
 	case !word && len(message) == 3:
 		minimum, maximum = uint32(message[1]), uint32(message[2])
+
 	case word && len(message) == 5:
 		minimum = uint32(message[1])<<registerByteShift | uint32(message[2])
 		maximum = uint32(message[3])<<registerByteShift | uint32(message[4])
+
 	default:
 		return 0, 0, false
 	}

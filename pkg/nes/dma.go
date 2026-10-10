@@ -90,13 +90,16 @@ func (d *dmaController) transfer(get bool, request dmc.Request, startDMC bool) d
 		d.dmcAddress = request.Address
 		d.dmcCycles = 1
 		d.dmcPhase = dmcDummy
+
 	case d.dmcPhase == dmcDummy:
 		d.dmcCycles++
 		d.dmcPhase = dmcReady
+
 	case d.dmcPhase == dmcReady && get:
 		d.dmcCycles++
 		d.dmcPhase = dmcIdle
 		return dmcRead
+
 	case d.dmcPhase == dmcReady:
 		d.dmcCycles++
 	}

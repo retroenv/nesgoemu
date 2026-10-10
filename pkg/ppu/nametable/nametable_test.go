@@ -68,6 +68,7 @@ func TestFetchValueDuringWrites(t *testing.T) {
 		case <-done:
 			assert.Equal(t, byte(1), n.Value())
 			return
+
 		default:
 			assert.LessOrEqual(t, n.Value(), byte(1))
 		}
@@ -91,6 +92,7 @@ func TestReadHookDuringUpdates(t *testing.T) {
 		case <-done:
 			assert.Equal(t, byte(0x2A), n.Read(0x2000))
 			return
+
 		default:
 			value := n.Read(0x2000)
 			assert.True(t, value == 0x2A || value == 0x7F)

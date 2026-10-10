@@ -35,6 +35,7 @@ func TestReadDuringWrites(t *testing.T) {
 			assert.Equal(t, byte(2), p.Read(0x3F00))
 			assert.Equal(t, byte(2), p.Data()[0])
 			return
+
 		default:
 			value := p.Read(0x3F00)
 			assert.LessOrEqual(t, value, byte(2))

@@ -221,14 +221,17 @@ func (m *Mapper) readVector(address uint16) uint8 {
 		if m.nmiVectorEnabled {
 			return byte(m.nmiAddr)
 		}
+
 	case nmiVectorUpper:
 		if m.nmiVectorEnabled {
 			return byte(m.nmiAddr >> registerByteShift)
 		}
+
 	case irqVectorLower:
 		if m.irqVectorEnabled {
 			return byte(m.irqAddr)
 		}
+
 	case irqVectorUpper:
 		if m.irqVectorEnabled {
 			return byte(m.irqAddr >> registerByteShift)

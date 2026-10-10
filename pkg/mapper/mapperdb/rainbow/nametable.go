@@ -232,6 +232,7 @@ func (m *Mapper) windowPosition() (int, int, bool) {
 		if line == ppuScanlineCount {
 			line = 0
 		}
+
 	case m.ppuCycle >= ppuVisibleFetchStart && m.ppuCycle <= ppuVisibleFetchEnd:
 		column = (m.ppuCycle-ppuVisibleFetchStart)/ppuTileSize + ppuWindowColumnOffset
 	}

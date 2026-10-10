@@ -241,6 +241,7 @@ func (m *Mapper) writeVectorRegisters(address uint16, value uint8) {
 	case regVectorControl:
 		m.nmiVectorEnabled = value&vectorNMIEnableBit != 0
 		m.irqVectorEnabled = value&vectorIRQEnableBit != 0
+
 	case regNMIVectorUpper:
 		m.nmiAddr = (m.nmiAddr & registerLowByteMask) | uint16(value)<<registerByteShift
 	case regNMIVectorLower:
@@ -363,6 +364,7 @@ func (m *Mapper) readESPRegisters(address uint16) uint8 {
 	switch address {
 	case regESPControl:
 		return m.readESPConfig()
+
 	case regESPStatus:
 		var value byte
 		if m.esp.received {
@@ -372,6 +374,7 @@ func (m *Mapper) readESPRegisters(address uint16) uint8 {
 			value |= espStatusQueuedBit
 		}
 		return value
+
 	case regESPStart:
 		if m.esp.sent {
 			return espStatusSentBit

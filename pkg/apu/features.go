@@ -32,14 +32,17 @@ func (a *APU) markFeatures(address uint16, value byte) {
 				a.features.Mark(id)
 			}
 		}
+
 	case register.APU_PL1_SWEEP, register.APU_PL2_SWEEP:
 		if value&0x80 != 0 {
 			a.features.Mark(feature.PulseSweep)
 		}
+
 	case register.APU_NOISE_LO:
 		if value&0x80 != 0 {
 			a.features.Mark(feature.NoiseShortMode)
 		}
+
 	case register.APU_DMC_FREQ:
 		if value&0x40 != 0 {
 			a.features.Mark(feature.DMCLoop)
@@ -47,6 +50,7 @@ func (a *APU) markFeatures(address uint16, value byte) {
 		if value&0x80 != 0 {
 			a.features.Mark(feature.DMCIRQ)
 		}
+
 	case register.APU_FRAME:
 		if value&0x80 != 0 {
 			a.features.Mark(feature.FrameFiveStep)
