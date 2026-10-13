@@ -14,12 +14,7 @@ const audioSamplesPerCallback = 1024
 
 // AudioFormat returns the audio format of the system.
 func (sys *System) AudioFormat() audio.Format {
-	return audio.Format{
-		SampleRate: apu.SampleRate,
-		Channels:   1,
-		Samples:    audioSamplesPerCallback,
-		Format:     audio.FormatS16,
-	}
+	return nesAudioFormat()
 }
 
 // AudioCallback fills the buffer with the samples of the APU.
@@ -75,4 +70,13 @@ func playbackErrors(playback *audio.Playback) <-chan error {
 	}
 
 	return playback.Errors
+}
+
+func nesAudioFormat() audio.Format {
+	return audio.Format{
+		SampleRate: apu.SampleRate,
+		Channels:   1,
+		Samples:    audioSamplesPerCallback,
+		Format:     audio.FormatS16,
+	}
 }
