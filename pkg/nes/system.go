@@ -10,11 +10,8 @@ import (
 
 	"github.com/retroenv/nesgoemu/pkg/apu"
 	"github.com/retroenv/nesgoemu/pkg/bus"
-	"github.com/retroenv/nesgoemu/pkg/controller"
-	"github.com/retroenv/nesgoemu/pkg/mapper"
 	"github.com/retroenv/nesgoemu/pkg/memory"
 	"github.com/retroenv/nesgoemu/pkg/ppu"
-	"github.com/retroenv/nesgoemu/pkg/ppu/nametable"
 	"github.com/retroenv/nesgoemu/pkg/ppu/screen"
 	"github.com/retroenv/retrogolib/arch/cpu/cpu6502"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
@@ -56,22 +53,9 @@ func NewSystem(opts *Options) (*System, error) {
 		cart = cartridge.New()
 	}
 
-	systemBus := &bus.Bus{
-		Cartridge: cart,
-
-		Controller1: controller.New(),
-		Controller2: controller.New(),
-		NameTable:   nametable.New(cart.Mirror),
-	}
-
-	systemMemory, mem, err := initializeMemory(systemBus)
+	systemBus, systemMemory, mem, err := initializeDevices(cart)
 	if err != nil {
 		return nil, err
-	}
-
-	systemBus.Mapper, err = mapper.New(systemBus)
-	if err != nil {
-		return nil, fmt.Errorf("creating mapper: %w", err)
 	}
 
 	sys := &System{
@@ -212,16 +196,7 @@ func (sys *System) runEmulatorSteps(ctx context.Context, stopAt int) error {
 }
 
 func (sys *System) clockComponents(cycles uint64) {
-	clocker, _ := sys.Bus.Mapper.(bus.CPUClocker)
-
-	for range cycles {
-		if clocker != nil {
-			clocker.ClockCPU(1)
-		}
-
-		sys.Bus.APU.Step(1)
-		sys.Bus.PPU.Step(3)
-	}
+	clockDevices(sys.Bus, cycles)
 }
 
 // runRenderer starts the chosen GUI renderer. It stops when the renderer stops,
@@ -274,34 +249,7 @@ func (sys *System) runRenderer(ctx context.Context, opts *Options, guiStarter gu
 // clockCPUCycle selects a bus owner, clocks the devices, and completes a DMA
 // transfer. A false return value lets the CPU complete its own bus access.
 func (sys *System) clockCPUCycle(cycle cpu6502.BusCycle) bool {
-	request, pending := sys.apu.DMCRequest()
-	get := sys.CPU.Cycles()&1 == 0
-	action := sys.dma.next(cycle, get, request, pending)
-	sys.clockComponents(1)
-	sys.memory.BeginCycle()
-
-	switch action {
-	case cpuAccess:
-		return false
-	case repeatRead:
-		sys.Bus.Memory.Read(cycle.Address)
-
-	case dmcRead:
-		value := sys.Bus.Memory.Read(sys.dma.dmcAddress)
-		sys.apu.CompleteDMCTransfer(value, sys.dma.dmcCycles)
-
-	case oamRead:
-		address := uint16(sys.dma.oamPage)<<8 | sys.dma.oamOffset
-		sys.dma.oamValue = sys.Bus.Memory.Read(address)
-		sys.dma.oamFull = true
-
-	case oamWrite:
-		sys.Bus.PPU.Write(0x2004, sys.dma.oamValue)
-		sys.dma.oamFull = false
-		sys.dma.oamOffset++
-		sys.dma.oamActive = sys.dma.oamOffset < 256
-	}
-	return true
+	return clockDeviceCycle(sys.Bus, sys.apu, &sys.dma, sys.memory, sys.CPU.Cycles(), cycle)
 }
 
 func (sys *System) initializeCPU(mem *cpu6502.Memory) {
