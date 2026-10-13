@@ -79,11 +79,89 @@ func TestNativeAudio(t *testing.T) {
 }
 
 func TestNativeRejectsUnsupportedBoard(t *testing.T) {
-	for _, opts := range []NativeOptions{{Mapper: 682, CHR: make([]byte, 8192)}, {CHR: make([]byte, 4096)},
-		{CHR: make([]byte, 8192), PRGData: make([]byte, 32769)}} {
+	for _, opts := range []NativeOptions{{Mapper: 4095, CHR: make([]byte, 8192)},
+		{CHR: make([]byte, 8192), Mirror: cartridge.MirrorMode(255)}} {
 		_, err := NewNative(opts)
 		assert.Error(t, err)
 	}
+}
+
+func TestNativeCHRRAMAndPRGPadding(t *testing.T) {
+	assert.Equal(t, 32*1024, nativePRGSize(0))
+	assert.Equal(t, 32*1024, nativePRGSize(32*1024))
+	assert.Equal(t, 128*1024, nativePRGSize(80*1024))
+
+	n, err := NewNative(NativeOptions{PRGData: []byte{0x42}})
+	assert.NoError(t, err)
+	assert.Equal(t, byte(0x42), n.Read(0x8000))
+	n.Write(0x2006, 0)
+	n.Write(0x2006, 0x10)
+	n.Write(0x2007, 0x99)
+	n.Write(0x2006, 0)
+	n.Write(0x2006, 0x10)
+	_ = n.Read(0x2007)
+	assert.Equal(t, byte(0x99), n.Read(0x2007))
+}
+
+func TestNativeBankedPRGData(t *testing.T) {
+	// MMC3 maps 8 KiB PRG banks at $8000 through bank select and bank data.
+	data := make([]byte, 128*1024)
+	for bank := range 16 {
+		data[bank*8192] = byte(bank)
+	}
+	n, err := NewNative(NativeOptions{
+		Mapper:  4,
+		PRGData: data,
+	})
+	assert.NoError(t, err)
+	for _, bank := range []byte{3, 9} {
+		n.Write(0x8000, 6)
+		n.Write(0x8001, bank)
+		assert.Equal(t, bank, n.Read(0x8000))
+	}
+}
+
+func TestNativeRainbowBoard(t *testing.T) {
+	chr := make([]byte, 256*1024)
+	chr[0] = 0x5a
+	n, err := NewNative(NativeOptions{
+		Mapper:  682,
+		Mirror:  cartridge.MirrorHorizontal,
+		CHR:     chr,
+		Battery: 1,
+		NES2: &cartridge.NES2Metadata{RAMSizes: cartridge.RAMSizes{
+			PRGVolatile:    16 * 1024,
+			PRGNonvolatile: 16 * 1024,
+			CHRVolatile:    32 * 1024,
+		}},
+	})
+	assert.NoError(t, err)
+	chr[0] = 0
+	// Map PRG-RAM banks 0 and 1 at $8000 and $A000, and bank 2 at $6000.
+	for _, write := range [][2]uint16{{0x4100, 3}, {0x4106, 0x80}, {0x4116, 2},
+		{0x4108, 0x80}, {0x4118, 0}, {0x410a, 0x80}, {0x411a, 1}} {
+		n.Write(write[0], byte(write[1]))
+	}
+	n.Write(0x8000, 0x11)
+	n.Write(0xbfff, 0x22)
+	n.Write(0x6000, 0x33)
+	assert.Equal(t, byte(0x11), n.Read(0x8000))
+	assert.Equal(t, byte(0x22), n.Read(0xbfff))
+	assert.Equal(t, byte(0x33), n.Read(0x6000))
+	n.Write(0x4116, 3)
+	assert.Equal(t, byte(0), n.Read(0x6000))
+	n.Write(0x4116, 2)
+	assert.Equal(t, byte(0x33), n.Read(0x6000))
+
+	// The options CHR slice is copied, and pattern reads go through the mapper.
+	n.Write(0x2006, 0)
+	n.Write(0x2006, 0)
+	_ = n.Read(0x2007)
+	assert.Equal(t, byte(0x5a), n.Read(0x2007))
+
+	n.Write(0x2000, 0x80)
+	n.Advance(30000)
+	assert.True(t, n.TakeNMI())
 }
 
 func TestNativeMirroring(t *testing.T) {
@@ -157,7 +235,7 @@ func TestMustNewNative(t *testing.T) {
 	device.Write(0x700, 42)
 	assert.Equal(t, byte(42), device.Read(0x700))
 	for _, options := range []NativeOptions{
-		{},
+		{Mapper: 4095},
 		{CHR: make([]byte, 8192), Mirror: cartridge.MirrorMode(255)},
 	} {
 		func() {
