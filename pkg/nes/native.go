@@ -18,14 +18,23 @@ import (
 	"github.com/retroenv/retrogolib/input"
 )
 
+// nativeMinPRGData is the smallest PRG image, one full $8000-$FFFF window.
+const nativeMinPRGData = 32 * 1024
+
 // NativeOptions selects a source-mode board and source-derived assets.
-// The first supported profile is NROM with 8 KiB CHR. PRG contains data only.
+// Any mapper that the emulator implements is accepted. PRG contains data only;
+// it is padded to a power of two of at least 32 KiB. Empty CHR selects 8 KiB
+// CHR-RAM unless NES2 sets the RAM sizes.
 type NativeOptions struct {
 	Mapper uint16
 	// Mirror selects one of the named cartridge nametable layouts.
 	Mirror  cartridge.MirrorMode
 	CHR     []byte
 	PRGData []byte
+	// Battery marks nonvolatile PRG-RAM. Source mode keeps it in memory only.
+	Battery byte
+	// NES2 supplies board RAM sizes for mappers that read them.
+	NES2 *cartridge.NES2Metadata
 }
 
 type nativeClock struct {
@@ -48,25 +57,27 @@ type Native struct {
 
 // NewNative creates devices from a board and assets without loading a ROM file.
 func NewNative(opts NativeOptions) (*Native, error) {
-	if opts.Mapper != 0 || len(opts.CHR) != 8192 || len(opts.PRGData) > 32768 {
-		return nil, fmt.Errorf("unsupported native board: mapper %d, CHR %d, PRG data %d", opts.Mapper, len(opts.CHR), len(opts.PRGData))
-	}
 	if !supportedNativeMirror(opts.Mirror) {
 		return nil, fmt.Errorf("unsupported native mirroring mode: %d", opts.Mirror)
 	}
 	// The mapper's data window has no program, header, or interrupt vectors.
-	data := make([]byte, 32768)
+	data := make([]byte, nativePRGSize(len(opts.PRGData)))
 	copy(data, opts.PRGData)
 	cart := &cartridge.Cartridge{
-		Mapper: opts.Mapper,
-		Mirror: opts.Mirror,
-		CHR:    bytes.Clone(opts.CHR),
-		PRG:    data,
+		Mapper:  opts.Mapper,
+		Mirror:  opts.Mirror,
+		CHR:     bytes.Clone(opts.CHR),
+		PRG:     data,
+		Battery: opts.Battery,
+	}
+	if opts.NES2 != nil {
+		metadata := *opts.NES2
+		cart.NES2 = &metadata
 	}
 	// The CPU-memory wrapper stays in bus.Memory; no CPU interpreter is created.
 	b, m, _, err := initializeDevices(cart)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unsupported native board: %w", err)
 	}
 	n := &Native{
 		bus:    b,
@@ -186,6 +197,15 @@ func (c *nativeClock) State() cpu6502.State      { return cpu6502.State{Cycles: 
 func (c *nativeClock) SetIRQ(active bool)        { c.irq = active }
 func (c *nativeClock) TriggerIrq()               { c.irq = true }
 func (c *nativeClock) TriggerNMI()               { c.nmi = true }
+
+// nativePRGSize keeps bank masks valid for mappers that wrap PRG by size.
+func nativePRGSize(size int) int {
+	padded := nativeMinPRGData
+	for padded < size {
+		padded *= 2
+	}
+	return padded
+}
 
 func supportedNativeMirror(mode cartridge.MirrorMode) bool {
 	switch mode {
