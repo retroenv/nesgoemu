@@ -249,3 +249,58 @@ func TestMustNewNative(t *testing.T) {
 		}()
 	}
 }
+
+func TestNativeInspectPPUAndPRGRAM(t *testing.T) {
+	n, err := NewNative(NativeOptions{
+		CHR:    make([]byte, 8192),
+		Mirror: cartridge.MirrorHorizontal,
+	})
+	assert.NoError(t, err)
+
+	// Palette and nametable bytes written through the PPU ports.
+	n.Read(0x2002)
+	n.Write(0x2006, 0x3f)
+	n.Write(0x2006, 0x01)
+	n.Write(0x2007, 0x2a)
+	n.Write(0x2006, 0x20)
+	n.Write(0x2006, 0x05)
+	n.Write(0x2007, 0x17)
+
+	before := n.Cycles()
+	value, ok := n.InspectPPU(0x3f01)
+	assert.True(t, ok)
+	assert.Equal(t, byte(0x2a), value)
+	value, ok = n.InspectPPU(0x2005)
+	assert.True(t, ok)
+	assert.Equal(t, byte(0x17), value)
+	assert.Equal(t, before, n.Cycles())
+
+	// Mapper 0 does not implement pattern and PRG-RAM inspection.
+	_, ok = n.InspectPPU(0x0000)
+	assert.False(t, ok)
+	_, ok = n.InspectPRGRAM(0)
+	assert.False(t, ok)
+}
+
+func TestNativeInspectRainbowPRGRAMAndCHR(t *testing.T) {
+	n, err := NewNative(NativeOptions{
+		Mapper: 682,
+		Mirror: cartridge.MirrorHorizontal,
+		CHR:    make([]byte, 8192),
+		NES2: &cartridge.NES2Metadata{
+			RAMSizes: cartridge.RAMSizes{
+				PRGVolatile:    8 * 1024,
+				PRGNonvolatile: 8 * 1024,
+				CHRVolatile:    32 * 1024,
+			},
+		},
+	})
+	assert.NoError(t, err)
+
+	_, ok := n.InspectPRGRAM(0)
+	assert.True(t, ok)
+	_, ok = n.InspectPRGRAM(16 * 1024)
+	assert.False(t, ok)
+	_, ok = n.InspectPPU(0x0000)
+	assert.True(t, ok)
+}

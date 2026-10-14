@@ -163,6 +163,27 @@ func (n *Native) SetButtons(buttons byte) {
 // InspectRAM reads RAM without bus side effects or clock progress.
 func (n *Native) InspectRAM(address uint16) (byte, bool) { return n.memory.InspectRAM(address) }
 
+// InspectPPU returns a byte of PPU address space without bus effects. It
+// reports false when the board cannot supply it. See ppu.PPU.InspectMemory.
+func (n *Native) InspectPPU(address uint16) (byte, bool) {
+	inspector, ok := n.bus.PPU.(bus.PPUMemoryInspector)
+	if !ok {
+		return 0, false
+	}
+	return inspector.InspectMemory(address)
+}
+
+// InspectPRGRAM returns a byte of the physical PRG-RAM array without bus
+// effects, volatile bytes first. It reports false when the mapper does not
+// expose its PRG-RAM or the offset is outside the array.
+func (n *Native) InspectPRGRAM(offset int) (byte, bool) {
+	inspector, ok := n.bus.Mapper.(bus.MemoryInspector)
+	if !ok {
+		return 0, false
+	}
+	return inspector.InspectPRGRAM(offset)
+}
+
 // InspectOAM returns copied OAM for source-mode conformance checks.
 func (n *Native) InspectOAM() [256]byte { return n.bus.PPU.OAM() }
 

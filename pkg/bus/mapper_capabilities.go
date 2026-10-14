@@ -32,6 +32,33 @@ type MapperResetter interface {
 	Reset()
 }
 
+// MemoryInspector exposes mapper memory without emulated bus effects.
+// The queries do not advance mapper state, count PPU bus reads, or mark
+// features as used.
+type MemoryInspector interface {
+	// InspectCHR returns the pattern table byte at a PPU address in
+	// $0000-$1FFF as the mapper currently maps it.
+	InspectCHR(address uint16) byte
+	// InspectPRGRAM returns the byte at an offset of the physical PRG-RAM
+	// array. Volatile bytes come first, then nonvolatile bytes. It reports
+	// false for an offset outside the array.
+	InspectPRGRAM(offset int) (byte, bool)
+}
+
+// PPUMemoryInspector exposes PPU address space without bus effects.
+type PPUMemoryInspector interface {
+	// InspectMemory returns the byte at a PPU address in $0000-$3FFF. It
+	// reports false when the board cannot supply it.
+	InspectMemory(address uint16) (byte, bool)
+}
+
+// NameTableInspector exposes nametable memory without mapper hooks.
+type NameTableInspector interface {
+	// InspectNameTable returns the byte of the mirrored physical nametable
+	// memory at a PPU address in $2000-$3EFF.
+	InspectNameTable(address uint16) byte
+}
+
 // MemorySizer reports the mapper PRG RAM and CHR RAM sizes in bytes.
 type MemorySizer interface {
 	MemorySizes() (prgRAM, chrRAM int)
