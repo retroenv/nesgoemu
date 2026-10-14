@@ -137,6 +137,14 @@ func (n *NameTable) Read(address uint16) byte {
 	return value
 }
 
+// InspectNameTable returns the mirrored physical byte at a nametable address.
+// It ignores mapper hooks and does not fetch.
+func (n *NameTable) InspectNameTable(address uint16) byte {
+	n.mu.RLock()
+	defer n.mu.RUnlock()
+	return n.vram[n.mirroredNameTableAddressToBase(address)]
+}
+
 // Write a value to a nametable address.
 func (n *NameTable) Write(address uint16, value byte) {
 	n.mu.RLock()

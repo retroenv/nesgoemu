@@ -80,6 +80,33 @@ func (p *PPU) OAM() [256]byte {
 	return p.sprites.Data()
 }
 
+// InspectMemory returns a byte of PPU address space without bus effects.
+// Pattern table addresses need a mapper that implements bus.MemoryInspector;
+// they report false otherwise. Nametable addresses return the mirrored
+// physical nametable memory and ignore mapper nametable hooks. Palette
+// addresses return the palette entry.
+func (p *PPU) InspectMemory(address uint16) (byte, bool) {
+	address &= 0x3FFF
+	switch {
+	case address < 0x2000:
+		inspector, ok := p.bus.Mapper.(bus.MemoryInspector)
+		if !ok {
+			return 0, false
+		}
+		return inspector.InspectCHR(address), true
+
+	case address < 0x3F00:
+		inspector, ok := p.bus.NameTable.(bus.NameTableInspector)
+		if !ok {
+			return 0, false
+		}
+		return inspector.InspectNameTable(address), true
+
+	default:
+		return p.palette.Read(address), true
+	}
+}
+
 // Reset clears PPU control state. It keeps the current VRAM address and VBlank state.
 // https://www.nesdev.org/wiki/PPU_power_up_state
 func (p *PPU) Reset() {
@@ -112,6 +139,9 @@ func (p *PPU) reset() {
 	p.tiles = tiles.New(p.addressing, p.memory, p.bus.NameTable)
 
 	p.control = control.New(p.addressing, p.nmi, p.sprites, p.tiles)
+	// PPUCTRL powers up as zero: increment by 1 and base nametable $2000.
+	// Without this the data port increment is zero until the first $2000 write.
+	p.control.Set(0)
 }
 
 func (p *PPU) readData() byte {
