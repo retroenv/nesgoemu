@@ -104,6 +104,27 @@ func (sys *System) InspectRAM(address uint16) (byte, bool) {
 	return sys.memory.InspectRAM(address)
 }
 
+// InspectPPU returns a byte of PPU address space without bus effects. It
+// reports false when the board cannot supply it.
+func (sys *System) InspectPPU(address uint16) (byte, bool) {
+	inspector, ok := sys.Bus.PPU.(bus.PPUMemoryInspector)
+	if !ok {
+		return 0, false
+	}
+	return inspector.InspectMemory(address)
+}
+
+// InspectPRGRAM returns a byte of the physical PRG-RAM array without bus
+// effects, volatile bytes first. It reports false when the mapper does not
+// expose its PRG-RAM or the offset is outside the array.
+func (sys *System) InspectPRGRAM(offset int) (byte, bool) {
+	inspector, ok := sys.Bus.Mapper.(bus.MemoryInspector)
+	if !ok {
+		return 0, false
+	}
+	return inspector.InspectPRGRAM(offset)
+}
+
 // InspectOAM returns a copy of primary OAM without changing PPU state.
 func (sys *System) InspectOAM() [256]byte {
 	return sys.Bus.PPU.OAM()
