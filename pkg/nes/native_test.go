@@ -304,3 +304,24 @@ func TestNativeInspectRainbowPRGRAMAndCHR(t *testing.T) {
 	_, ok = n.InspectPPU(0x0000)
 	assert.True(t, ok)
 }
+
+func TestNativeDataPortIncrementsAtPowerUp(t *testing.T) {
+	n, err := NewNative(NativeOptions{
+		CHR:    make([]byte, 8192),
+		Mirror: cartridge.MirrorHorizontal,
+	})
+	assert.NoError(t, err)
+
+	// No write to $2000 has happened: PPUCTRL is zero, so the address adds 1.
+	n.Read(0x2002)
+	n.Write(0x2006, 0x20)
+	n.Write(0x2006, 0x00)
+	for index := range 4 {
+		n.Write(0x2007, byte(0x90+index))
+	}
+	for index := range 4 {
+		value, ok := n.InspectPPU(0x2000 + uint16(index))
+		assert.True(t, ok)
+		assert.Equal(t, byte(0x90+index), value)
+	}
+}

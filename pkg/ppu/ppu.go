@@ -139,6 +139,9 @@ func (p *PPU) reset() {
 	p.tiles = tiles.New(p.addressing, p.memory, p.bus.NameTable)
 
 	p.control = control.New(p.addressing, p.nmi, p.sprites, p.tiles)
+	// PPUCTRL powers up as zero: increment by 1 and base nametable $2000.
+	// Without this the data port increment is zero until the first $2000 write.
+	p.control.Set(0)
 }
 
 func (p *PPU) readData() byte {
