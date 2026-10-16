@@ -88,7 +88,8 @@ func newOAMCPU(t *testing.T, m *Mapper, system *bus.Bus) *cpu6502.CPU {
 	system.Memory = memory.New(system)
 	mem, err := cpu6502.NewMemory(system.Memory)
 	assert.NoError(t, err)
-	cpu := cpu6502.New(mem)
+	cpu, err := cpu6502.New(mem)
+	assert.NoError(t, err)
 	system.CPU = cpu
 	system.PPU = ppu.New(system)
 	return cpu

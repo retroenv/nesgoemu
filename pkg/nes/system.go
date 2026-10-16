@@ -74,7 +74,9 @@ func NewSystem(opts *Options) (*System, error) {
 		return nil, err
 	}
 
-	sys.initializeCPU(mem)
+	if err := sys.initializeCPU(mem); err != nil {
+		return nil, err
+	}
 	systemBus.DMA = &sys.dma
 
 	sys.apu = apu.New(systemBus)
@@ -273,7 +275,7 @@ func (sys *System) clockCPUCycle(cycle cpu6502.BusCycle) bool {
 	return clockDeviceCycle(sys.Bus, sys.apu, &sys.dma, sys.memory, sys.CPU.Cycles(), cycle)
 }
 
-func (sys *System) initializeCPU(mem *cpu6502.Memory) {
+func (sys *System) initializeCPU(mem *cpu6502.Memory) error {
 	opts := sys.opts
 	cpuOpts := []cpu6502.Option{
 		cpu6502.WithVariant(cpu6502.VariantNES6502),
@@ -286,8 +288,13 @@ func (sys *System) initializeCPU(mem *cpu6502.Memory) {
 		cpuOpts = append(cpuOpts, cpu6502.WithPreExecutionHook(opts.runCPUPreExecutionHooks))
 	}
 	cpuOpts = append(cpuOpts, opts.cpuOptions...)
-	sys.CPU = cpu6502.New(mem, cpuOpts...)
+	cpu, err := cpu6502.New(mem, cpuOpts...)
+	if err != nil {
+		return fmt.Errorf("creating CPU: %w", err)
+	}
+	sys.CPU = cpu
 	sys.Bus.CPU = sys.CPU
+	return nil
 }
 
 func initializeMemory(systemBus *bus.Bus) (*memory.Memory, *cpu6502.Memory, error) {

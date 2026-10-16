@@ -1,4 +1,4 @@
 github.com/ebitengine/purego v0.11.1 h1:2zpWRSQNVKN4eKsKO9eM1ILDgWfYMY9GwqRmK6XeQ/0=
 github.com/ebitengine/purego v0.11.1/go.mod h1:DCHPP08djqhNSoTfImcnHYQRZmd0qhakvrozqaEYhGQ=
-github.com/retroenv/retrogolib v0.0.0-20261014032515-038db1212075 h1:FVn/wYvB+Qvk/hXyTYb4POL85CNWeaFSecjjyXih8ws=
-github.com/retroenv/retrogolib v0.0.0-20261014032515-038db1212075/go.mod h1:ePmcj1kDlcJFJZSlTsCEySHWwR4D2LMWdAH7AVi/ZdY=
+github.com/retroenv/retrogolib v0.0.0-20261015223001-773f24c6bffd h1:FJuDgd2pMM4uKKTZELyxE5ozLdo5D60Lv0qYLQNVFcc=
+github.com/retroenv/retrogolib v0.0.0-20261015223001-773f24c6bffd/go.mod h1:ePmcj1kDlcJFJZSlTsCEySHWwR4D2LMWdAH7AVi/ZdY=
