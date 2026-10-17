@@ -54,15 +54,15 @@ func clockDeviceCycle(b *bus.Bus, a *apu.APU, d *dmaController, m *memory.Memory
 		return false
 
 	case repeatRead:
-		b.Memory.Read(cycle.Address)
+		dmaRead(b, m, cycle.Address)
 
 	case dmcRead:
-		value := b.Memory.Read(d.dmcAddress)
+		value := dmaRead(b, m, d.dmcAddress)
 		a.CompleteDMCTransfer(value, d.dmcCycles)
 
 	case oamRead:
 		address := uint16(d.oamPage)<<8 | d.oamOffset
-		d.oamValue = b.Memory.Read(address)
+		d.oamValue = dmaRead(b, m, address)
 		d.oamFull = true
 
 	case oamWrite:
@@ -72,4 +72,13 @@ func clockDeviceCycle(b *bus.Bus, a *apu.APU, d *dmaController, m *memory.Memory
 		d.oamActive = d.oamOffset < 256
 	}
 	return true
+}
+
+// dmaRead reads on behalf of a DMA transfer. The bus counters list it apart
+// from the reads of the CPU.
+func dmaRead(b *bus.Bus, m *memory.Memory, address uint16) byte {
+	m.SetDMAAccess(true)
+	value := b.Memory.Read(address)
+	m.SetDMAAccess(false)
+	return value
 }

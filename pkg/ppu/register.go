@@ -54,6 +54,9 @@ func (p *PPU) Write(address uint16, value uint8) {
 		p.markControlFeatures(value)
 
 	case register.PPU_MASK:
+		if p.probe != nil {
+			p.probeMaskChange(value)
+		}
 		p.mask.Set(value)
 		p.markMaskFeatures(value)
 

@@ -32,6 +32,9 @@ type Memory struct {
 	openBus byte
 
 	writeObserver func(WriteEvent)
+
+	counts    *AccessCounts // optional bus access counters
+	dmaAccess bool          // the current read belongs to a DMA transfer
 }
 
 // New returns a new memory instance, embedded it has
@@ -53,6 +56,9 @@ func (m *Memory) BeginCycle() {
 // Write a byte to a memory address. A write places the value on the CPU data bus.
 // https://www.nesdev.org/wiki/Open_bus_behavior#CPU_open_bus
 func (m *Memory) Write(address uint16, value byte) {
+	if m.counts != nil {
+		m.countWrite(address)
+	}
 	if m.writeObserver != nil {
 		var cycles uint64
 		if m.bus.CPU != nil {
@@ -103,6 +109,9 @@ func (m *Memory) Write(address uint16, value byte) {
 // Read a byte from a memory address. A read places the value on the CPU data bus.
 // https://www.nesdev.org/wiki/Open_bus_behavior#CPU_open_bus
 func (m *Memory) Read(address uint16) byte {
+	if m.counts != nil {
+		m.countRead()
+	}
 	m.openBus = m.read(address)
 
 	return m.openBus

@@ -24,6 +24,7 @@ func (p *PPU) step() {
 	p.renderState.TickRendering(rendering)
 	cycle := p.renderState.Cycle()
 	scanLine := p.renderState.ScanLine()
+	p.probeBackdrop(cycle, scanLine, rendering)
 
 	if p.ticker != nil {
 		p.ticker.TickPPU(cycle, scanLine, rendering)
@@ -46,6 +47,7 @@ func (p *PPU) step() {
 		// the vertical blank flag of the PPU is set at tick 1 (the second tick) of scanline 241,
 		// where the vertical blank NMI also occurs
 		p.screen.FinishRendering()
+		p.probeFinish()
 		p.nmi.SetOccurred(true)
 
 	case 261:
@@ -177,4 +179,5 @@ func (p *PPU) renderPixel() {
 	color := colors[colorIndex]
 	y := p.renderState.ScanLine()
 	p.screen.SetPixel(x, y, color)
+	p.probePixel(x, y, colorIndex)
 }

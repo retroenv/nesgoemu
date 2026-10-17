@@ -49,6 +49,7 @@ type PPU struct {
 
 	writeObserver     func(WriteEvent)
 	vramWriteObserver func(uint16)
+	probe             *frameProbe // optional frame capture
 }
 
 // New returns a new PPU.
@@ -111,6 +112,9 @@ func (p *PPU) InspectMemory(address uint16) (byte, bool) {
 // https://www.nesdev.org/wiki/PPU_power_up_state
 func (p *PPU) Reset() {
 	p.control.Set(0)
+	if p.probe != nil {
+		p.probeMaskChange(0)
+	}
 	p.mask.Set(0)
 
 	p.fineX = 0
