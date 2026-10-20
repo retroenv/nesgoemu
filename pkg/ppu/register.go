@@ -95,6 +95,7 @@ func (p *PPU) Write(address uint16, value uint8) {
 	default:
 		panic(fmt.Sprintf("unhandled ppu write at address: 0x%04X", address))
 	}
+	p.observeMapperWrite(address, value)
 }
 
 func (p *PPU) markControlFeatures(value uint8) {

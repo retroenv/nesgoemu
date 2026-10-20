@@ -45,6 +45,13 @@ type MemoryInspector interface {
 	InspectPRGRAM(offset int) (byte, bool)
 }
 
+// CPUMemoryInspector exposes cartridge CPU mappings without bus effects.
+// For $4020-$FFFF, it has priority over the PRG-RAM and PRG-ROM inspectors.
+// A board that maps RAM above $8000 or ROM below $8000 needs it.
+type CPUMemoryInspector interface {
+	InspectCPU(address uint16) (byte, bool)
+}
+
 // PPUMemoryInspector exposes PPU address space without bus effects.
 type PPUMemoryInspector interface {
 	// InspectMemory returns the byte at a PPU address in $0000-$3FFF. It
@@ -68,6 +75,13 @@ type MemorySizer interface {
 // The memory controller uses this value instead of the APU value.
 type PCMReader interface {
 	ReadPCM() byte
+}
+
+// PPURegisterObserver receives each CPU write to a PPU register after the PPU
+// applies it. The address is the original bus address, so a board can
+// identify writes to register mirrors.
+type PPURegisterObserver interface {
+	ObservePPURegisterWrite(address uint16, value byte)
 }
 
 // PPUTicker receives the current position after each PPU clock advances.

@@ -50,6 +50,7 @@ links to its NESdev documentation.
   <tbody>
     <tr>
       <td><a href="https://www.nesdev.org/wiki/NES_2.0_Mapper_682">682 Rainbow</a></td>
+      <td><a href="docs/mxm.md">800 MXM (Former Dawn demo)</a></td>
     </tr>
   </tbody>
 </table>
