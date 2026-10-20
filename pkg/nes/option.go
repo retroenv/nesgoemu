@@ -7,6 +7,7 @@ import (
 	"github.com/retroenv/nesgoemu/pkg/ppu"
 	"github.com/retroenv/retrogolib/arch/cpu/cpu6502"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
+	"github.com/retroenv/retrogolib/log"
 )
 
 // Options contains options for the nesgoemu system.
@@ -24,11 +25,14 @@ type Options struct {
 
 	cartridge *cartridge.Cartridge
 
+	logger *log.Logger
+
 	cpuPreExecutionHook func(*cpu6502.CPU, *cpu6502.Instruction, ...any)
 	cpuOptions          []cpu6502.Option
 
 	tracing       bool
 	tracingTarget io.Writer
+	traceRing     *TraceRing
 
 	summaryTarget io.Writer
 }
@@ -46,7 +50,7 @@ func NewOptions(optionList ...Option) *Options {
 		option(opts)
 	}
 
-	if opts.tracing && opts.tracingTarget == nil {
+	if opts.tracing && opts.tracingTarget == nil && opts.traceRing == nil {
 		opts.tracingTarget = os.Stdout
 	}
 
@@ -54,9 +58,6 @@ func NewOptions(optionList ...Option) *Options {
 }
 
 func (opts *Options) runCPUPreExecutionHooks(cpu *cpu6502.CPU, ins *cpu6502.Instruction, params ...any) {
-	if opts.tracing {
-		tracePreExecutionHook(cpu, ins, params...)
-	}
 	if opts.cpuPreExecutionHook != nil {
 		opts.cpuPreExecutionHook(cpu, ins, params...)
 	}
@@ -96,6 +97,15 @@ func WithDebug(debugAddress string) func(*Options) {
 func WithTracing() func(*Options) {
 	return func(options *Options) {
 		options.tracing = true
+	}
+}
+
+// WithTraceRing captures the trace into a ring buffer instead of a writer. It
+// enables CPU tracing with a side-effect-free operand reader.
+func WithTraceRing(ring *TraceRing) Option {
+	return func(options *Options) {
+		options.tracing = true
+		options.traceRing = ring
 	}
 }
 
@@ -143,6 +153,11 @@ func WithSavePath(path string) Option {
 // WithSummaryTarget sets the target for the run summary. A nil target disables the summary.
 func WithSummaryTarget(target io.Writer) Option {
 	return func(opts *Options) { opts.summaryTarget = target }
+}
+
+// WithLogger sets the logger for the system. A nil logger disables logging.
+func WithLogger(logger *log.Logger) Option {
+	return func(opts *Options) { opts.logger = logger }
 }
 
 // WithDisplayPalette sets the RGB display palette. It does not change palette RAM.

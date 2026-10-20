@@ -3,35 +3,39 @@ package main
 
 import (
 	"context"
-	"flag"
+	"errors"
 	"fmt"
 	"os"
 
+	"github.com/retroenv/nesgoemu/internal/mcpserver"
 	"github.com/retroenv/nesgoemu/pkg/nes"
 	"github.com/retroenv/nesgoemu/pkg/ppu"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 	"github.com/retroenv/retrogolib/audio"
 	audiosdl2 "github.com/retroenv/retrogolib/audio/sdl2"
 	"github.com/retroenv/retrogolib/buildinfo"
+	"github.com/retroenv/retrogolib/cli"
 	"github.com/retroenv/retrogolib/gui"
 	guisdl2 "github.com/retroenv/retrogolib/gui/sdl2"
 )
 
+// optionFlags holds the command-line options of the emulator.
 type optionFlags struct {
-	input string
+	Debug        bool   `flag:"d" usage:"start built-in webserver for debug mode"`
+	DebugAddress string `flag:"a" usage:"listening address for the debug server to use" default:"127.0.0.1:8080"`
+	Entrypoint   int    `flag:"e" usage:"entrypoint to start the CPU" default:"-1"`
+	NoGui        bool   `flag:"c" usage:"console mode, disable GUI"`
+	NoAudio      bool   `flag:"m" usage:"mute audio output"`
+	Palette      string `flag:"palette" usage:"RGB .pal file (192 or 1536 bytes)"`
+	StopAt       int    `flag:"s" usage:"stop execution at address" default:"-1"`
+	Tracing      bool   `flag:"t" usage:"print CPU tracing"`
+	WAV          string `flag:"wav" usage:"write deterministic audio to a new WAV file"`
+	AudioFrames  uint64 `flag:"audio-frames" usage:"number of sample frames to record with -wav" default:"441000"`
+}
 
-	audioFrames uint64
-	wav         string
-
-	debug        bool
-	debugAddress string
-
-	entrypoint int
-	noAudio    bool
-	noGui      bool
-	palette    string
-	stopAt     int
-	tracing    bool
+// positionalArguments holds the positional command-line arguments.
+type positionalArguments struct {
+	File string `arg:"positional" required:"true" usage:"file to emulate"`
 }
 
 var (
@@ -41,40 +45,44 @@ var (
 )
 
 func main() {
-	options := readArguments()
+	if len(os.Args) > 1 && os.Args[1] == "mcp" {
+		if err := mcpserver.Main(os.Args[2:], buildinfo.Version(version, commit, date)); err != nil {
+			fmt.Fprintf(os.Stderr, "mcp server failed: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
 
-	if err := emulateFile(options); err != nil {
+	options, input := readArguments()
+
+	if err := emulateFile(options, input); err != nil {
 		fmt.Println(fmt.Errorf("emulation failed: %w", err))
 		os.Exit(1)
 	}
 }
 
-func readArguments() optionFlags {
-	flags := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+func readArguments() (optionFlags, string) {
 	options := optionFlags{}
+	positional := positionalArguments{}
 
-	flags.BoolVar(&options.debug, "d", false, "start built-in webserver for debug mode")
-	flags.StringVar(&options.debugAddress, "a", "127.0.0.1:8080", "listening address for the debug server to use")
-	flags.IntVar(&options.entrypoint, "e", -1, "entrypoint to start the CPU")
-	flags.BoolVar(&options.noGui, "c", false, "console mode, disable GUI")
-	flags.BoolVar(&options.noAudio, "m", false, "mute audio output")
-	flags.StringVar(&options.palette, "palette", "", "RGB .pal file (192 or 1536 bytes)")
-	flags.IntVar(&options.stopAt, "s", -1, "stop execution at address")
-	flags.BoolVar(&options.tracing, "t", false, "print CPU tracing")
-	flags.StringVar(&options.wav, "wav", "", "write deterministic audio to a new WAV file")
-	flags.Uint64Var(&options.audioFrames, "audio-frames", 441000, "number of sample frames to record with -wav")
+	flagSet := cli.NewFlagSet("nesgoemu")
+	flagSet.AddSection("Options", &options)
+	flagSet.AddPositional(&positional)
 
-	err := flags.Parse(os.Args[1:])
-	args := flags.Args()
-	if err != nil || len(args) == 0 {
-		printBanner()
-		fmt.Printf("usage: nesgoemu [options] <file to emulate>\n\n")
-		flags.PrintDefaults()
+	// The flag set prints the usage text by itself for -h and for invalid flags.
+	if _, err := flagSet.Parse(os.Args[1:]); err != nil {
+		if errors.Is(err, cli.ErrHelpRequested) {
+			os.Exit(0)
+		}
+		var missing *cli.MissingArgsError
+		if errors.As(err, &missing) {
+			printBanner()
+			flagSet.ShowUsage()
+		}
 		os.Exit(1)
 	}
-	options.input = args[0]
 
-	return options
+	return options, positional.File
 }
 
 func printBanner() {
@@ -84,10 +92,10 @@ func printBanner() {
 	fmt.Printf("version: %s\n\n", buildinfo.Version(version, commit, date))
 }
 
-func emulateFile(options optionFlags) error {
-	file, err := os.Open(options.input)
+func emulateFile(options optionFlags, input string) error {
+	file, err := os.Open(input)
 	if err != nil {
-		return fmt.Errorf("opening file '%s': %w", options.input, err)
+		return fmt.Errorf("opening file '%s': %w", input, err)
 	}
 
 	cart, err := cartridge.LoadFile(file)
@@ -95,42 +103,42 @@ func emulateFile(options optionFlags) error {
 	if err != nil {
 		return fmt.Errorf("reading file: %w", err)
 	}
-	if options.wav != "" {
+	if options.WAV != "" {
 		return recordWAV(context.Background(), cart, options)
 	}
 
 	opts := []nes.Option{
 		nes.WithCartridge(cart),
-		nes.WithSavePath(options.input + ".sav"),
+		nes.WithSavePath(input + ".sav"),
 		nes.WithSummaryTarget(os.Stdout),
 	}
 
-	if options.palette != "" {
-		palette, err := readDisplayPalette(options.palette)
+	if options.Palette != "" {
+		palette, err := readDisplayPalette(options.Palette)
 		if err != nil {
 			return err
 		}
 		opts = append(opts, nes.WithDisplayPalette(palette))
 	}
-	if options.debug {
-		opts = append(opts, nes.WithDebug(options.debugAddress))
+	if options.Debug {
+		opts = append(opts, nes.WithDebug(options.DebugAddress))
 	}
-	if options.tracing {
+	if options.Tracing {
 		opts = append(opts, nes.WithTracing())
 	}
-	if options.entrypoint >= 0 {
-		opts = append(opts, nes.WithEntrypoint(options.entrypoint))
+	if options.Entrypoint >= 0 {
+		opts = append(opts, nes.WithEntrypoint(options.Entrypoint))
 	}
-	if options.stopAt >= 0 {
-		opts = append(opts, nes.WithStopAt(options.stopAt))
+	if options.StopAt >= 0 {
+		opts = append(opts, nes.WithStopAt(options.StopAt))
 	}
-	if options.noGui {
+	if options.NoGui {
 		opts = append(opts, nes.WithDisabledGUI())
 	} else {
 		gui.Setup = guisdl2.Setup
 		audio.Setup = audiosdl2.Setup
 	}
-	if options.noAudio {
+	if options.NoAudio {
 		opts = append(opts, nes.WithDisabledAudio())
 	}
 
@@ -145,14 +153,14 @@ func recordWAV(ctx context.Context, cart *cartridge.Cartridge, options optionFla
 	if err != nil {
 		return fmt.Errorf("creating recording system: %w", err)
 	}
-	if options.entrypoint >= 0 {
-		sys.PC = uint16(options.entrypoint)
+	if options.Entrypoint >= 0 {
+		sys.PC = uint16(options.Entrypoint)
 	}
-	file, err := os.OpenFile(options.wav, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+	file, err := os.OpenFile(options.WAV, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
 	if err != nil {
 		return fmt.Errorf("creating WAV file: %w", err)
 	}
-	err = sys.WriteWAV(ctx, file, options.audioFrames)
+	err = sys.WriteWAV(ctx, file, options.AudioFrames)
 	closeErr := file.Close()
 	if err != nil {
 		return fmt.Errorf("recording WAV file: %w", err)

@@ -43,10 +43,12 @@ const (
 	TimeoutContext TimeoutKind = "context"
 )
 
-// InputEvent changes controller one state before a relative frame starts.
+// InputEvent changes one controller state before a relative frame starts.
 type InputEvent struct {
-	Frame   uint64
-	Buttons controller.Button
+	Frame uint64
+	// Controller selects controller 1 or 2. Zero means controller 1.
+	Controller int
+	Buttons    controller.Button
 }
 
 // RAMCondition compares one internal CPU RAM byte.
@@ -115,7 +117,7 @@ func (sys *System) Run(ctx context.Context, opts RunOptions) RunResult {
 
 	startCycles := sys.CPU.Cycles()
 	completedFrames := uint64(0)
-	inputIndex := applyInputEvents(sys, opts.Inputs, 0, 0)
+	inputIndex := applyInputEvents(sys, opts.Inputs, 0, 0, nil)
 	var completedImage *image.RGBA
 
 	for {
@@ -152,7 +154,7 @@ func (sys *System) Run(ctx context.Context, opts RunOptions) RunResult {
 				opts.CaptureRAM)
 		}
 
-		inputIndex = applyInputEvents(sys, opts.Inputs, inputIndex, completedFrames)
+		inputIndex = applyInputEvents(sys, opts.Inputs, inputIndex, completedFrames, nil)
 	}
 }
 
@@ -240,15 +242,23 @@ func validateRAMAddress(address uint16) error {
 	return nil
 }
 
-func applyInputEvents(sys *System, events []InputEvent, index int, frame uint64) int {
-	if index >= len(events) || events[index].Frame != frame {
-		return index
+// applyInputEvents applies every input event of a frame and returns the index of
+// the next event. The callback, when set, sees each applied event.
+func applyInputEvents(sys *System, events []InputEvent, index int, frame uint64, applied func(InputEvent)) int {
+	for index < len(events) && events[index].Frame <= frame {
+		event := events[index]
+		device := sys.Bus.Controller1
+		if event.Controller == 2 {
+			device = sys.Bus.Controller2
+		}
+		device.SetButtonState(controller.Button(0xff), false)
+		device.SetButtonState(event.Buttons, true)
+		if applied != nil {
+			applied(event)
+		}
+		index++
 	}
-
-	buttons := events[index].Buttons
-	sys.Bus.Controller1.SetButtonState(controller.Button(0xff), false)
-	sys.Bus.Controller1.SetButtonState(buttons, true)
-	return index + 1
+	return index
 }
 
 func checkRunAssertions(sys *System, opts RunOptions, startCycles, completedFrames uint64,

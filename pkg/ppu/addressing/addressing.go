@@ -71,6 +71,12 @@ func (a *Addressing) Address() uint16 {
 	return a.vram.address()
 }
 
+// TempAddress returns the temporary vram address t. Rendering copies it to the
+// current vram address at the end of each scanline.
+func (a *Addressing) TempAddress() uint16 {
+	return a.temp.address()
+}
+
 // FineY returns FineY of the vram.
 func (a *Addressing) FineY() uint16 {
 	return a.vram.FineY

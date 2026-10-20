@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"image"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -33,6 +34,10 @@ type System struct {
 	dimensions gui.Dimensions
 
 	audioReady atomic.Bool // Playback starts after the initial sample buffer is ready.
+
+	hooks   atomic.Pointer[hookSet] // Runtime hooks, nil when none are installed.
+	hookMu  sync.Mutex              // Guards the modification of the hook set.
+	hookSeq uint64                  // Allocates runtime hook identifiers.
 }
 
 // StepResult reports the time advanced by one system step.
@@ -276,7 +281,12 @@ func (sys *System) runRenderer(ctx context.Context, opts *Options, guiStarter gu
 // clockCPUCycle selects a bus owner, clocks the devices, and completes a DMA
 // transfer. A false return value lets the CPU complete its own bus access.
 func (sys *System) clockCPUCycle(cycle cpu6502.BusCycle) bool {
-	return clockDeviceCycle(sys.Bus, sys.apu, &sys.dma, sys.memory, sys.CPU.Cycles(), cycle)
+	taken := clockDeviceCycle(sys.Bus, sys.apu, &sys.dma, sys.memory, sys.CPU.Cycles(), cycle)
+	if !taken {
+		// A read that DMA takes is repeated by the CPU. Observe only the access that completes.
+		sys.observeBusCycle(cycle)
+	}
+	return taken
 }
 
 func (sys *System) initializeCPU(mem *cpu6502.Memory) error {
@@ -284,12 +294,11 @@ func (sys *System) initializeCPU(mem *cpu6502.Memory) error {
 	cpuOpts := []cpu6502.Option{
 		cpu6502.WithVariant(cpu6502.VariantNES6502),
 		cpu6502.WithCycleHook(sys.clockCPUCycle),
+		cpu6502.WithPreExecutionHook(sys.runPreExecutionHooks),
+		cpu6502.WithStackEventHook(sys.runStackHooks),
 	}
 	if opts.tracing {
 		cpuOpts = append(cpuOpts, cpu6502.WithTracing())
-	}
-	if opts.tracing || opts.cpuPreExecutionHook != nil {
-		cpuOpts = append(cpuOpts, cpu6502.WithPreExecutionHook(opts.runCPUPreExecutionHooks))
 	}
 	cpuOpts = append(cpuOpts, opts.cpuOptions...)
 	cpu, err := cpu6502.New(mem, cpuOpts...)

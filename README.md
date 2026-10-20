@@ -16,6 +16,7 @@ headless execution, CPU tracing, and HTTP debugging.
 * **Audio** - Emulates the APU sound channels and plays them through SDL2
 * **Graphical and headless modes** - Runs interactively through SDL2 or without a window for automation
 * **Development tools** - Provides CPU tracing, execution control, and an HTTP debugger
+* **MCP server** - Drives the emulator headless from an AI agent over the Model Context Protocol
 * **Portable builds** - Builds without CGO for Linux, macOS, and Windows
 
 ## Supported Mappers
@@ -86,4 +87,5 @@ nesgoemu -c game.nes
 
 See the [usage guide](docs/usage.md) for command-line options and controls,
 the [advanced usage guide](docs/advanced-usage.md) for tracing and debugging,
-and the [architecture guide](docs/architecture.md) for internals.
+the [MCP server guide](docs/mcp.md) to drive the emulator from an AI agent, and
+the [architecture guide](docs/architecture.md) for internals.

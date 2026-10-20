@@ -61,9 +61,25 @@ func (a *APU) Write(address uint16, value byte) {
 	}
 }
 
+// PeekStatus returns the $4015 status without clearing the frame interrupt
+// flag. It does not change emulation state.
+func (a *APU) PeekStatus() byte {
+	return a.statusValue()
+}
+
 // readStatus reads $4015 and clears the frame interrupt flag.
 // https://www.nesdev.org/wiki/APU#Status_($4015)
 func (a *APU) readStatus() byte {
+	value := a.statusValue()
+
+	a.frame.ClearIRQ()
+	a.updateIRQ()
+
+	return value
+}
+
+// statusValue builds the $4015 status byte without changing state.
+func (a *APU) statusValue() byte {
 	var value byte
 	if a.pulse1.LengthActive() {
 		value |= 0x01
@@ -86,9 +102,6 @@ func (a *APU) readStatus() byte {
 	if a.frame.IRQ() {
 		value |= 0x40
 	}
-
-	a.frame.ClearIRQ()
-	a.updateIRQ()
 
 	return value
 }
