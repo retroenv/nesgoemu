@@ -81,7 +81,11 @@ func NewSystem(opts *Options) (*System, error) {
 
 	sys.apu = apu.New(systemBus)
 	systemBus.APU = sys.apu
-	systemBus.PPU = ppu.New(systemBus)
+	video := ppu.New(systemBus)
+	if opts.displayPalette != nil {
+		video.SetDisplayPalette(*opts.displayPalette)
+	}
+	systemBus.PPU = video
 	sys.clockComponents(sys.CPU.Cycles())
 	return sys, nil
 }

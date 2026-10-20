@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/retroenv/nesgoemu/pkg/nes"
+	"github.com/retroenv/nesgoemu/pkg/ppu"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 	"github.com/retroenv/retrogolib/audio"
 	audiosdl2 "github.com/retroenv/retrogolib/audio/sdl2"
@@ -28,6 +29,7 @@ type optionFlags struct {
 	entrypoint int
 	noAudio    bool
 	noGui      bool
+	palette    string
 	stopAt     int
 	tracing    bool
 }
@@ -56,6 +58,7 @@ func readArguments() optionFlags {
 	flags.IntVar(&options.entrypoint, "e", -1, "entrypoint to start the CPU")
 	flags.BoolVar(&options.noGui, "c", false, "console mode, disable GUI")
 	flags.BoolVar(&options.noAudio, "m", false, "mute audio output")
+	flags.StringVar(&options.palette, "palette", "", "RGB .pal file (192 or 1536 bytes)")
 	flags.IntVar(&options.stopAt, "s", -1, "stop execution at address")
 	flags.BoolVar(&options.tracing, "t", false, "print CPU tracing")
 	flags.StringVar(&options.wav, "wav", "", "write deterministic audio to a new WAV file")
@@ -102,6 +105,13 @@ func emulateFile(options optionFlags) error {
 		nes.WithSummaryTarget(os.Stdout),
 	}
 
+	if options.palette != "" {
+		palette, err := readDisplayPalette(options.palette)
+		if err != nil {
+			return err
+		}
+		opts = append(opts, nes.WithDisplayPalette(palette))
+	}
 	if options.debug {
 		opts = append(opts, nes.WithDebug(options.debugAddress))
 	}
@@ -151,4 +161,18 @@ func recordWAV(ctx context.Context, cart *cartridge.Cartridge, options optionFla
 		return fmt.Errorf("closing WAV file: %w", closeErr)
 	}
 	return nil
+}
+
+// readDisplayPalette reads and parses an RGB .pal file.
+func readDisplayPalette(path string) (ppu.DisplayPalette, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return ppu.DisplayPalette{}, fmt.Errorf("reading display palette: %w", err)
+	}
+
+	palette, err := ppu.ParseDisplayPalette(data)
+	if err != nil {
+		return ppu.DisplayPalette{}, fmt.Errorf("display palette: %w", err)
+	}
+	return palette, nil
 }

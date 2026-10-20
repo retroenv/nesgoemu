@@ -58,8 +58,8 @@ func TestObserveFramesBlankFrameShowsBackdrop(t *testing.T) {
 	assert.Len(t, second.MaskChanges, 0)
 
 	img := second.RGBA()
-	assert.Equal(t, colors[0x21], img.RGBAAt(0, 0))
-	assert.Equal(t, colors[0x21], img.RGBAAt(Width-1, Height-1))
+	assert.Equal(t, RGB(0x21), img.RGBAAt(0, 0))
+	assert.Equal(t, RGB(0x21), img.RGBAAt(Width-1, Height-1))
 }
 
 func TestObserveFramesRenderedFrame(t *testing.T) {
@@ -295,7 +295,7 @@ func TestObserveFramesBlankPaletteOverride(t *testing.T) {
 			frame := (*captures)[1]
 			assert.Equal(t, tt.want, frame.Indices[0])
 			assert.Equal(t, tt.want, frame.Indices[Width*Height-1])
-			assert.Equal(t, colors[tt.want], frame.RGBA().RGBAAt(0, 0))
+			assert.Equal(t, RGB(tt.want), frame.RGBA().RGBAAt(0, 0))
 			assert.Equal(t, 0, frame.Rendered())
 			assert.Equal(t, tt.address, p.addressing.Address())
 		})

@@ -28,6 +28,8 @@ usage: nesgoemu [options] <file to emulate>
   -e int
         entrypoint to start the CPU (default -1)
   -m    mute audio output
+  -palette string
+        RGB .pal file (192 or 1536 bytes)
   -s int
         stop execution at address (default -1)
   -t    print CPU tracing
@@ -36,6 +38,30 @@ usage: nesgoemu [options] <file to emulate>
   -audio-frames uint
         number of sample frames to record with -wav (default 441000)
 ```
+
+## Display Palette
+
+The display palette converts the PPU color index and the PPUMASK emphasis bits
+to RGB. It does not change palette RAM. The executable contains a default
+palette: the `2C02_default.pal` example of
+[Pally](https://github.com/Gumball2415/pally), revision `9635e9b`. Pally makes
+this palette from a 2C02 NTSC signal model. It has explicit RGB values for all
+eight emphasis values. Its license is in
+[pkg/ppu/palettes/LICENSE.md](../pkg/ppu/palettes/LICENSE.md).
+
+Use `-palette` to load a different RGB `.pal` file:
+
+```bash
+nesgoemu -palette custom.pal game.nes
+```
+
+A 1536-byte file supplies 64 colors for each of the eight emphasis values. A
+192-byte file supplies only 64 colors. For this size, the emulator calculates
+the emphasis colors: each emphasis bit multiplies the two other channels by
+3/4. This is an approximation.
+
+The palette applies to the GUI and to frame captures. The `ppu.RGB` function
+always uses the default palette.
 
 ## Common Run Modes
 

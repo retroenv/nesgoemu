@@ -84,8 +84,8 @@ func TestGrayscalePixelOutput(t *testing.T) {
 	p.screen.FinishRendering()
 
 	for value := range 64 {
-		assert.Equal(t, colors[value&0x30], p.Image().RGBAAt(value*2, 0))
-		assert.Equal(t, colors[value], p.Image().RGBAAt(value*2+1, 0))
+		assert.Equal(t, RGB(byte(value&0x30)), p.Image().RGBAAt(value*2, 0))
+		assert.Equal(t, RGB(byte(value)), p.Image().RGBAAt(value*2+1, 0))
 	}
 }
 
@@ -113,9 +113,9 @@ func TestBackgroundPrefetchDrawsFirstTileAtLeftEdge(t *testing.T) {
 	p.Write(register.PPU_MASK, 0x0a)
 	p.Step(341 * 262 * 2)
 
-	assert.Equal(t, colors[0x30], p.Image().RGBAAt(0, 0))
-	assert.Equal(t, colors[0x30], p.Image().RGBAAt(7, 0))
-	assert.Equal(t, colors[0x0f], p.Image().RGBAAt(8, 0))
+	assert.Equal(t, RGB(0x30), p.Image().RGBAAt(0, 0))
+	assert.Equal(t, RGB(0x30), p.Image().RGBAAt(7, 0))
+	assert.Equal(t, RGB(0x0f), p.Image().RGBAAt(8, 0))
 }
 
 type recordNameTable struct {

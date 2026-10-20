@@ -45,6 +45,8 @@ type PPU struct {
 	status      *status.Status
 	tiles       *tiles.Tiles
 
+	displayPalette DisplayPalette // RGB output conversion, not palette RAM
+
 	ticker bus.PPUTicker // optional mapper hook for each PPU cycle
 
 	writeObserver     func(WriteEvent)
@@ -55,8 +57,9 @@ type PPU struct {
 // New returns a new PPU.
 func New(systemBus *bus.Bus) *PPU {
 	p := &PPU{
-		bus:      systemBus,
-		features: feature.NewSet(),
+		bus:            systemBus,
+		features:       feature.NewSet(),
+		displayPalette: DefaultDisplayPalette(),
 	}
 	p.declareFeatures()
 	p.reset()
@@ -188,6 +191,12 @@ func (p *PPU) maskPaletteColor(value byte) byte {
 		return value & 0x30
 	}
 	return value & 0x3F
+}
+
+// emphasis returns the PPUMASK color emphasis bits 7:5 as a value 0-7.
+// https://www.nesdev.org/wiki/PPU_registers#Color_control
+func (p *PPU) emphasis() byte {
+	return p.mask.Value() >> emphasisShift
 }
 
 func (p *PPU) getStatus() byte {

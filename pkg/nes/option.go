@@ -4,15 +4,17 @@ import (
 	"io"
 	"os"
 
+	"github.com/retroenv/nesgoemu/pkg/ppu"
 	"github.com/retroenv/retrogolib/arch/cpu/cpu6502"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 )
 
 // Options contains options for the nesgoemu system.
 type Options struct {
-	entrypoint int
-	savePath   string
-	stopAt     int
+	displayPalette *ppu.DisplayPalette
+	entrypoint     int
+	savePath       string
+	stopAt         int
 
 	debug        bool
 	debugAddress string
@@ -141,4 +143,9 @@ func WithSavePath(path string) Option {
 // WithSummaryTarget sets the target for the run summary. A nil target disables the summary.
 func WithSummaryTarget(target io.Writer) Option {
 	return func(opts *Options) { opts.summaryTarget = target }
+}
+
+// WithDisplayPalette sets the RGB display palette. It does not change palette RAM.
+func WithDisplayPalette(palette ppu.DisplayPalette) Option {
+	return func(opts *Options) { opts.displayPalette = &palette }
 }
