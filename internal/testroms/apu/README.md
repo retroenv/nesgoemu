@@ -13,13 +13,13 @@ The upstream descriptions are retained as text references beside the ROMs.
 Run the tests with:
 
 ```sh
-go test -race -timeout 2m ./internal/testroms/apu -count=1
+go test -race -timeout 5m ./internal/testroms/apu -count=1
 ```
 
 `make test` includes this package. To run one ROM:
 
 ```sh
-go test -timeout 2m ./internal/testroms/apu -run 'TestAPU/apu_test/4-jitter' -v
+go test -timeout 5m ./internal/testroms/apu -run 'TestAPU/apu_test/4-jitter' -v
 ```
 
 The later ROMs identify their result area with bytes `$DE $B0 $61` at

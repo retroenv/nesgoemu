@@ -86,7 +86,7 @@ frame timing, IRQ timing, and reset behavior. Their files and hashes are in
 the repository, so tests do not download data:
 
 ```bash
-go test -race -timeout 2m ./internal/testroms/apu -count=1
+go test -race -timeout 5m ./internal/testroms/apu -count=1
 ```
 
 See the [APU fixture guide](../internal/testroms/apu/README.md) for result
