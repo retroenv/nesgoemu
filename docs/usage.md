@@ -60,8 +60,9 @@ A 1536-byte file supplies 64 colors for each of the eight emphasis values. A
 the emphasis colors: each emphasis bit multiplies the two other channels by
 3/4. This is an approximation.
 
-The palette applies to the GUI and to frame captures. The `ppu.RGB` function
-always uses the default palette.
+The palette applies to the GUI, MCP screenshots, and frame captures. The
+`ppu.RGB` function and the MCP palette and nametable views always use the
+default palette.
 
 ## Common Run Modes
 

@@ -74,6 +74,26 @@ The Mesen build in the demo package blends frames with its own display filter.
   emulator.
 - RAM, PRG, and ordinary PPU memory inspection without side effects.
 
+## MCP mode
+
+The mapper operates with the headless MCP server:
+
+```bash
+./nesgoemu mcp -root /path/to/roms
+```
+
+Use `create_machine` to load the ROM, and `run_frames` to advance 180 frames.
+Then use `set_buttons` with `buttons: ["Start"]` and `hold_frames: 1`. Release
+with `buttons: []` and run 299 more frames. `screenshot` then shows the first
+room. Use the same controller tools for movement, interactions, and menus.
+
+`read_memory`, `machine_info`, `ppu_state`, and `bank_state` operate while the
+machine is paused. CPU reads use the active MXM ROM/RAM banks and do not cause
+register side effects. To use the colors of the demo package, set
+`palette: "unsatv6_emph.pal"` in `create_machine`. See
+[MCP setup and protocol](mcp.md) for the client requirements and the palette
+behavior.
+
 ## Validation
 
 Synthetic unit tests in `pkg/mapper/mapperdb/mxm` and `pkg/nes` check the

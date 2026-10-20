@@ -150,7 +150,7 @@ func (m *Machine) restore(ctx context.Context, target replayTarget, timeout time
 		return err
 	}
 
-	sys, _, err := loadSystem(m.logger, m.rom, m.entrypoint, m.battery, m.traceRing)
+	sys, _, err := loadSystem(m.logger, m.rom, m.entrypoint, m.battery, m.palette, m.traceRing)
 	if err != nil {
 		return err
 	}

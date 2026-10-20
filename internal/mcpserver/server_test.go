@@ -35,6 +35,8 @@ const (
 	pathKey         = "path"
 	buttonsKey      = "buttons"
 	inputsKey       = "inputs"
+	eventsKey       = "events"
+	paletteKey      = "palette"
 	filterAction    = "filter"
 	execKind        = "exec"
 

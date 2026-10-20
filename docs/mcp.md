@@ -105,3 +105,18 @@ a server restart.
 The server sends a full tool and resource reference as the
 `nesgoemu://docs/mcp` resource, and the tool descriptions carry the same
 information.
+
+## Display palette
+
+`create_machine` has an optional `palette` argument. It is the path of an RGB
+`.pal` file with 192 or 1536 bytes, inside the allowed roots. Without it, the
+machine uses the default palette that [usage](usage.md#display-palette)
+describes.
+
+The palette applies to screenshots and image resources. It stays after resets,
+forks, and event-log replay. Event logs contain the palette bytes, so a restore
+does not need the original file.
+
+A screenshot shows the last completed frame. Each pixel uses the PPUMASK
+emphasis bits that were active when the PPU drew it. A screenshot does not
+advance emulation.

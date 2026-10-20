@@ -6,11 +6,16 @@ import (
 )
 
 // Peek reads one byte of CPU address space without emulated bus side effects.
-// It reads internal RAM directly, PRG-RAM through a mapper inspector, and
-// PRG-ROM through the mapper PRG offset. It reports false when the address has
-// no side-effect-free path. A PRG-RAM read needs a mapper that implements
-// bus.MemoryInspector; other mappers report false.
+// A mapper CPUMemoryInspector takes precedence for cartridge addresses.
+// Otherwise it reads internal RAM directly, physical PRG-RAM through a mapper
+// inspector, and PRG-ROM through the mapper PRG offset. It reports false when
+// the address has no side-effect-free path.
 func (sys *System) Peek(address uint16) (byte, bool) {
+	if address >= cartridgeMemoryStart {
+		if inspector, ok := sys.Bus.Mapper.(bus.CPUMemoryInspector); ok {
+			return inspector.InspectCPU(address)
+		}
+	}
 	switch {
 	case address <= cpuRAMEnd:
 		return sys.memory.InspectRAM(address)
@@ -95,6 +100,8 @@ func prgBankNumber(windows []int, address uint16) int {
 }
 
 const (
+	cartridgeMemoryStart = 0x4020
+
 	// prgWindowSize is the size of the CPU PRG address window $8000-$FFFF.
 	prgWindowSize = 0x8000
 	cpuRAMEnd     = 0x1FFF

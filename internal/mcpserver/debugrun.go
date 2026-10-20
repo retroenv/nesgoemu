@@ -218,7 +218,7 @@ func (m *Machine) forkMachine(ctx context.Context, logger *log.Logger, target re
 	}
 
 	ring := nes.NewTraceRing(0)
-	sys, summary, err := loadSystem(logger, m.rom, m.entrypoint, m.battery, ring)
+	sys, summary, err := loadSystem(logger, m.rom, m.entrypoint, m.battery, m.palette, ring)
 	if err != nil {
 		return nil, romSummary{}, err
 	}
@@ -230,7 +230,7 @@ func (m *Machine) forkMachine(ctx context.Context, logger *log.Logger, target re
 	if err != nil {
 		return nil, romSummary{}, err
 	}
-	fork := newMachine(id, m.rom, sys, m.entrypoint, m.battery)
+	fork := newMachine(id, m.rom, sys, m.entrypoint, m.battery, m.palette)
 	fork.logger = logger
 	fork.traceRing = ring
 	fork.breakpoints = nes.NewBreakpointSet()
@@ -328,6 +328,7 @@ func (m *Machine) eventLogFile() eventLogFile {
 		PRGCRC32: crc32.ChecksumIEEE(m.sys.Bus.Cartridge.PRG),
 		CHRCRC32: crc32.ChecksumIEEE(m.sys.Bus.Cartridge.CHR),
 		Battery:  m.battery,
+		Palette:  m.palette,
 		Frame:    m.sys.Bus.PPU.Frame(),
 		Events:   append([]machineEvent(nil), m.events...),
 	}

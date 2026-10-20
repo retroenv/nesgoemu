@@ -448,7 +448,7 @@ func (s *Server) restoreMachine(ctx context.Context, _ mcp.ToolRequest,
 	if logFile.Entrypoint != nil {
 		entrypoint = *logFile.Entrypoint
 	}
-	machine, summary, err := loadMachine(s.logger, romPath, entrypoint, logFile.Battery)
+	machine, summary, err := loadMachine(s.logger, romPath, entrypoint, logFile.Battery, logFile.Palette)
 	if err != nil {
 		return createMachineResult{}, err
 	}
@@ -671,13 +671,15 @@ type eventLogResult struct {
 
 // eventLogFile is the stored form of a machine event log. The ROM checksums,
 // the entrypoint, and the battery policy let a restore reject a mismatched
-// replay setup.
+// replay setup. The palette bytes let a restore use the same display colors
+// when the original palette file is not available.
 type eventLogFile struct {
 	Version    int            `json:"version"`
 	PRGCRC32   uint32         `json:"prg_crc32"`
 	CHRCRC32   uint32         `json:"chr_crc32"`
 	Entrypoint *int           `json:"entrypoint,omitempty"`
 	Battery    bool           `json:"battery"`
+	Palette    []byte         `json:"palette,omitempty"`
 	Frame      uint64         `json:"frame"`
 	Events     []machineEvent `json:"events"`
 }

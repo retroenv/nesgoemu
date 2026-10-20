@@ -57,6 +57,27 @@ func TestMXMSystemBankedNametableInspection(t *testing.T) {
 	assert.Equal(t, byte(0x71), value)
 }
 
+func TestMXMSystemBankedCPUInspection(t *testing.T) {
+	cart := cartridge.New()
+	cart.Mapper = 800
+	cart.NES2 = &cartridge.NES2Metadata{RAMSizes: cartridge.RAMSizes{PRGVolatile: 0x100000}}
+	sys, err := NewSystem(NewOptions(WithCartridge(cart)))
+	assert.NoError(t, err)
+
+	// Banked RAM can live above $8000, and $6000 need not select RAM bank zero.
+	for slot := range byte(2) {
+		sys.Bus.Mapper.Write(0x5011, 0x80|slot)
+		sys.Bus.Mapper.Write(0x5013, slot+1)
+
+		address := uint16(0x6007) + uint16(slot)*0x2000
+		sys.Bus.Memory.Write(address, slot+0x42)
+
+		value, ok := sys.Peek(address)
+		assert.True(t, ok)
+		assert.Equal(t, slot+0x42, value)
+	}
+}
+
 // The game is not bundled. Set NESGOEMU_MXM_ROM to run this end-to-end check
 // against the separately downloaded Former Dawn v3.2 Mesen demo.
 func TestMXMFormerDawnDemo(t *testing.T) {

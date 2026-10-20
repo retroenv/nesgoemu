@@ -16,6 +16,7 @@ import (
 
 	"github.com/retroenv/nesgoemu/pkg/controller"
 	"github.com/retroenv/nesgoemu/pkg/nes"
+	"github.com/retroenv/nesgoemu/pkg/ppu"
 	"github.com/retroenv/retrogolib/arch/cpu/cpu6502"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 	"github.com/retroenv/retrogolib/log"
@@ -34,6 +35,7 @@ type Machine struct {
 	rom        string
 	entrypoint int
 	battery    bool
+	palette    []byte // display palette file bytes; nil selects the default
 
 	mu  sync.Mutex
 	sys *nes.System
@@ -87,7 +89,7 @@ func (m *Machine) hardReset(logger *log.Logger) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	sys, _, err := loadSystem(logger, m.rom, m.entrypoint, m.battery, m.traceRing)
+	sys, _, err := loadSystem(logger, m.rom, m.entrypoint, m.battery, m.palette, m.traceRing)
 	if err != nil {
 		return err
 	}
@@ -290,12 +292,13 @@ type controllerDevice interface {
 }
 
 // newMachine creates a machine with a live system.
-func newMachine(id, romPath string, sys *nes.System, entrypoint int, battery bool) *Machine {
+func newMachine(id, romPath string, sys *nes.System, entrypoint int, battery bool, palette []byte) *Machine {
 	machine := &Machine{
 		id:         id,
 		rom:        romPath,
 		entrypoint: entrypoint,
 		battery:    battery,
+		palette:    palette,
 		sys:        sys,
 		created:    time.Now(),
 	}
@@ -304,7 +307,8 @@ func newMachine(id, romPath string, sys *nes.System, entrypoint int, battery boo
 }
 
 // loadSystem loads a ROM and creates a headless system and its ROM summary.
-func loadSystem(logger *log.Logger, romPath string, entrypoint int, battery bool,
+// An empty palette selects the default display palette.
+func loadSystem(logger *log.Logger, romPath string, entrypoint int, battery bool, palette []byte,
 	ring *nes.TraceRing) (*nes.System, romSummary, error) {
 
 	file, err := os.Open(romPath)
@@ -330,6 +334,13 @@ func loadSystem(logger *log.Logger, romPath string, entrypoint int, battery bool
 		nes.WithSavePath(savePath),
 		nes.WithLogger(logger),
 	}
+	if len(palette) != 0 {
+		displayPalette, err := ppu.ParseDisplayPalette(palette)
+		if err != nil {
+			return nil, romSummary{}, fmt.Errorf("display palette: %w", err)
+		}
+		options = append(options, nes.WithDisplayPalette(displayPalette))
+	}
 	if ring != nil {
 		options = append(options, nes.WithTraceRing(ring))
 	}
@@ -345,10 +356,12 @@ func loadSystem(logger *log.Logger, romPath string, entrypoint int, battery bool
 
 // loadMachine loads a ROM and creates a headless machine and its summary. The
 // trace ring starts off, because tracing slows emulation.
-func loadMachine(logger *log.Logger, romPath string, entrypoint int, battery bool) (*Machine, romSummary, error) {
+func loadMachine(logger *log.Logger, romPath string, entrypoint int, battery bool,
+	palette []byte) (*Machine, romSummary, error) {
+
 	ring := nes.NewTraceRing(0)
 
-	sys, summary, err := loadSystem(logger, romPath, entrypoint, battery, ring)
+	sys, summary, err := loadSystem(logger, romPath, entrypoint, battery, palette, ring)
 	if err != nil {
 		return nil, romSummary{}, err
 	}
@@ -357,7 +370,7 @@ func loadMachine(logger *log.Logger, romPath string, entrypoint int, battery boo
 		return nil, romSummary{}, err
 	}
 
-	machine := newMachine(id, romPath, sys, entrypoint, battery)
+	machine := newMachine(id, romPath, sys, entrypoint, battery, palette)
 	machine.logger = logger
 	machine.traceRing = ring
 	machine.breakpoints = nes.NewBreakpointSet()

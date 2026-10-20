@@ -5,11 +5,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"os"
+	"reflect"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/retroenv/nesgoemu/pkg/controller"
+	"github.com/retroenv/nesgoemu/pkg/ppu"
 	"github.com/retroenv/retrogolib/mcp"
 )
 
@@ -145,9 +149,14 @@ func (s *Server) registerSetButtons() error {
 }
 
 func (s *Server) registerScreenshot() error {
-	err := s.mcp.AddTool(mcp.Tool{
+	schema, err := mcp.SchemaFor(reflect.TypeFor[screenshotArgs]())
+	if err != nil {
+		return fmt.Errorf("screenshot schema: %w", err)
+	}
+	err = s.mcp.AddTool(mcp.Tool{
+		InputSchema: schema,
 		Name:        "screenshot",
-		Description: "Render the current frame as a PNG image with the frame number and CPU state.",
+		Description: "Render the current display as PNG. Does not advance time.",
 		Annotations: readAnnotations(),
 	}, s.screenshotTool)
 	return registrationError(err, "screenshot")
@@ -178,7 +187,12 @@ func (s *Server) createMachine(_ context.Context, _ mcp.ToolRequest,
 	}
 	battery := in.Battery != nil && *in.Battery
 
-	machine, summary, err := loadMachine(s.logger, path, entrypoint, battery)
+	palette, err := s.readDisplayPalette(in.Palette)
+	if err != nil {
+		return createMachineResult{}, err
+	}
+
+	machine, summary, err := loadMachine(s.logger, path, entrypoint, battery, palette)
 	if err != nil {
 		return createMachineResult{}, err
 	}
@@ -190,6 +204,36 @@ func (s *Server) createMachine(_ context.Context, _ mcp.ToolRequest,
 		ROM:       summary,
 		CPU:       machine.cpuState(),
 	}, nil
+}
+
+// readDisplayPalette reads a palette file under the allowed roots and checks
+// its size. An empty path selects the default palette. The read stops one byte
+// after the largest valid size, so a large file cannot cause a large read.
+func (s *Server) readDisplayPalette(path string) ([]byte, error) {
+	if path == "" {
+		return nil, nil
+	}
+	resolved, err := s.roots.resolve(path)
+	if err != nil {
+		return nil, err
+	}
+
+	file, err := os.Open(resolved)
+	if err != nil {
+		return nil, fmt.Errorf("opening display palette: %w", err)
+	}
+	defer func() { _ = file.Close() }()
+
+	const maxPaletteBytes = 8 * 64 * 3 // Eight emphasis sets of 64 RGB colors.
+	data, err := io.ReadAll(io.LimitReader(file, maxPaletteBytes+1))
+	if err != nil {
+		return nil, fmt.Errorf("reading display palette: %w", err)
+	}
+
+	if _, err := ppu.ParseDisplayPalette(data); err != nil {
+		return nil, fmt.Errorf("display palette: %w", err)
+	}
+	return data, nil
 }
 
 func (s *Server) destroyMachine(_ context.Context, _ mcp.ToolRequest, in machineIDArgs) (destroyMachineResult, error) {
@@ -406,6 +450,7 @@ type createMachineArgs struct {
 	ROM        string `json:"rom" description:"Path to a .nes ROM inside the allowed roots."`
 	Entrypoint *int   `json:"entrypoint,omitempty" description:"Start address of the CPU. Omit to use the reset vector."`
 	Battery    *bool  `json:"battery,omitempty" description:"Read and write <rom>.sav inside the roots. Default false."`
+	Palette    string `json:"palette,omitempty" description:"Optional 192- or 1536-byte RGB .pal file under an allowed root."`
 }
 
 // createMachineResult reports the new machine and its ROM identity.

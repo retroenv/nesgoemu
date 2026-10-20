@@ -145,7 +145,7 @@ func TestReplayReproducesMixedRun(t *testing.T) {
 	assert.Equal(t, want, snapshotMachine(t, client, id))
 
 	restored := callTool[createMachineResult](t, client, "restore_machine", map[string]any{
-		romKey: romPath, "events": checkpoint.EventsFile,
+		romKey: romPath, eventsKey: checkpoint.EventsFile,
 	})
 	assert.Equal(t, want, snapshotMachine(t, client, restored.MachineID))
 }
@@ -227,7 +227,7 @@ func TestRestoreMachineRejectsOtherROM(t *testing.T) {
 	otherPath := filepath.Join(dir, "other.nes")
 	writeCounterROM(t, otherPath)
 	result, err := client.CallTool(t.Context(), "restore_machine", map[string]any{
-		romKey: otherPath, "events": checkpoint.EventsFile,
+		romKey: otherPath, eventsKey: checkpoint.EventsFile,
 	})
 	assert.NoError(t, err)
 	assert.True(t, result.IsError)
