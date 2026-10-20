@@ -24,7 +24,7 @@ func (p *PPU) step() {
 	p.renderState.TickRendering(rendering)
 	cycle := p.renderState.Cycle()
 	scanLine := p.renderState.ScanLine()
-	p.probeBackdrop(cycle, scanLine, rendering)
+	p.renderBackdrop(cycle, scanLine, rendering)
 
 	if p.ticker != nil {
 		p.ticker.TickPPU(cycle, scanLine, rendering)
@@ -176,8 +176,29 @@ func (p *PPU) renderPixel() {
 
 	colorIndex := p.palette.Read(uint16(paletteIndex))
 	colorIndex = p.maskPaletteColor(colorIndex)
-	color := colors[colorIndex]
+	emphasis := p.emphasis()
 	y := p.renderState.ScanLine()
-	p.screen.SetPixel(x, y, color)
-	p.probePixel(x, y, colorIndex)
+	p.screen.SetPixel(x, y, defaultPalette.rgb(colorIndex, emphasis))
+	p.probePixel(x, y, colorIndex, emphasis)
+}
+
+// renderBackdrop draws a forced-blank pixel from palette RAM, with emphasis.
+// It does not read cartridge memory.
+func (p *PPU) renderBackdrop(cycle, scanLine int, rendering bool) {
+	if rendering || scanLine >= Height || cycle < 1 || cycle > Width {
+		return
+	}
+
+	// During forced blank, a palette address in v selects the output color.
+	// https://www.nesdev.org/wiki/PPU_rendering#Rendering_disabled
+	address := p.addressing.Address() & 0x3FFF
+	if address < 0x3F00 {
+		address = 0
+	}
+
+	x := cycle - 1
+	colorIndex := p.maskPaletteColor(p.palette.Read(address))
+	emphasis := p.emphasis()
+	p.screen.SetPixel(x, scanLine, defaultPalette.rgb(colorIndex, emphasis))
+	p.probeBackdrop(x, scanLine, colorIndex, emphasis)
 }

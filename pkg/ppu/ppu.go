@@ -190,6 +190,12 @@ func (p *PPU) maskPaletteColor(value byte) byte {
 	return value & 0x3F
 }
 
+// emphasis returns the PPUMASK color emphasis bits 7:5 as a value 0-7.
+// https://www.nesdev.org/wiki/PPU_registers#Color_control
+func (p *PPU) emphasis() byte {
+	return p.mask.Value() >> emphasisShift
+}
+
 func (p *PPU) getStatus() byte {
 	p.addressing.ClearLatch()
 

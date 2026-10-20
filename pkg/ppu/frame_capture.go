@@ -57,6 +57,9 @@ type FrameCapture struct {
 	// sprite rendering were both off, has the backdrop index at that dot.
 	// The index includes the grayscale mask.
 	Indices []byte
+	// Emphasis has PPUMASK bits 7:5 for each pixel, also during forced blank.
+	// Indices keeps the six-bit palette values.
+	Emphasis []byte
 	// RenderedPixels counts, per scanline, the pixels that the PPU drew
 	// with background or sprite rendering enabled.
 	RenderedPixels [Height]uint16
@@ -80,17 +83,21 @@ func (c *FrameCapture) Rendered() int {
 func (c *FrameCapture) Clone() FrameCapture {
 	clone := *c
 	clone.Indices = slices.Clone(c.Indices)
+	clone.Emphasis = slices.Clone(c.Emphasis)
 	clone.MaskChanges = slices.Clone(c.MaskChanges)
 	return clone
 }
 
 // RGBA returns the picture as a new RGBA image. A pixel that the PPU drew has
-// the color that the emulator shows. A pixel that it did not draw shows the
-// backdrop color, as on hardware, where the emulator image keeps older pixels.
+// its display color, including emphasis. Forced-blank pixels show the backdrop.
 func (c *FrameCapture) RGBA() *image.RGBA {
 	img := image.NewRGBA(image.Rect(0, 0, Width, Height))
 	for index, paletteIndex := range c.Indices {
-		color := colors[paletteIndex&0x3F]
+		var emphasis byte
+		if index < len(c.Emphasis) {
+			emphasis = c.Emphasis[index]
+		}
+		color := defaultPalette.rgb(paletteIndex, emphasis)
 		offset := index * 4
 		img.Pix[offset] = color.R
 		img.Pix[offset+1] = color.G
@@ -162,25 +169,17 @@ func (p *PPU) probeMaskChange(newValue byte) {
 }
 
 // probePixel records a pixel that the PPU drew.
-func (p *PPU) probePixel(x, y int, paletteIndex byte) {
+func (p *PPU) probePixel(x, y int, paletteIndex, emphasis byte) {
 	if p.probe != nil {
-		p.probe.pixel(x, y, paletteIndex)
+		p.probe.pixel(x, y, paletteIndex, emphasis)
 	}
 }
 
-// probeBackdrop records the backdrop for a visible dot without rendering.
-func (p *PPU) probeBackdrop(cycle, scanLine int, rendering bool) {
-	if p.probe == nil || rendering || scanLine >= Height || cycle < 1 || cycle > Width {
-		return
+// probeBackdrop records a forced-blank pixel.
+func (p *PPU) probeBackdrop(x, y int, paletteIndex, emphasis byte) {
+	if p.probe != nil {
+		p.probe.backdrop(x, y, paletteIndex, emphasis)
 	}
-	// During forced blank, a palette address in v selects the output color.
-	// https://www.nesdev.org/wiki/PPU_rendering#Rendering_disabled
-	address := p.addressing.Address() & 0x3FFF
-	if address < 0x3F00 {
-		address = 0
-	}
-	colorIndex := p.maskPaletteColor(p.palette.Read(address))
-	p.probe.backdrop(cycle-1, scanLine, colorIndex)
 }
 
 // probeFinish delivers the capture at the end of the picture.
@@ -203,24 +202,27 @@ func newFrameProbe(observer func(*FrameCapture), maskValue byte) *frameProbe {
 		capture: FrameCapture{
 			Partial:   true,
 			Indices:   make([]byte, Width*Height),
+			Emphasis:  make([]byte, Width*Height),
 			MaskStart: maskValue,
 		},
 	}
 }
 
-func (f *frameProbe) pixel(x, y int, paletteIndex byte) {
+func (f *frameProbe) pixel(x, y int, paletteIndex, emphasis byte) {
 	if uint(x) >= Width || uint(y) >= Height {
 		return
 	}
 	f.capture.Indices[y*Width+x] = paletteIndex
+	f.capture.Emphasis[y*Width+x] = emphasis
 	f.capture.RenderedPixels[y]++
 }
 
-func (f *frameProbe) backdrop(x, y int, paletteIndex byte) {
+func (f *frameProbe) backdrop(x, y int, paletteIndex, emphasis byte) {
 	if uint(x) >= Width || uint(y) >= Height {
 		return
 	}
 	f.capture.Indices[y*Width+x] = paletteIndex
+	f.capture.Emphasis[y*Width+x] = emphasis
 }
 
 func (f *frameProbe) maskChange(scanline, dot int, oldValue, newValue byte) {
