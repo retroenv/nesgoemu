@@ -7,47 +7,60 @@ import "sync/atomic"
 type ID uint8
 
 // Hardware feature identifiers. The identifiers are grouped by the component
-// that declares them and by their function. Append new identifiers before
-// count. Do not reorder existing identifiers because Usage serializes their
-// numeric values.
+// that declares them and by their function. Add a new identifier to its group.
+// The mapper groups are in alphabetical order. The PPU groups follow the PPU
+// registers, and the APU group follows the APU channels. The order of the
+// identifiers does not change the reports, which use the declaration order of
+// each component. The numeric values can change when identifiers are added.
+// Use the name to identify a feature outside one run.
 const (
 	invalid ID = iota
 
 	// Mapper: memory banking.
-	PRGBanking
+	AlternateBank
 	CHRBanking
 	CHRSourceSelect
+	GraphicsReadLatch
 	LowBankMapping
+	PRGBanking
 	ShiftRegister
 
 	// Mapper: mirroring and nametables.
 	Mirroring
-	SingleScreenMirroring
 	NameTableBanking
 	NameTableControl
 	NameTableFill
+	PPUWriteBanking
+	SingleScreenMirroring
 
 	// Mapper: extended graphics.
-	ExtendedAttributes
 	BGExtendedMode
-	WindowSplit
-	SpriteExtendedMode
+	ExtendedAttributes
+	GraphicsSets
+	MetatileAnimation
+	Metatiles
 	OAMRoutines
+	RowAttributes
+	ScanlineRemap
+	SpriteExtendedMode
+	WindowSplit
 
 	// Mapper: storage.
-	PRGRAM
-	FPGARAM
+	BlockCopy
 	FlashProgramming
+	FPGARAM
+	PRGRAM
 
 	// Mapper: interrupts.
-	ScanlineIRQ
 	CPUCycleIRQ
+	ScanlineIRQ
 	VectorRedirection
 
 	// Mapper: timing and system.
-	PPUBusTiming
 	ESPMessages
 	ExpansionAudio
+	PPUBusTiming
+	PPURegisterCapture
 
 	// PPU: control register.
 	NMI
@@ -80,51 +93,62 @@ const (
 	count
 )
 
+// names is in alphabetical order of the identifiers.
 var names = [count]string{
-	PRGBanking:            "PRG banking",
+	AlternateBank:         "Alternate bank",
+	BackgroundRendering:   "Background rendering",
+	BackgroundTableHigh:   "Background pattern table $1000",
+	BGExtendedMode:        "Background extended mode",
+	BlockCopy:             "Block copy",
 	CHRBanking:            "CHR banking",
 	CHRSourceSelect:       "CHR source select",
+	ColorEmphasis:         "Color emphasis",
+	CPUCycleIRQ:           "CPU cycle IRQ",
+	DMC:                   "DMC",
+	DMCIRQ:                "DMC IRQ",
+	DMCLoop:               "DMC loop",
+	ESPMessages:           "ESP/Wi-Fi messages",
+	ExpansionAudio:        "expansion audio",
+	ExtendedAttributes:    "Extended attributes",
+	FlashProgramming:      "Flash programming",
+	FPGARAM:               "FPGA RAM",
+	FrameFiveStep:         "Five-step frame counter",
+	GraphicsReadLatch:     "Graphics read latch",
+	GraphicsSets:          "Two graphics sets",
+	Grayscale:             "Grayscale",
 	LowBankMapping:        "Low bank mapping",
-	ShiftRegister:         "Shift register",
+	MetatileAnimation:     "Metatile animation",
+	Metatiles:             "Metatile backgrounds",
 	Mirroring:             "Mirroring",
-	SingleScreenMirroring: "Single-screen mirroring",
 	NameTableBanking:      "Nametable banking",
 	NameTableControl:      "Nametable bank/source control",
 	NameTableFill:         "Nametable fill mode",
-	ExtendedAttributes:    "Extended attributes",
-	BGExtendedMode:        "Background extended mode",
-	WindowSplit:           "Window split",
-	SpriteExtendedMode:    "Sprite extended mode",
-	OAMRoutines:           "Auto OAM routines",
-	PRGRAM:                "PRG RAM",
-	FPGARAM:               "FPGA RAM",
-	FlashProgramming:      "Flash programming",
-	ScanlineIRQ:           "Scanline IRQ",
-	CPUCycleIRQ:           "CPU cycle IRQ",
-	VectorRedirection:     "Vector redirection",
-	PPUBusTiming:          "PPU bus timing",
-	ESPMessages:           "ESP/Wi-Fi messages",
-	ExpansionAudio:        "expansion audio",
 	NMI:                   "NMI",
-	BackgroundTableHigh:   "Background pattern table $1000",
-	SpriteTableHigh:       "Sprite pattern table $1000",
-	SpriteSize8x16:        "8x16 sprites",
-	VRAMIncrement32:       "VRAM increment 32",
-	BackgroundRendering:   "Background rendering",
-	SpriteRendering:       "Sprite rendering",
-	Grayscale:             "Grayscale",
-	ColorEmphasis:         "Color emphasis",
+	Noise:                 "Noise",
+	NoiseShortMode:        "Noise short mode",
 	OAMDMA:                "OAM DMA",
+	OAMRoutines:           "Auto OAM routines",
+	PPUBusTiming:          "PPU bus timing",
+	PPURegisterCapture:    "PPU register capture",
+	PPUWriteBanking:       "Banked PPU writes",
+	PRGBanking:            "PRG banking",
+	PRGRAM:                "PRG RAM",
 	Pulse1:                "Pulse 1",
 	Pulse2:                "Pulse 2",
-	Triangle:              "Triangle",
-	Noise:                 "Noise",
-	DMC:                   "DMC",
 	PulseSweep:            "Pulse sweep",
-	NoiseShortMode:        "Noise short mode",
-	DMCLoop:               "DMC loop",
-	DMCIRQ:                "DMC IRQ",
-	FrameFiveStep:         "Five-step frame counter",
+	RowAttributes:         "8x1 attributes",
+	ScanlineIRQ:           "Scanline IRQ",
+	ScanlineRemap:         "Scanline remap",
+	ShiftRegister:         "Shift register",
+	SingleScreenMirroring: "Single-screen mirroring",
+	SpriteExtendedMode:    "Sprite extended mode",
+	SpriteRendering:       "Sprite rendering",
+	SpriteSize8x16:        "8x16 sprites",
+	SpriteTableHigh:       "Sprite pattern table $1000",
+	Triangle:              "Triangle",
+	VectorRedirection:     "Vector redirection",
+	VRAMIncrement32:       "VRAM increment 32",
+	WindowSplit:           "Window split",
 }
 
 // Usage reports whether one supported feature was used during a run.
