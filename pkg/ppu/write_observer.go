@@ -29,6 +29,12 @@ func (p *PPU) ObserveVRAMWrites(observer func(uint16)) {
 	p.vramWriteObserver = observer
 }
 
+func (p *PPU) observeMapperWrite(address uint16, value byte) {
+	if p.registerObserver != nil {
+		p.registerObserver.ObservePPURegisterWrite(address, value)
+	}
+}
+
 func (p *PPU) observeWrite(register uint16, value byte) {
 	if p.writeObserver == nil {
 		return

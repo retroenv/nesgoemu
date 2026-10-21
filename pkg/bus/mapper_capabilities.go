@@ -70,6 +70,13 @@ type PCMReader interface {
 	ReadPCM() byte
 }
 
+// PPURegisterObserver receives each CPU write to a PPU register after the PPU
+// applies it. The address is the original bus address. A board can use it to
+// find writes to register mirrors.
+type PPURegisterObserver interface {
+	ObservePPURegisterWrite(address uint16, value byte)
+}
+
 // PPUTicker receives the current position after each PPU clock advances.
 // Rendering is true when background or sprite rendering is enabled.
 type PPUTicker interface {

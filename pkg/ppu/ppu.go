@@ -45,7 +45,8 @@ type PPU struct {
 	status      *status.Status
 	tiles       *tiles.Tiles
 
-	ticker bus.PPUTicker // optional mapper hook for each PPU cycle
+	registerObserver bus.PPURegisterObserver // optional mapper hook for register writes
+	ticker           bus.PPUTicker           // optional mapper hook for each PPU cycle
 
 	writeObserver     func(WriteEvent)
 	vramWriteObserver func(uint16)
@@ -83,11 +84,18 @@ func (p *PPU) OAM() [256]byte {
 
 // InspectMemory returns a byte of PPU address space without bus effects.
 // Pattern table addresses need a mapper that implements bus.MemoryInspector;
-// they report false otherwise. Nametable addresses return the mirrored
-// physical nametable memory and ignore mapper nametable hooks. Palette
-// addresses return the palette entry.
+// they report false otherwise. A mapper that implements bus.PPUMemoryInspector
+// gives the byte for pattern and nametable addresses. Without it, a nametable
+// address returns the mirrored physical nametable memory and ignores the mapper
+// hooks. Palette addresses return the palette entry.
 func (p *PPU) InspectMemory(address uint16) (byte, bool) {
 	address &= 0x3FFF
+	if address < 0x3F00 {
+		if inspector, ok := p.bus.Mapper.(bus.PPUMemoryInspector); ok {
+			return inspector.InspectMemory(address)
+		}
+	}
+
 	switch {
 	case address < 0x2000:
 		inspector, ok := p.bus.Mapper.(bus.MemoryInspector)
@@ -139,6 +147,7 @@ func (p *PPU) reset() {
 	p.memory = memory.New(p.bus.Mapper, p.bus.NameTable, p.palette)
 	p.sprites = sprites.New(p.bus.CPU, p.bus.Mapper, p.bus.Memory, p.renderState, p.status)
 	p.ticker, _ = p.bus.Mapper.(bus.PPUTicker)
+	p.registerObserver, _ = p.bus.Mapper.(bus.PPURegisterObserver)
 
 	p.tiles = tiles.New(p.addressing, p.memory, p.bus.NameTable)
 
