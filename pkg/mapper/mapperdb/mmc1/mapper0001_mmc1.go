@@ -31,6 +31,7 @@ func New(base *mapperbase.Base) (bus.Mapper, error) {
 	m.DeclareFeature(feature.Mirroring)
 	m.DeclareFeature(feature.PRGBanking)
 	m.DeclareFeature(feature.ShiftRegister)
+	m.DeclareFeature(feature.SingleScreenMirroring)
 	m.SetChrWindowSize(0x1000) // 4K
 	m.SetPrgRAM(m.ram)
 	m.Initialize()
@@ -112,9 +113,15 @@ func (m *mapperMMC1) writeShiftBit(address uint16, value uint8) error {
 func (m *mapperMMC1) applyControl() error {
 	m.MarkFeature(feature.PRGBanking)
 	m.MarkFeature(feature.CHRBanking)
-	m.MarkFeature(feature.Mirroring)
 
+	// Control bits 1-0: 0 and 1 select one-screen A and B, 2 and 3 select
+	// vertical and horizontal mirroring. https://www.nesdev.org/wiki/MMC1
 	mirrorMode := m.control & 0b0000_0011
+	if mirrorMode < 2 {
+		m.MarkFeature(feature.SingleScreenMirroring)
+	} else {
+		m.MarkFeature(feature.Mirroring)
+	}
 	if err := m.SetNameTableMirrorModeIndex(mirrorMode); err != nil {
 		return fmt.Errorf("setting MMC1 mirror mode: %w", err)
 	}

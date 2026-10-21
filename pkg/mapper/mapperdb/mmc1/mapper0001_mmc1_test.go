@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/retroenv/nesgoemu/pkg/bus"
+	"github.com/retroenv/nesgoemu/pkg/feature"
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
 	"github.com/retroenv/nesgoemu/pkg/ppu/nametable"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
@@ -54,4 +55,26 @@ func TestMapperMMC1(t *testing.T) {
 
 	mode := m.MirrorMode()
 	assert.Equal(t, cartridge.MirrorSingle1, mode)
+	assert.True(t, featureUsed(base, feature.SingleScreenMirroring))
+	assert.False(t, featureUsed(base, feature.Mirroring))
+
+	writeShiftRegister(m, 0x8000, 0b0_11_11) // horizontal mirroring
+	assert.Equal(t, cartridge.MirrorHorizontal, m.MirrorMode())
+	assert.True(t, featureUsed(base, feature.Mirroring))
+}
+
+// writeShiftRegister writes the five low bits of value, lowest bit first.
+func writeShiftRegister(m bus.Mapper, address uint16, value byte) {
+	for bit := range 5 {
+		m.Write(address, value>>bit&1)
+	}
+}
+
+func featureUsed(user feature.User, id feature.ID) bool {
+	for _, usage := range user.Features() {
+		if usage.ID == id {
+			return usage.Used
+		}
+	}
+	return false
 }
