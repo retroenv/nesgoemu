@@ -46,8 +46,10 @@ func (m *mapperAxROM) setPrgWindow(_ uint16, value uint8) error {
 	m.MarkFeature(feature.PRGBanking)
 	m.MarkFeature(feature.SingleScreenMirroring)
 
-	value &= 0b0000_0111
-	m.SetPrgWindow(0, int(value)) // select 32 KB PRG ROM bank for CPU $8000-$FFFF
+	// Register layout xxxM xPPP: bit 4 selects the 1 KB VRAM page for all four
+	// nametables, bits 2-0 select the 32 KB PRG ROM bank.
+	// https://www.nesdev.org/wiki/AxROM
+	m.SetPrgWindow(0, int(value&0b0000_0111)) // select 32 KB PRG ROM bank for CPU $8000-$FFFF
 
 	mirrorMode := (value >> 4) & 1
 	if err := m.SetNameTableMirrorModeIndex(mirrorMode); err != nil {

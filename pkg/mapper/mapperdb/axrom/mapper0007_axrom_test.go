@@ -29,4 +29,9 @@ func TestMapperAxROM(t *testing.T) {
 
 	m.Write(0x8000, 1) // select bank 1
 	assert.Equal(t, 0x04, m.Read(0x8010))
+	assert.Equal(t, cartridge.MirrorSingle0, m.MirrorMode())
+
+	m.Write(0x8000, 0b0001_0001) // select nametable page 1, keep bank 1
+	assert.Equal(t, 0x04, m.Read(0x8010))
+	assert.Equal(t, cartridge.MirrorSingle1, m.MirrorMode())
 }
