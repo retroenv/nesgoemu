@@ -50,6 +50,7 @@ links to its NESdev documentation.
   <tbody>
     <tr>
       <td><a href="https://www.nesdev.org/wiki/NES_2.0_Mapper_682">682 Rainbow</a></td>
+      <td>800 MXM</td>
     </tr>
   </tbody>
 </table>
