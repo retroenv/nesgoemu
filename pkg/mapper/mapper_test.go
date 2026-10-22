@@ -46,6 +46,35 @@ func TestLegacyCartridgeWithoutCHRUsesRAM(t *testing.T) {
 	assert.Equal(t, byte(0x45), m.Read(0x1fff))
 }
 
+func TestNES2CartridgeWithoutCHRUsesHeaderRAMSize(t *testing.T) {
+	t.Parallel()
+
+	// MMC1 selects CHR banks at power-on, which requires CHR memory.
+	m := newTestMapper(t, &cartridge.Cartridge{
+		PRG:    make([]byte, 0x20000),
+		Mapper: 1,
+		NES2: &cartridge.NES2Metadata{
+			RAMSizes: cartridge.RAMSizes{CHRVolatile: 0x2000},
+		},
+	})
+	m.Write(0x8000, 0x80) // reset the shift register, which applies the control register
+	m.Write(0, 0x23)
+	m.Write(0x1fff, 0x45)
+	assert.Equal(t, byte(0x23), m.Read(0))
+	assert.Equal(t, byte(0x45), m.Read(0x1fff))
+}
+
+func TestNES2CartridgeWithoutCHRMemory(t *testing.T) {
+	t.Parallel()
+
+	m := newTestMapper(t, &cartridge.Cartridge{
+		PRG:    make([]byte, 0x20000),
+		Mapper: 1,
+		NES2:   &cartridge.NES2Metadata{},
+	})
+	m.Write(0x8000, 0x80) // must not fail without CHR banks
+}
+
 func TestNewWithoutPrgRAMReturnsOpenBus(t *testing.T) {
 	t.Parallel()
 
