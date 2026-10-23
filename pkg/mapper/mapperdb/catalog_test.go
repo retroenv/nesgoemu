@@ -2,7 +2,11 @@ package mapperdb
 
 import (
 	"maps"
+	"os"
+	"path/filepath"
+	"regexp"
 	"slices"
+	"strconv"
 	"testing"
 
 	"github.com/retroenv/nesgoemu/pkg/bus"
@@ -11,18 +15,30 @@ import (
 	"github.com/retroenv/retrogolib/assert"
 )
 
+// A mapper table cell starts with the mapper ID, optionally inside a link.
+var readmeMapperCell = regexp.MustCompile(`<td>(?:<a [^>]*>)?(\d{3,4}) `)
+
 func TestCatalogConstructors(t *testing.T) {
 	for mapperNumber, constructor := range constructors {
 		assert.NotNil(t, constructor, "mapper %d has no constructor", mapperNumber)
 	}
 }
 
-// The expected IDs are the supported mapper tables in README.md.
-func TestCatalogMatchesSupportedMappers(t *testing.T) {
-	expected := []uint16{0, 1, 2, 3, 4, 7, 30, 94, 111, 180, 682, 800}
+// The supported mapper tables in README.md are the source of the mapper IDs.
+func TestCatalogMatchesREADME(t *testing.T) {
+	readme, err := os.ReadFile(filepath.Join("..", "..", "..", "README.md"))
+	assert.NoError(t, err)
 
-	actual := slices.Sorted(maps.Keys(constructors))
-	assert.Equal(t, expected, actual)
+	matches := readmeMapperCell.FindAllSubmatch(readme, -1)
+	documented := make([]uint16, 0, len(matches))
+	for _, match := range matches {
+		id, err := strconv.ParseUint(string(match[1]), 10, 16)
+		assert.NoError(t, err)
+		documented = append(documented, uint16(id))
+	}
+	assert.NotEmpty(t, documented)
+
+	assert.Equal(t, slices.Sorted(slices.Values(documented)), slices.Sorted(maps.Keys(constructors)))
 }
 
 func TestNewRejectsUnsupportedMapper(t *testing.T) {

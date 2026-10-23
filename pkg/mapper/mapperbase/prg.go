@@ -30,8 +30,13 @@ func (b *Base) SetPrgWindowSize(size int) {
 }
 
 // SetPrgRAM enables the usage of PRG RAM and sets the RAM buffer.
+// An empty buffer removes the PRG RAM and its feature.
 func (b *Base) SetPrgRAM(ram []byte) {
 	b.prgRAM = ram
+	if len(ram) == 0 {
+		b.features.Undeclare(feature.PRGRAM)
+		return
+	}
 	b.DeclareFeature(feature.PRGRAM)
 }
 

@@ -1,7 +1,10 @@
 // Package feature tracks the hardware features that a program uses.
 package feature
 
-import "sync/atomic"
+import (
+	"slices"
+	"sync/atomic"
+)
 
 // ID identifies one emulated hardware feature.
 type ID uint8
@@ -186,6 +189,18 @@ func (s *Set) Declare(id ID) {
 
 	s.supported[id] = true
 	s.declared = append(s.declared, id)
+}
+
+// Undeclare removes a feature from the inventory. An undeclared identifier is
+// ignored.
+func (s *Set) Undeclare(id ID) {
+	if id <= invalid || id >= count || !s.supported[id] {
+		return
+	}
+
+	s.supported[id] = false
+	s.used[id].Store(false)
+	s.declared = slices.DeleteFunc(s.declared, func(declared ID) bool { return declared == id })
 }
 
 // Mark records that a supported feature was used. An unknown identifier is ignored.

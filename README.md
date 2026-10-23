@@ -37,6 +37,7 @@ links to its NESdev documentation.
     <tr>
       <td><a href="https://www.nesdev.org/wiki/AxROM">007 AxROM</a></td>
       <td><a href="https://www.nesdev.org/wiki/UNROM_512">030 UNROM-512</a></td>
+      <td><a href="https://www.nesdev.org/wiki/GxROM">066 GxROM</a></td>
       <td><a href="https://www.nesdev.org/wiki/INES_Mapper_094">094 UN1ROM</a></td>
       <td><a href="https://www.nesdev.org/wiki/GTROM">111 GTROM</a></td>
       <td><a href="https://www.nesdev.org/wiki/INES_Mapper_180">180 UxROM AND</a></td>

@@ -70,3 +70,16 @@ func TestPrgRAMFeatureDeclaredAndMarkedOnAccess(t *testing.T) {
 		},
 	}, usage)
 }
+
+func TestRemovedPrgRAMHasNoFeature(t *testing.T) {
+	base := New(&bus.Bus{
+		Cartridge: &cartridge.Cartridge{},
+	})
+	base.SetPrgRAM(make([]byte, 0x2000))
+	base.SetPrgRAM(nil)
+	assert.Empty(t, base.Features())
+	prg, _ := base.MemorySizes()
+	assert.Equal(t, 0, prg)
+	base.Write(0x6000, 0x33)
+	assert.Equal(t, byte(0), base.Read(0x6000))
+}

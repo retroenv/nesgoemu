@@ -9,6 +9,7 @@ import (
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperdb/axrom"
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperdb/cnrom"
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperdb/gtrom"
+	"github.com/retroenv/nesgoemu/pkg/mapper/mapperdb/gxrom"
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperdb/mmc1"
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperdb/mmc3"
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperdb/mxm"
@@ -43,6 +44,7 @@ var constructors = map[uint16]constructor{
 	4:   mmc3.New,
 	7:   axrom.New,
 	30:  unrom512.New,
+	66:  gxrom.New,
 	94:  uxrom.NewUN1,
 	111: gtrom.New,
 	180: uxrom.NewAND,

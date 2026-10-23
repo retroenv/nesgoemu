@@ -50,6 +50,36 @@ func TestSetIgnoresDuplicatesAndUnknownIDs(t *testing.T) {
 	}, usage)
 }
 
+func TestSetUndeclare(t *testing.T) {
+	set := NewSet()
+	set.Declare(PRGRAM)
+	set.Declare(CHRBanking)
+	set.Mark(PRGRAM)
+	set.Undeclare(PRGRAM)
+	set.Undeclare(PRGRAM)
+	set.Undeclare(invalid)
+	set.Mark(PRGRAM)
+
+	assert.Equal(t, []Usage{
+		{
+			ID:   CHRBanking,
+			Name: names[CHRBanking],
+		},
+	}, set.Features())
+
+	set.Declare(PRGRAM)
+	assert.Equal(t, []Usage{
+		{
+			ID:   CHRBanking,
+			Name: names[CHRBanking],
+		},
+		{
+			ID:   PRGRAM,
+			Name: names[PRGRAM],
+		},
+	}, set.Features())
+}
+
 func TestSetEmpty(t *testing.T) {
 	set := NewSet()
 
