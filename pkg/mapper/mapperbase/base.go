@@ -233,6 +233,16 @@ func (b *Base) OpenBus() byte {
 	return b.bus.OpenBus.OpenBus()
 }
 
+// CPUCycles returns the number of CPU cycles. The result is false when the bus
+// has no CPU.
+func (b *Base) CPUCycles() (uint64, bool) {
+	if b.bus.CPU == nil {
+		return 0, false
+	}
+
+	return b.bus.CPU.Cycles(), true
+}
+
 // SetMapperIRQ sets the mapper IRQ input state.
 func (b *Base) SetMapperIRQ(active bool) {
 	b.bus.SetMapperIRQ(active)

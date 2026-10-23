@@ -7,9 +7,22 @@ import (
 	"github.com/retroenv/nesgoemu/pkg/feature"
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
 	"github.com/retroenv/nesgoemu/pkg/ppu/nametable"
+	"github.com/retroenv/retrogolib/arch/cpu/cpu6502"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 	"github.com/retroenv/retrogolib/assert"
 )
+
+// cycleCPU reports a CPU cycle count that the test sets.
+type cycleCPU struct {
+	cycles uint64
+}
+
+func (c *cycleCPU) Cycles() uint64       { return c.cycles }
+func (c *cycleCPU) StallCycles(uint16)   {}
+func (c *cycleCPU) State() cpu6502.State { return cpu6502.State{} }
+func (c *cycleCPU) SetIRQ(bool)          {}
+func (c *cycleCPU) TriggerIrq()          {}
+func (c *cycleCPU) TriggerNMI()          {}
 
 func TestMapperMMC1(t *testing.T) {
 	chr := make([]byte, 0x1000*3) // 4K banks
@@ -61,6 +74,86 @@ func TestMapperMMC1(t *testing.T) {
 	writeShiftRegister(m, 0x8000, 0b0_11_11) // horizontal mirroring
 	assert.Equal(t, cartridge.MirrorHorizontal, m.MirrorMode())
 	assert.True(t, featureUsed(base, feature.Mirroring))
+}
+
+func TestMapperMMC1ResetFixesLastBank(t *testing.T) {
+	// A reset write sets PRG mode 3 before the mapper applies the control
+	// register. Golf Grand Slam writes $80 and then jumps to $C11E.
+	m := newBankTestMapper(t, nil)
+
+	writeShiftRegister(m, 0x8000, 0b0_10_00) // PRG mode 2
+	writeShiftRegister(m, 0xE000, 5)
+	assert.Equal(t, 0, m.Read(0x8000))
+	assert.Equal(t, 5, m.Read(0xC000))
+
+	m.Write(0x8000, 0x80)
+
+	assert.Equal(t, 5, m.Read(0x8000))
+	assert.Equal(t, 7, m.Read(0xC000))
+}
+
+func TestMapperMMC1KeepsPRGMode(t *testing.T) {
+	// A completed register write does not change the PRG mode.
+	m := newBankTestMapper(t, nil)
+
+	writeShiftRegister(m, 0x8000, 0b0_10_00) // PRG mode 2
+	writeShiftRegister(m, 0xE000, 5)
+
+	assert.Equal(t, 0, m.Read(0x8000))
+	assert.Equal(t, 5, m.Read(0xC000))
+}
+
+func TestMapperMMC1PRG32KIgnoresLowBit(t *testing.T) {
+	m := newBankTestMapper(t, nil)
+
+	writeShiftRegister(m, 0x8000, 0b0_00_00) // PRG mode 0
+	writeShiftRegister(m, 0xE000, 3)
+
+	assert.Equal(t, 2, m.Read(0x8000))
+	assert.Equal(t, 3, m.Read(0xC000))
+}
+
+func TestMapperMMC1IgnoresConsecutiveWrites(t *testing.T) {
+	// A read-modify-write instruction writes on two consecutive cycles. The
+	// MMC1 ignores the second write. Bill & Ted's Excellent Video Game
+	// Adventure resets the mapper with INC on a ROM byte that contains $FF.
+	cpu := &cycleCPU{}
+	m := newBankTestMapper(t, cpu)
+	writeShiftRegister(m, 0x8000, 0b0_10_00) // PRG mode 2
+
+	cpu.cycles = 100
+	m.Write(0x8000, 0xFF)
+	cpu.cycles = 101
+	m.Write(0x8000, 0x00) // ignored
+	for bit, cycle := range []uint64{110, 120, 130, 140, 150} {
+		cpu.cycles = cycle
+		m.Write(0xE000, 6>>bit&1)
+	}
+
+	assert.Equal(t, 6, m.Read(0x8000))
+	assert.Equal(t, 7, m.Read(0xC000))
+}
+
+// newBankTestMapper returns an MMC1 mapper with eight 16K PRG banks. The first
+// byte of each bank holds the bank number.
+func newBankTestMapper(t *testing.T, cpu bus.CPU) bus.Mapper {
+	t.Helper()
+	const banks = 8
+	prg := make([]byte, 0x4000*banks)
+	for bank := range banks {
+		prg[bank*0x4000] = byte(bank)
+	}
+	base := mapperbase.New(&bus.Bus{
+		Cartridge: &cartridge.Cartridge{
+			CHR: make([]byte, 0x2000),
+			PRG: prg,
+		},
+		CPU:       cpu,
+		NameTable: nametable.New(cartridge.MirrorHorizontal),
+	})
+	m, err := New(base)
+	assert.NoError(t, err)
+	return m
 }
 
 // writeShiftRegister writes the five low bits of value, lowest bit first.

@@ -20,11 +20,16 @@ import (
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 )
 
+// prgModeFixLast is the control register value of PRG mode 3, which fixes the
+// last bank at $C000.
+const prgModeFixLast = 0x0C
+
 // New returns a new MMC1 mapper.
 func New(base *mapperbase.Base) (bus.Mapper, error) {
 	m := &mapperMMC1{
-		Base: base,
-		ram:  make([]byte, 0x8000), // 32K
+		Base:    base,
+		ram:     make([]byte, 0x8000), // 32K
+		control: prgModeFixLast,       // the MMC1 powers on with the last bank at $C000
 	}
 	m.SetName("MMC1")
 	m.DeclareFeature(feature.CHRBanking)
@@ -65,23 +70,36 @@ type mapperMMC1 struct {
 	chrBank0 int
 	chrBank1 int
 	prgBank  int
+
+	lastWriteCycle uint64
+	lastWriteValid bool // lastWriteCycle holds the cycle of a write
 }
 
+// resetShift clears the shift register and applies the control register.
 func (m *mapperMMC1) resetShift() error {
 	m.shiftCount = 0
 	m.shiftRegister = 0
-	if err := m.applyControl(); err != nil {
-		return err
-	}
-	m.control |= 0x0C
-	return nil
+	return m.applyControl()
 }
 
+// writeShiftBit writes one bit of a serial register write. A write with bit 7
+// set resets the shift register and sets PRG mode 3. The MMC1 ignores a write
+// on the cycle after a write, except a reset. Read-modify-write instructions
+// write on two consecutive cycles. https://www.nesdev.org/wiki/MMC1
 func (m *mapperMMC1) writeShiftBit(address uint16, value uint8) error {
 	m.MarkFeature(feature.ShiftRegister)
 
+	cycle, ok := m.CPUCycles()
+	consecutive := ok && m.lastWriteValid && cycle == m.lastWriteCycle+1
+	m.lastWriteCycle = cycle
+	m.lastWriteValid = ok
+
 	if value&0x80 != 0 {
+		m.control |= prgModeFixLast
 		return m.resetShift()
+	}
+	if consecutive {
+		return nil
 	}
 
 	// the shift register gets written from lowest to highest bit
@@ -130,9 +148,8 @@ func (m *mapperMMC1) applyControl() error {
 	switch prgMode {
 	case 0, 1:
 		// switch 32 KB at $8000, ignoring low bit of bank number
-		// low bit ignored in 32 KB mode but since window size is 16KB the second part can be set to bank + 1
-		m.SetPrgWindow(0, m.prgBank)
-		m.SetPrgWindow(1, m.prgBank+1)
+		m.SetPrgWindow(0, m.prgBank&^1)
+		m.SetPrgWindow(1, m.prgBank|1)
 
 	case 2:
 		// fix first bank at $8000 and switch 16 KB bank at $C000
