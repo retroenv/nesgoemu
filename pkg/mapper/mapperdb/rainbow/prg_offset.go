@@ -13,11 +13,14 @@ func (m *Mapper) PRGROMOffset(address uint16) (int, bool) {
 	if m.irqVectorEnabled && (address == irqVectorLower || address == irqVectorUpper) {
 		return 0, false
 	}
+
 	regIdx, offset, windowSize := m.prgHighBankMapping(address)
 	bank := m.highBanks[regIdx]
 	if bank&prgHighBankRAMBit != 0 {
 		return 0, false
 	}
+
 	physical := int(bank&prgHighBankIndexMask)*windowSize + int(offset)
+
 	return physical % len(m.prgROM), true
 }

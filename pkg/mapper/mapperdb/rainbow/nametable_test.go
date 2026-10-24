@@ -25,6 +25,7 @@ func TestNametableWritesAndCIRAMBanks(t *testing.T) {
 			assert.Equal(t, byte(0xCD), m.fpgaRAM[0x812])
 		}
 	}
+
 	m.Write(regNTControlStart, 0xC0)
 	nt.Write(0x2012, 0xEF)
 	assert.Equal(t, byte(0), m.chrROM[0x812])
@@ -55,6 +56,7 @@ func TestCIRAMIgnoresPatternBanks(t *testing.T) {
 		for i := range uint16(16) {
 			m.Write(regCHRBankLowerStart+i, byte(i+3))
 		}
+
 		for _, address := range []uint16{0x12, 0x412, 0x812, 0x1412, 0x1C12} {
 			m.Write(address, byte(address>>8)+1)
 			expected := m.NameTableMemory().ReadCIRAM(address & 0x7FF)

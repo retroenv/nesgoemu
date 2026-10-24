@@ -7,6 +7,7 @@ func (m *Mapper) InspectPRGRAM(offset int) (byte, bool) {
 	if offset < 0 || offset >= len(m.ram) {
 		return 0, false
 	}
+
 	return m.ram[offset], true
 }
 
@@ -27,6 +28,7 @@ func (m *Mapper) PRGROMOffset(address uint16) (int, bool) {
 	if w.writable || m.prgFlags[slot]&prgGraphicsLatch != 0 || !w.prg {
 		return 0, false
 	}
+
 	return (w.offset + int(address&prgOffsetMask)) % len(m.prgROM), true
 }
 
@@ -37,6 +39,7 @@ func (m *Mapper) InspectMemory(address uint16) (byte, bool) {
 	if address >= paletteStart {
 		return 0, false
 	}
+
 	return m.mappedVRAM(address), true
 }
 

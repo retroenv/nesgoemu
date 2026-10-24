@@ -8,13 +8,16 @@ func (m *Mapper) Reset() {
 	for _, register := range resetRegisters {
 		m.Write(register.address, register.value)
 	}
+
 	m.oamCodeLocked = false
 	m.bgExtActive = false
 	m.activeSpriteIndex = -1
-	m.scanIRQ.inFrame, m.scanIRQ.inHBlank = false, false
+	m.scanIRQ.inFrame = false
+	m.scanIRQ.inHBlank = false
 	m.scanIRQ.counter = 0
 	m.ppuBus = ppuBusState{enabled: m.ppuBus.enabled}
-	m.prgFlash, m.chrFlash = flash{}, flash{}
+	m.prgFlash = flash{}
+	m.chrFlash = flash{}
 	m.updateIRQStatus()
 }
 

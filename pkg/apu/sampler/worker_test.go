@@ -14,12 +14,15 @@ func BenchmarkWorker(b *testing.B) {
 	for i := range b.N {
 		s.Add(float64(i&31) / 32)
 	}
+
 	s.StopWorker()
 }
 
 func TestWorkerPreservesSamples(t *testing.T) {
-	actual, expected := collect(), collect()
-	async, reference := New(44100, actual.add), New(44100, expected.add)
+	actual := collect()
+	expected := collect()
+	async := New(44100, actual.add)
+	reference := New(44100, expected.add)
 	// Include an empty run, full batches, a partial batch, and worker restarts.
 	for _, cycles := range []int{0, workerBatchSize, workerBatchSize*9 + 137, 1} {
 		async.StartWorker()
@@ -29,6 +32,7 @@ func TestWorkerPreservesSamples(t *testing.T) {
 			async.Add(level)
 			reference.Add(level)
 		}
+
 		async.StopWorker()
 		async.StopWorker()
 		assert.Equal(t, expected.values, actual.values)
@@ -37,6 +41,7 @@ func TestWorkerPreservesSamples(t *testing.T) {
 			async.Add(0.25)
 			reference.Add(0.25)
 		}
+
 		assert.Equal(t, expected.values, actual.values)
 	}
 }

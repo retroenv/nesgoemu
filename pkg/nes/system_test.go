@@ -134,6 +134,7 @@ func TestCPUInstructionWriteReportsCurrentPPUPosition(t *testing.T) {
 	for address, value := range program {
 		sys.Bus.Memory.Write(uint16(address), value)
 	}
+
 	sys.PC = 0
 	sys.Bus.PPU.Write(register.PPU_ADDR, 0x20)
 	sys.Bus.PPU.Write(register.PPU_ADDR, 0x10)

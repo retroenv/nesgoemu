@@ -57,6 +57,7 @@ func newDisplayPalette(data string) displayPalette {
 			A: 255,
 		}
 	}
+
 	return result
 }
 

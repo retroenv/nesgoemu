@@ -47,6 +47,7 @@ func (a *APU) markFeatures(address uint16, value byte) {
 		if value&0x40 != 0 {
 			a.features.Mark(feature.DMCLoop)
 		}
+
 		if value&0x80 != 0 {
 			a.features.Mark(feature.DMCIRQ)
 		}

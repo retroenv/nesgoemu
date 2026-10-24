@@ -60,6 +60,7 @@ func NewNative(opts NativeOptions) (*Native, error) {
 	if !supportedNativeMirror(opts.Mirror) {
 		return nil, fmt.Errorf("unsupported native mirroring mode: %d", opts.Mirror)
 	}
+
 	// The mapper's data window has no program, header, or interrupt vectors.
 	data := make([]byte, nativePRGSize(len(opts.PRGData)))
 	copy(data, opts.PRGData)
@@ -74,11 +75,13 @@ func NewNative(opts NativeOptions) (*Native, error) {
 		metadata := *opts.NES2
 		cart.NES2 = &metadata
 	}
+
 	// The CPU-memory wrapper stays in bus.Memory; no CPU interpreter is created.
 	b, m, _, err := initializeDevices(cart)
 	if err != nil {
 		return nil, fmt.Errorf("unsupported native board: %w", err)
 	}
+
 	n := &Native{
 		bus:    b,
 		memory: m,
@@ -88,6 +91,7 @@ func NewNative(opts NativeOptions) (*Native, error) {
 	n.apu = apu.New(b)
 	b.APU = n.apu
 	b.PPU = ppu.New(b)
+
 	return n, nil
 }
 
@@ -98,9 +102,11 @@ func (n *Native) Advance(cycles uint64) {
 		if cycles > 0 {
 			cycles--
 		}
+
 		if n.clock.stalls > 0 {
 			n.clock.stalls--
 		}
+
 		n.clock.cycles++
 		clockDeviceCycle(n.bus, n.apu, &n.dma, n.memory, n.clock.cycles, cpu6502.BusCycle{})
 	}
@@ -170,6 +176,7 @@ func (n *Native) InspectPPU(address uint16) (byte, bool) {
 	if !ok {
 		return 0, false
 	}
+
 	return inspector.InspectMemory(address)
 }
 
@@ -181,6 +188,7 @@ func (n *Native) InspectPRGRAM(offset int) (byte, bool) {
 	if !ok {
 		return 0, false
 	}
+
 	return inspector.InspectPRGRAM(offset)
 }
 
@@ -209,6 +217,7 @@ func MustNewNative(opts NativeOptions) *Native {
 	if err != nil {
 		panic(fmt.Errorf("creating native NES devices: %w", err))
 	}
+
 	return device
 }
 
@@ -225,6 +234,7 @@ func nativePRGSize(size int) int {
 	for padded < size {
 		padded *= 2
 	}
+
 	return padded
 }
 

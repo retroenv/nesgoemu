@@ -46,6 +46,7 @@ func (b *Base) readHookReplaces(address uint16) bool {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -56,6 +57,7 @@ func (b *Base) writeHookReplaces(address uint16) bool {
 			return true
 		}
 	}
+
 	return false
 }
 

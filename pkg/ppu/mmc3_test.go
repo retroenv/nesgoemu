@@ -106,8 +106,10 @@ func newMMC3TestPPU(t *testing.T) (*PPU, *mmc3TestCPU) {
 		p.Write(0x2004, 0)
 		p.Write(0x2004, 0)
 	}
+
 	m.Write(0xC000, 0)
 	m.Write(0xE001, 0)
+
 	return p, cpu
 }
 

@@ -34,6 +34,7 @@ func featureUsed(user feature.User, id feature.ID) bool {
 			return usage.Used
 		}
 	}
+
 	return false
 }
 
@@ -43,6 +44,7 @@ func featureDeclared(user feature.User, id feature.ID) bool {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -110,7 +112,8 @@ func TestMapperUNROM512Submapper3(t *testing.T) {
 // is at $C000-$FFFF.
 func TestMapperUNROM512FlashBoardRegisterRange(t *testing.T) {
 	prg := make([]byte, 0x4000*3)
-	prg[0x4010], prg[0x8010] = 0x01, 0x02
+	prg[0x4010] = 0x01
+	prg[0x8010] = 0x02
 	m, _ := newTestMapper(t, &cartridge.Cartridge{
 		PRG:     prg,
 		Battery: 1,

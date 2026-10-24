@@ -41,6 +41,7 @@ func (l *LengthCounter) Clock() {
 	if l.halt || l.counter == 0 {
 		return
 	}
+
 	l.counter--
 }
 
@@ -51,6 +52,7 @@ func (l *LengthCounter) Commit() {
 	if l.load && l.counter == l.previous {
 		l.counter = l.reload
 	}
+
 	l.load = false
 	l.halt = l.nextHalt
 }
@@ -61,6 +63,7 @@ func (l *LengthCounter) Load(value byte) {
 	if !l.enabled {
 		return
 	}
+
 	l.load = true
 	l.previous = l.counter
 	l.reload = lengthLoadTable[value>>3]

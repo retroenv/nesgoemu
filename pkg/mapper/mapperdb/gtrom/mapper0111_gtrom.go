@@ -61,5 +61,6 @@ func (m *mapperGTROM) setBanks(_ uint16, value uint8) error {
 
 	nameTableBank := int(value>>5) & 1
 	m.SetNameTableWindow(nameTableBank)
+
 	return nil
 }

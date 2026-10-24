@@ -71,8 +71,10 @@ func TestReadDuringBankSwitches(t *testing.T) {
 		CHR: make([]byte, 0x4000),
 		PRG: make([]byte, 0x8000),
 	}
-	cart.CHR[0], cart.CHR[0x2000] = 1, 2
-	cart.PRG[0], cart.PRG[0x4000] = 3, 4
+	cart.CHR[0] = 1
+	cart.CHR[0x2000] = 2
+	cart.PRG[0] = 3
+	cart.PRG[0x4000] = 4
 	base := New(&bus.Bus{
 		Cartridge: cart,
 		NameTable: nametable.New(cart.Mirror),
@@ -96,7 +98,8 @@ func TestReadDuringBankSwitches(t *testing.T) {
 			return
 
 		default:
-			chr, prg := base.Read(0), base.Read(0x8000)
+			chr := base.Read(0)
+			prg := base.Read(0x8000)
 			assert.True(t, chr == 1 || chr == 2)
 			assert.True(t, prg == 3 || prg == 4)
 			physical, ok := base.PRGROMOffset(0x8000)

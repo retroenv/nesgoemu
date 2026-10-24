@@ -143,6 +143,7 @@ func newBankTestMapper(t *testing.T, cpu bus.CPU) bus.Mapper {
 	for bank := range banks {
 		prg[bank*0x4000] = byte(bank)
 	}
+
 	base := mapperbase.New(&bus.Bus{
 		Cartridge: &cartridge.Cartridge{
 			CHR: make([]byte, 0x2000),
@@ -153,6 +154,7 @@ func newBankTestMapper(t *testing.T, cpu bus.CPU) bus.Mapper {
 	})
 	m, err := New(base)
 	assert.NoError(t, err)
+
 	return m
 }
 
@@ -169,5 +171,6 @@ func featureUsed(user feature.User, id feature.ID) bool {
 			return usage.Used
 		}
 	}
+
 	return false
 }

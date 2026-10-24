@@ -52,7 +52,9 @@ func (b *Base) SetNameTableMirrorModeIndex(index uint8) error {
 	if !ok {
 		return fmt.Errorf("invalid nametable mirror mode index %d", index)
 	}
+
 	b.bus.NameTable.SetMirrorMode(mode)
+
 	return nil
 }
 

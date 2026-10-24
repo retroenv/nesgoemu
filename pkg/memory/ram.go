@@ -34,6 +34,7 @@ func (r *RAM) Read(address uint16) byte {
 	r.mu.RLock()
 	b := r.data[address-r.offset]
 	r.mu.RUnlock()
+
 	return b
 }
 

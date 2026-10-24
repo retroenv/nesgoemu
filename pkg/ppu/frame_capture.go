@@ -76,6 +76,7 @@ func (c *FrameCapture) Rendered() int {
 	for _, count := range c.RenderedPixels {
 		total += int(count)
 	}
+
 	return total
 }
 
@@ -85,6 +86,7 @@ func (c *FrameCapture) Clone() FrameCapture {
 	clone.Indices = slices.Clone(c.Indices)
 	clone.Emphasis = slices.Clone(c.Emphasis)
 	clone.MaskChanges = slices.Clone(c.MaskChanges)
+
 	return clone
 }
 
@@ -97,6 +99,7 @@ func (c *FrameCapture) RGBA() *image.RGBA {
 		if index < len(c.Emphasis) {
 			emphasis = c.Emphasis[index]
 		}
+
 		color := defaultPalette.rgb(paletteIndex, emphasis)
 		offset := index * 4
 		img.Pix[offset] = color.R
@@ -104,6 +107,7 @@ func (c *FrameCapture) RGBA() *image.RGBA {
 		img.Pix[offset+2] = color.B
 		img.Pix[offset+3] = color.A
 	}
+
 	return img
 }
 
@@ -123,6 +127,7 @@ func (c *FrameCapture) OffSpans(layers byte) []DotSpan {
 			spans[last].End = end
 			return
 		}
+
 		spans = append(spans, DotSpan{
 			Start: start,
 			End:   end,
@@ -144,7 +149,9 @@ func (c *FrameCapture) OffSpans(layers byte) []DotSpan {
 		}
 		// Scanline 240 and scanline 241 dot 0 follow the visible area.
 	}
+
 	add(VisibleDots)
+
 	return spans
 }
 
@@ -160,6 +167,7 @@ func (p *PPU) ObserveFrames(observer func(*FrameCapture)) {
 		p.probe = nil
 		return
 	}
+
 	p.probe = newFrameProbe(observer, p.mask.Value())
 }
 
@@ -212,6 +220,7 @@ func (f *frameProbe) pixel(x, y int, paletteIndex, emphasis byte) {
 	if uint(x) >= Width || uint(y) >= Height {
 		return
 	}
+
 	f.capture.Indices[y*Width+x] = paletteIndex
 	f.capture.Emphasis[y*Width+x] = emphasis
 	f.capture.RenderedPixels[y]++
@@ -221,6 +230,7 @@ func (f *frameProbe) backdrop(x, y int, paletteIndex, emphasis byte) {
 	if uint(x) >= Width || uint(y) >= Height {
 		return
 	}
+
 	f.capture.Indices[y*Width+x] = paletteIndex
 	f.capture.Emphasis[y*Width+x] = emphasis
 }
@@ -229,6 +239,7 @@ func (f *frameProbe) maskChange(scanline, dot int, oldValue, newValue byte) {
 	if (oldValue^newValue)&MaskBoth == 0 {
 		return
 	}
+
 	f.capture.MaskChanges = append(f.capture.MaskChanges, MaskChange{
 		Scanline: scanline,
 		Dot:      dot,

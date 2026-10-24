@@ -180,6 +180,7 @@ func New(base *mapperbase.Base) (bus.Mapper, error) {
 	m.NameTableMemory().SetReadHook(m.readNameTable)
 	m.NameTableMemory().SetWriteHook(m.writeNameTable)
 	m.Reset()
+
 	return m, nil
 }
 
@@ -237,7 +238,8 @@ func (m *Mapper) Read(address uint16) byte {
 		m.inFrame = false
 		m.lastAddress = 0
 		m.repeated = 0
-		m.scanline, m.irqPending = 0, false
+		m.scanline = 0
+		m.irqPending = false
 		m.SetMapperIRQ(false)
 	}
 
@@ -252,6 +254,7 @@ func (m *Mapper) Read(address uint16) byte {
 		if m.altRAM {
 			data = m.ram
 		}
+
 		w = window{
 			data:   data,
 			offset: int(m.altBank) * prgBankSize,
@@ -266,6 +269,7 @@ func (m *Mapper) Read(address uint16) byte {
 		m.readLatch = value
 		return 0
 	}
+
 	return value
 }
 
@@ -306,6 +310,7 @@ func (m *Mapper) ClockCPU(cycles uint64) {
 		if m.irqPending && !m.previousPending {
 			m.irqPhase = irqAssertPhase
 		}
+
 		m.previousPending = m.irqPending
 
 		if m.inhibit != 0 {
@@ -355,15 +360,19 @@ func (m *Mapper) mapCPU(slot int, bank uint16, flags byte) {
 	}
 
 	if flags&bankSourceRAM != 0 {
-		w.data, w.writable, w.prg = m.ram, true, false
+		w.data = m.ram
+		w.writable = true
+		w.prg = false
 	}
 
 	if flags&prgGraphicsLatch != 0 {
 		// Graphics-aperture banks use unsigned offsets without wrap. A bank
 		// after the end of the memory does not change the current mapping.
 		if flags&bankSourceRAM == 0 {
-			w.data, w.prg = m.chrROM, false
+			w.data = m.chrROM
+			w.prg = false
 		}
+
 		w.offset = int(bank) * prgBankSize
 		if w.offset+prgBankSize > len(w.data) {
 			return
@@ -385,6 +394,7 @@ func (m *Mapper) mapSelectedCPU() {
 		// alternate interrupt-side mapping.
 		return
 	}
+
 	m.mapCPU(slot, m.prgBanks[slot], m.prgFlags[slot])
 }
 
@@ -394,6 +404,7 @@ func (m *Mapper) mapAlternateCPU() {
 		if m.altRAM {
 			flags = bankSourceRAM
 		}
+
 		m.mapCPU(alternateSlot, m.altBank, flags)
 	} else {
 		m.mapCPU(alternateSlot, m.prgBanks[alternateSlot], m.prgFlags[alternateSlot])
@@ -404,6 +415,7 @@ func readWrapped(data []byte, offset int, fallback byte) byte {
 	if len(data) == 0 {
 		return fallback
 	}
+
 	return data[offset%len(data)]
 }
 

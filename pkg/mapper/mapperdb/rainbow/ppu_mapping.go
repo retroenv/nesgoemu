@@ -8,6 +8,7 @@ func (m *Mapper) PPUReadMapping(address uint16) (bus.GraphicsMapping, bool) {
 	if address >= patternTableEnd {
 		return bus.GraphicsMapping{}, false
 	}
+
 	address = m.chrReadAddress(address)
 	if m.chrSource == chrSourceNT || m.chrSource == chrSourceFPGA {
 		return m.chrSourceMapping(address, 0)
@@ -15,7 +16,9 @@ func (m *Mapper) PPUReadMapping(address uint16) (bus.GraphicsMapping, bool) {
 	if m.chrSource == chrSourceROM && m.chrFlash.ID {
 		return bus.GraphicsMapping{}, false
 	}
+
 	offset := m.chrReadOffset(address)
+
 	return m.chrSourceMapping(address, offset)
 }
 
@@ -25,8 +28,10 @@ func (m *Mapper) PPUWriteMapping(address uint16) (bus.GraphicsMapping, bool) {
 	if address >= patternTableEnd {
 		return bus.GraphicsMapping{}, false
 	}
+
 	register, offset, size := m.chrBankMapping(address)
 	physical := int(m.chrBanks[register])*size + int(offset)
+
 	return m.chrSourceMapping(address, physical)
 }
 
@@ -60,5 +65,6 @@ func (m *Mapper) chrSourceMapping(address uint16, offset int) (bus.GraphicsMappi
 			}, true
 		}
 	}
+
 	return bus.GraphicsMapping{}, false
 }

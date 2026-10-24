@@ -132,6 +132,7 @@ func featureUsed(m *Mapper, id feature.ID) bool {
 			return usage.Used
 		}
 	}
+
 	return false
 }
 
@@ -255,7 +256,9 @@ func TestBlockCopySourcesAndForwardOverlap(t *testing.T) {
 	assert.False(t, featureUsed(m, feature.BlockCopy))
 
 	for source := range byte(4) {
-		m.prgROM[7], m.chrROM[7], m.ram[7] = 0x11, 0x22, 0x33
+		m.prgROM[7] = 0x11
+		m.chrROM[7] = 0x22
+		m.ram[7] = 0x33
 		m.Write(regCopySource, source)
 		m.Write(regCopyDestination, 2) // Copies always go to WorkRam.
 		m.Write(regCopyFromLow, 0)
@@ -266,6 +269,7 @@ func TestBlockCopySourcesAndForwardOverlap(t *testing.T) {
 
 		assert.Equal(t, []byte{0x11, 0x33, 0x22, 0x33}[source], m.ram[prgBankSize+7])
 	}
+
 	assert.True(t, featureUsed(m, feature.BlockCopy))
 
 	m.ram[2*prgBankSize+7] = 0xff
@@ -284,17 +288,20 @@ func TestDescriptorSourcesAndEightScanlinePalettes(t *testing.T) {
 
 	for _, flags := range []byte{0, 0x40, 0x80, 0xc0} {
 		m.Write(regDescriptorSelect, flags)
-		descriptors, patterns := m.chrROM, m.chrROM
+		descriptors := m.chrROM
+		patterns := m.chrROM
 
 		if flags&0x80 != 0 {
 			descriptors = m.ram
 		}
+
 		if flags&0x40 != 0 {
 			patterns = m.ram
 		}
 
 		copy(descriptors[10:], []byte{0xc0, 3})
-		patterns[0x3420], patterns[0x3428] = 0x95, 0x59
+		patterns[0x3420] = 0x95
+		patterns[0x3428] = 0x59
 
 		_ = b.NameTable.Read(0x2005)
 		assert.Equal(t, byte(0xff), b.NameTable.Read(0x23c0))
@@ -305,7 +312,8 @@ func TestDescriptorSourcesAndEightScanlinePalettes(t *testing.T) {
 	m.Write(regDescriptorSelect, 0)
 	m.Write(regDescriptorMode, 0x82)
 	m.Write(regManualScroll, 1)
-	m.chrROM[0x80a], m.chrROM[0x80b] = 0x1b, 0xe4
+	m.chrROM[0x80a] = 0x1b
+	m.chrROM[0x80b] = 0xe4
 
 	for fine, expected := range []byte{0, 0x55, 0xaa, 0xff, 0xff, 0xaa, 0x55, 0} {
 		m.Write(regVerticalPosition, byte(fine))
@@ -336,6 +344,7 @@ func TestMetatilesAndAnimationIndirection(t *testing.T) {
 		assert.Equal(t, []byte{0x10, 0x30}[parity], m.Read(0x420))
 		assert.Equal(t, []byte{0x20, 0x40}[parity], m.Read(0x428))
 	}
+
 	assert.True(t, featureUsed(m, feature.MetatileAnimation))
 }
 
@@ -364,6 +373,7 @@ func TestVerticalRemapAndReadInhibit(t *testing.T) {
 	for i := range 1024 {
 		m.Write(regRemapData, byte(i))
 	}
+
 	assert.Equal(t, uint16(1024), m.remapCursor)
 
 	for page := range byte(4) {
@@ -409,12 +419,14 @@ func TestIRQFetchDetectorAcknowledgeAndNMIVector(t *testing.T) {
 	for range 3 {
 		_ = b.NameTable.Read(0x2000)
 	}
+
 	assert.Equal(t, byte(0), m.Read(regScanline))
 
 	_ = b.NameTable.Read(0x2001)
 	for range 3 {
 		_ = b.NameTable.Read(0x2000)
 	}
+
 	assert.True(t, cpu.active)
 
 	m.ClockCPU(1)
@@ -466,6 +478,7 @@ func TestSpriteSlotDummyAttributeFetch(t *testing.T) {
 		_ = m.Read(0)
 		_ = m.Read(8)
 	}
+
 	assert.Equal(t, uint32(32), m.nameReads)
 
 	// nesgoemu makes two nametable reads in each sprite slot. The demo expects
@@ -480,6 +493,7 @@ func TestSpriteSlotDummyAttributeFetch(t *testing.T) {
 		_ = m.Read(0)
 		_ = m.Read(8)
 	}
+
 	assert.Equal(t, uint32(40), m.nameReads)
 
 	for tile := range 2 {
@@ -489,6 +503,7 @@ func TestSpriteSlotDummyAttributeFetch(t *testing.T) {
 		_ = m.Read(0)
 		_ = m.Read(8)
 	}
+
 	assert.Equal(t, uint32(42), m.nameReads)
 
 	m.TickPPU(259, 241, true)

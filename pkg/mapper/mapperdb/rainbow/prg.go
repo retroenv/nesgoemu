@@ -59,6 +59,7 @@ func (m *Mapper) readPRG(address uint16) uint8 {
 	if bank&prgHighBankRAMBit == 0 {
 		return m.readFromPRGROM(byteOffset)
 	}
+
 	return m.readFromPRGRAM(byteOffset)
 }
 
@@ -83,6 +84,7 @@ func (m *Mapper) readPRGRAM(address uint16) uint8 {
 
 	// Mode 1: 2×4K windows.
 	windowIdx := offset / prgWindowSize4K
+
 	return m.readLowBank(m.lowBanks[windowIdx], offset%prgWindowSize4K, prgWindowSize4K)
 }
 
@@ -119,6 +121,7 @@ func (m *Mapper) readLowBank(bank uint16, offset, windowSize int) uint8 {
 		m.MarkFeature(feature.FPGARAM)
 		return m.fpgaRAM[byteOffset%fpgaRAMSize]
 	}
+
 	return 0
 }
 
@@ -158,6 +161,7 @@ func (m *Mapper) prgHighBankMapping(address uint16) (int, uint16, int) {
 		if addr < prgWindowSize16K {
 			return 0, addr, prgWindowSize16K
 		}
+
 		return 4, addr - prgWindowSize16K, prgWindowSize16K
 
 	case prgMode16K8K8K:
@@ -204,6 +208,7 @@ func (m *Mapper) readFromPRGRAM(offset int) uint8 {
 	if len(m.prgRAM) == 0 {
 		return 0
 	}
+
 	return m.prgRAM[offset%len(m.prgRAM)]
 }
 
@@ -211,5 +216,6 @@ func (m *Mapper) writeToRAM(ram []byte, offset int, value uint8) {
 	if len(ram) == 0 {
 		return
 	}
+
 	ram[offset%len(ram)] = value
 }

@@ -17,6 +17,7 @@ func TestFlashCommands(t *testing.T) {
 		flashCommandBytes(&fl, data, 0xA0)
 		fl.write(data, 123, value)
 	}
+
 	assert.Equal(t, byte(0), data[123])
 	flashCommandBytes(&fl, data, 0x90)
 	assert.Equal(t, byte(1), fl.read(data, 0))
@@ -77,11 +78,13 @@ func TestFlashSectorBoundaries(t *testing.T) {
 			if start > 0 {
 				assert.Equal(t, byte(0), data[start-1])
 			}
+
 			if end < size {
 				assert.Equal(t, byte(0), data[end])
 			}
 		}
 	}
+
 	start, end := flashSector(0x100000, 0xFA123)
 	assert.Equal(t, 0xFA000, start)
 	assert.Equal(t, 0xFC000, end)
@@ -95,8 +98,10 @@ func TestMapperFlashIsolation(t *testing.T) {
 		if address == 0x8555 {
 			value = 0x55
 		}
+
 		m.Write(address, value)
 	}
+
 	m.Write(0x8AAA, 0xF0)
 	for _, base := range []uint16{0x8000, 0} {
 		m.Write(base+0xAAA, 0xAA)
@@ -104,6 +109,7 @@ func TestMapperFlashIsolation(t *testing.T) {
 		m.Write(base+0xAAA, 0x90)
 		assert.Equal(t, byte(1), m.Read(base))
 	}
+
 	m.Write(0x8000, 0xF0)
 	assert.Equal(t, originalPRG, m.Read(0x8000))
 	assert.Equal(t, byte(1), m.Read(0))

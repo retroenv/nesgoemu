@@ -20,6 +20,7 @@ func (r *register) address() uint16 {
 	address |= r.NameTableY << 11
 	address |= r.FineY << 12
 	address |= r.Unused << 15
+
 	return address
 }
 

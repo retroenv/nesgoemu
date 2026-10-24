@@ -37,12 +37,14 @@ func TestPRGROMOffsetBankSwitching(t *testing.T) {
 			for i := range cart.PRG {
 				cart.PRG[i] = byte(i>>8) ^ byte(i)
 			}
+
 			m := newTestMapper(t, cart)
 			query, ok := m.(bus.PRGROMMapper)
 			assert.True(t, ok)
 			for _, write := range tt.writes {
 				m.Write(write[0], byte(write[1]))
 			}
+
 			before := m.State()
 			for window, start := range tt.want {
 				for _, offset := range []int{0, 1, 0x1fff} {
@@ -53,10 +55,12 @@ func TestPRGROMOffsetBankSwitching(t *testing.T) {
 					assert.Equal(t, cart.PRG[physical], m.Read(address))
 				}
 			}
+
 			for _, address := range []uint16{0, 0x6000, 0x7fff} {
 				_, mapped := query.PRGROMOffset(address)
 				assert.False(t, mapped)
 			}
+
 			assert.Equal(t, before, m.State())
 		})
 	}

@@ -63,6 +63,7 @@ func (c *Controller) Read() uint8 {
 	if val != 0 {
 		return 1
 	}
+
 	return 0
 }
 
@@ -74,6 +75,7 @@ func (c *Controller) SetButtonState(key Button, pressed bool) {
 	} else {
 		state &= ^uint64(key)
 	}
+
 	atomic.StoreUint64(&c.buttons, state)
 }
 

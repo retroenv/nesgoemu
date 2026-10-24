@@ -32,6 +32,7 @@ func TestAudioPulseDutyAndPeriod(t *testing.T) {
 			high++
 		}
 	}
+
 	assert.Equal(t, 2, high, "period 1 clocks 16 sequencer steps in 32 CPU cycles")
 }
 

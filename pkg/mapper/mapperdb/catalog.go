@@ -29,6 +29,7 @@ func New(base *mapperbase.Base) (bus.Mapper, error) {
 		if metadata := base.Cartridge().NES2; metadata != nil {
 			return nil, fmt.Errorf("mapper %d is not supported (NES 2.0 submapper %d)", mapperNumber, metadata.Submapper)
 		}
+
 		return nil, fmt.Errorf("mapper %d is not supported", mapperNumber)
 	}
 

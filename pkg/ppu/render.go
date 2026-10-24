@@ -146,6 +146,7 @@ func (p *PPU) renderPixel() {
 		if !p.mask.RenderBackgroundLeft() {
 			backgroundColor = 0
 		}
+
 		if !p.mask.RenderSpritesLeft() {
 			spriteColor = 0
 		}

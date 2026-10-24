@@ -37,12 +37,14 @@ func TestFeaturesTrackChannelEnablesAndModes(t *testing.T) {
 			used.Add(usage.ID)
 		}
 	}
+
 	for _, id := range []feature.ID{
 		feature.Pulse1, feature.Triangle, feature.DMC, feature.PulseSweep,
 		feature.NoiseShortMode, feature.DMCLoop, feature.DMCIRQ, feature.FrameFiveStep,
 	} {
 		assert.True(t, used.Contains(id), "feature %d must be used", id)
 	}
+
 	assert.False(t, used.Contains(feature.Pulse2))
 	assert.False(t, used.Contains(feature.Noise))
 

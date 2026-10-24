@@ -19,6 +19,8 @@ func (b *Base) PRGROMOffset(address uint16) (int, bool) {
 	if len(b.prgBanks) == 0 || b.prgBankMapper == nil {
 		return 0, false
 	}
+
 	bank, offset := b.prgBankMapper(address)
+
 	return bank*b.prgWindowSize + int(offset), true
 }

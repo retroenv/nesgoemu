@@ -21,6 +21,7 @@ func (sys *System) SaveBattery() error {
 	if err := sys.storage.Save(sys.opts.savePath, mapper.SaveBattery); err != nil {
 		return fmt.Errorf("saving battery: %w", err)
 	}
+
 	return nil
 }
 
@@ -33,6 +34,7 @@ func (sys *System) loadBattery() error {
 	if err := sys.storage.Load(sys.opts.savePath, mapper.LoadBattery); err != nil {
 		return fmt.Errorf("loading battery: %w", err)
 	}
+
 	return nil
 }
 
@@ -68,11 +70,13 @@ func (store diskBatteryStorage) Load(path string, load func(io.Reader) error) er
 	if err != nil {
 		return fmt.Errorf("opening save: %w", err)
 	}
+
 	defer func() { _ = file.Close() }()
 
 	if err := load(file); err != nil {
 		return fmt.Errorf("loading cartridge save: %w", err)
 	}
+
 	return nil
 }
 
@@ -81,6 +85,7 @@ func (store diskBatteryStorage) Save(path string, save func(io.Writer) error) er
 	if err != nil {
 		return fmt.Errorf("creating save: %w", err)
 	}
+
 	defer func() { _ = file.Close(); _ = store.files.Remove(file.Name()) }()
 
 	if err := save(file); err != nil {
@@ -95,6 +100,7 @@ func (store diskBatteryStorage) Save(path string, save func(io.Writer) error) er
 	if err := store.files.Rename(file.Name(), path); err != nil {
 		return fmt.Errorf("replacing save: %w", err)
 	}
+
 	return nil
 }
 
@@ -103,6 +109,7 @@ func (osBatteryFiles) CreateTemp(dir, pattern string) (batterySaveFile, error) {
 	if err != nil {
 		return nil, fmt.Errorf("creating temporary file: %w", err)
 	}
+
 	return file, nil
 }
 
@@ -111,6 +118,7 @@ func (osBatteryFiles) Open(path string) (io.ReadCloser, error) {
 	if err != nil {
 		return nil, fmt.Errorf("opening file: %w", err)
 	}
+
 	return file, nil
 }
 
@@ -118,6 +126,7 @@ func (osBatteryFiles) Remove(path string) error {
 	if err := os.Remove(path); err != nil {
 		return fmt.Errorf("removing file: %w", err)
 	}
+
 	return nil
 }
 
@@ -125,5 +134,6 @@ func (osBatteryFiles) Rename(oldPath, newPath string) error {
 	if err := os.Rename(oldPath, newPath); err != nil {
 		return fmt.Errorf("renaming file: %w", err)
 	}
+
 	return nil
 }

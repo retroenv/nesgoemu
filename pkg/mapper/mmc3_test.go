@@ -28,9 +28,11 @@ func TestMMC3FourScreenMirroring(t *testing.T) {
 		m.Write(0xA000, value)
 		assert.Equal(t, cartridge.Mirror4, nt.MirrorMode())
 	}
+
 	for table := range 4 {
 		nt.Write(uint16(0x2000+table*0x400), byte(table+1))
 	}
+
 	for table := range 4 {
 		assert.Equal(t, byte(table+1), nt.Read(uint16(0x2000+table*0x400)))
 	}
@@ -43,6 +45,7 @@ func TestMMC3NES2CHRRAM(t *testing.T) {
 		if nonvolatile {
 			sizes = cartridge.RAMSizes{CHRNonvolatile: 0x2000}
 		}
+
 		m := newTestMapper(t, &cartridge.Cartridge{
 			Mapper: 4,
 			PRG:    make([]byte, 0x8000),

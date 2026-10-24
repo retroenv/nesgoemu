@@ -163,6 +163,7 @@ func (b *Base) Read(address uint16) uint8 {
 		// https://www.nesdev.org/wiki/Open_bus_behavior#CPU_open_bus
 		value = b.OpenBus()
 	}
+
 	return value
 }
 
@@ -257,6 +258,7 @@ func (b *Base) defaultChrBankMapper(address uint16) (int, uint16) {
 	offset := address % uint16(b.chrWindowSize)
 	windowNr := address / uint16(b.chrWindowSize)
 	bankNr := b.chrWindows[windowNr]
+
 	return bankNr, offset
 }
 
@@ -265,5 +267,6 @@ func (b *Base) defaultPrgBankMapper(address uint16) (int, uint16) {
 	offset := address % uint16(b.prgWindowSize)
 	windowNr := address / uint16(b.prgWindowSize)
 	bankNr := b.prgWindows[windowNr]
+
 	return bankNr, offset
 }

@@ -68,21 +68,27 @@ func (a *APU) readStatus() byte {
 	if a.pulse1.LengthActive() {
 		value |= 0x01
 	}
+
 	if a.pulse2.LengthActive() {
 		value |= 0x02
 	}
+
 	if a.triangle.LengthActive() {
 		value |= 0x04
 	}
+
 	if a.noise.LengthActive() {
 		value |= 0x08
 	}
+
 	if a.dmc.Active() {
 		value |= 0x10
 	}
+
 	if a.dmc.IRQ() {
 		value |= 0x80
 	}
+
 	if a.frame.IRQ() {
 		value |= 0x40
 	}

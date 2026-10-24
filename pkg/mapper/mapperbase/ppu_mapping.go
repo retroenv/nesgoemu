@@ -8,6 +8,7 @@ func (b *Base) PPUReadMapping(address uint16) (bus.GraphicsMapping, bool) {
 	if b.readHookReplaces(address) {
 		return bus.GraphicsMapping{}, false
 	}
+
 	return b.chrMapping(address, false)
 }
 
@@ -17,6 +18,7 @@ func (b *Base) PPUWriteMapping(address uint16) (bus.GraphicsMapping, bool) {
 	if b.writeHookReplaces(address) {
 		return bus.GraphicsMapping{}, false
 	}
+
 	return b.chrMapping(address, true)
 }
 
@@ -24,17 +26,21 @@ func (b *Base) chrMapping(address uint16, write bool) (bus.GraphicsMapping, bool
 	if address >= chrMemSize {
 		return bus.GraphicsMapping{}, false
 	}
+
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 
 	if len(b.chrBanks) == 0 || b.chrBankMapper == nil || (write && len(b.chrRAM) == 0) {
 		return bus.GraphicsMapping{}, false
 	}
+
 	source := bus.GraphicsCHRROM
 	if len(b.bus.Cartridge.CHR) == 0 {
 		source = bus.GraphicsCHRRAM
 	}
+
 	bank, offset := b.chrBankMapper(address)
+
 	return bus.GraphicsMapping{
 		Memory: source,
 		Offset: bank*b.chrWindowSize + int(offset),

@@ -74,5 +74,6 @@ func observeFrames(b *bus.Bus, m *memory.Memory, observer func(*FrameRecord)) bo
 		*counts = memory.AccessCounts{}
 		observer(&record)
 	})
+
 	return true
 }

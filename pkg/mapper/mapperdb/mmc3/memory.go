@@ -18,10 +18,12 @@ func prepareMemory(base *mapperbase.Base) error {
 		if cart.NES2.Submapper != 0 {
 			return fmt.Errorf("mmc3 submapper %d is not supported", cart.NES2.Submapper)
 		}
+
 		sizes := cart.NES2.RAMSizes
 		if sizes.PRGVolatile < 0 || sizes.PRGNonvolatile < 0 || sizes.CHRVolatile < 0 || sizes.CHRNonvolatile < 0 {
 			return fmt.Errorf("invalid MMC3 RAM sizes: %+v", sizes)
 		}
+
 		prgRAM = mapperbase.PrgRAMTotal(sizes)
 		chrRAM = mapperbase.ChrRAMTotal(sizes)
 	}
@@ -32,6 +34,7 @@ func prepareMemory(base *mapperbase.Base) error {
 	if cart.NES2 != nil && chrRAM > 0 {
 		base.SetChrRAM(make([]byte, chrRAM))
 	}
+
 	return nil
 }
 
@@ -45,9 +48,11 @@ func validateMemorySizes(prgROM, chrROM, prgRAM, chrRAM int) error {
 	if chrROM > 0 && chrRAM > 0 {
 		return fmt.Errorf("mixed MMC3 CHR ROM (%d bytes) and RAM (%d bytes) require mapper 119", chrROM, chrRAM)
 	}
+
 	chrSize := chrROM + chrRAM
 	if chrSize < 2*chrWindowSize || chrSize > 0x40000 || chrSize%chrWindowSize != 0 {
 		return fmt.Errorf("unsupported MMC3 CHR size %d", chrSize)
 	}
+
 	return nil
 }

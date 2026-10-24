@@ -40,6 +40,7 @@ func TestDecayStopsAtZeroWithoutLoop(t *testing.T) {
 	for range 16 {
 		env.Clock()
 	}
+
 	assert.Equal(t, byte(0), env.Output())
 
 	env.Clock()
@@ -54,6 +55,7 @@ func TestLoopReloadsDecay(t *testing.T) {
 	for range 16 {
 		env.Clock()
 	}
+
 	assert.Equal(t, byte(0), env.Output())
 
 	env.Clock()
@@ -79,6 +81,7 @@ func TestParameterWriteKeepsDecay(t *testing.T) {
 	for range 6 {
 		env.Clock()
 	}
+
 	assert.Equal(t, byte(10), env.Output())
 
 	env.Write(0)
@@ -93,6 +96,7 @@ func TestConstantVolumeKeepsEnvelopeRunning(t *testing.T) {
 	for range 6 {
 		env.Clock()
 	}
+
 	assert.Equal(t, byte(0), env.Output())
 
 	env.Write(0)

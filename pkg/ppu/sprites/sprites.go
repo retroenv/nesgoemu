@@ -77,6 +77,7 @@ func (s *Sprites) Data() [oamMemorySize]byte {
 	for index := range data {
 		data[index] = s.sprites[index/spriteStructSize].field(byte(index % spriteStructSize))
 	}
+
 	return data
 }
 
@@ -131,6 +132,7 @@ func (s *Sprites) WriteDMA(value byte) byte {
 	if s.cpu.Cycles()%2 == 1 {
 		stall++
 	}
+
 	s.cpu.StallCycles(stall)
 
 	return last
@@ -162,7 +164,8 @@ func (s *Sprites) Render() {
 		index: 0xFF,
 		y:     0xFF,
 	}
-	row, index := 0, -1
+	row := 0
+	index := -1
 	if slot < s.visibleSpriteCount {
 		index = s.visibleSprites[slot]
 		sprite = &s.sprites[index]
@@ -173,6 +176,7 @@ func (s *Sprites) Render() {
 	if ext != nil {
 		ext.SetActiveSpriteExt(index, s.spriteSize)
 	}
+
 	address := s.spritePatternAddress(sprite, row)
 	if phase == 4 {
 		s.fetchLow = s.mapper.Read(address)
@@ -182,6 +186,7 @@ func (s *Sprites) Render() {
 			s.patterns[slot] = spritePattern(sprite, s.fetchLow, high)
 		}
 	}
+
 	if ext != nil {
 		ext.SetActiveSpriteExt(-1, 0)
 	}
@@ -203,6 +208,7 @@ func (s *Sprites) Pixel() (bool, bool, byte) {
 		if offset < 0 || offset > 7 {
 			continue
 		}
+
 		offset = 7 - offset
 
 		color := byte((s.patterns[i] >> byte(offset*4)) & 0x0F)
@@ -212,8 +218,10 @@ func (s *Sprites) Pixel() (bool, bool, byte) {
 
 		zeroHit := index == 0
 		priority := sprite.priority()
+
 		return priority, zeroHit, color
 	}
+
 	return false, false, 0
 }
 
@@ -227,6 +235,7 @@ func (s *Sprites) evaluate() {
 		if line == 261 {
 			line = -1
 		}
+
 		row := line - int(sprite.y)
 		if row < 0 || row >= s.spriteSize {
 			continue
@@ -235,6 +244,7 @@ func (s *Sprites) evaluate() {
 		if s.visibleSpriteCount < maxSpritesOnScreen {
 			s.visibleSprites[s.visibleSpriteCount] = i
 		}
+
 		s.visibleSpriteCount++
 	}
 
@@ -252,17 +262,20 @@ func (s *Sprites) spritePatternAddress(sprite *Sprite, row int) uint16 {
 		if sprite.flipVertically() {
 			row = 7 - row
 		}
+
 		address = s.spritePatternTable + uint16(tile)*16 + uint16(row)
 	} else {
 		if sprite.flipVertically() {
 			row = 15 - row
 		}
+
 		table := tile & 1
 		tile &= 0xFE
 		if row > 7 {
 			tile++
 			row -= 8
 		}
+
 		address = 0x1000*uint16(table) + uint16(tile)*16 + uint16(row)
 	}
 
@@ -286,8 +299,10 @@ func spritePattern(sprite *Sprite, lowTileByte, highTileByte byte) uint32 {
 			lowTileByte <<= 1
 			highTileByte <<= 1
 		}
+
 		data <<= 4
 		data |= uint32(a | p1 | p2)
 	}
+
 	return data
 }

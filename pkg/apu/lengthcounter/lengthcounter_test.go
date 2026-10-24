@@ -133,6 +133,7 @@ func TestReloadOnLengthClock(t *testing.T) {
 		if initial > 0 {
 			want = initial - 1
 		}
+
 		assert.Equal(t, want, counter.counter)
 	}
 }
@@ -152,6 +153,7 @@ func TestHaltWriteAppliesAfterLengthClock(t *testing.T) {
 		if halted {
 			want = 2
 		}
+
 		assert.Equal(t, want, counter.counter)
 	}
 }

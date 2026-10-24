@@ -39,6 +39,7 @@ func initialWindows(windowCount, bankCount int) []int {
 			bank = 0
 		}
 	}
+
 	return windows
 }
 
@@ -48,6 +49,7 @@ func defaultBanks(memorySize, windowSize int) []bank {
 	for i := range banks {
 		banks[i].length = windowSize
 	}
+
 	return banks
 }
 
@@ -69,5 +71,6 @@ func bankIndex(bank, bankCount int) int {
 	if bank < 0 {
 		bank += bankCount
 	}
+
 	return bank % bankCount
 }

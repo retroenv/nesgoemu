@@ -29,7 +29,9 @@ func TestStateRestoresMemoryAndPendingTransfers(t *testing.T) {
 	m.ClockCPU(1)
 	m.Write(0x8000, 0)
 	m.Reset()
-	m.fpgaRAM[123], m.prgRAM[456], m.chrRAM[789] = 0, 0, 0
+	m.fpgaRAM[123] = 0
+	m.prgRAM[456] = 0
+	m.chrRAM[789] = 0
 	assert.NoError(t, m.LoadState(bytes.NewReader(saved.Bytes())))
 	assert.Equal(t, byte(0xAB), m.fpgaRAM[123])
 	assert.Equal(t, byte(0xCD), m.prgRAM[456])

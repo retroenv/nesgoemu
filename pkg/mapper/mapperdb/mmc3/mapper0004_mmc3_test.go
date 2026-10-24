@@ -350,6 +350,7 @@ func newTestMapper(t *testing.T) (*mapperMMC3, *irqCaptureCPU) {
 
 	m, ok := mapper.(*mapperMMC3)
 	assert.True(t, ok)
+
 	return m, cpu
 }
 

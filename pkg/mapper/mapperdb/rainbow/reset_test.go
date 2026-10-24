@@ -8,11 +8,16 @@ import (
 
 func TestResetPreservesMemoryAndUnspecifiedRegisters(t *testing.T) {
 	m := newTestMapper(t, 0x8000, 0x2000)
-	m.prgRAM[12], m.chrRAM[13], m.fpgaRAM[14] = 1, 2, 3
-	m.highBanks[0], m.highBanks[1] = 7, 8
-	m.chrBanks[0], m.chrBanks[1] = 9, 10
+	m.prgRAM[12] = 1
+	m.chrRAM[13] = 2
+	m.fpgaRAM[14] = 3
+	m.highBanks[0] = 7
+	m.highBanks[1] = 8
+	m.chrBanks[0] = 9
+	m.chrBanks[1] = 10
 	m.oamLimit = 17
-	m.nmiVectorEnabled, m.irqVectorEnabled = true, true
+	m.nmiVectorEnabled = true
+	m.irqVectorEnabled = true
 	m.Write(regCycleIRQReloadLower, 1)
 	m.Write(regCycleIRQControl, 1)
 	m.ClockCPU(1)
@@ -46,7 +51,9 @@ func TestDocumentedPowerUpAndResetValues(t *testing.T) {
 			} {
 				m.Write(address, 0xFF)
 			}
-			m.scanIRQ.pending, m.cycleIRQ.pending = true, true
+
+			m.scanIRQ.pending = true
+			m.cycleIRQ.pending = true
 			m.Reset()
 		}
 

@@ -35,6 +35,7 @@ func New(base *mapperbase.Base) (bus.Mapper, error) {
 	if err = validateCartridge(cart, nina); err != nil {
 		return nil, err
 	}
+
 	m := &mapper34{
 		Base: base,
 	}
@@ -57,9 +58,12 @@ func New(base *mapperbase.Base) (bus.Mapper, error) {
 		} else {
 			m.SetChrRAM(nil)
 		}
+
 		m.AddWriteHook(0x8000, 0xffff, m.selectBNROM)
 	}
+
 	m.Initialize()
+
 	return m, nil
 }
 
@@ -71,6 +75,7 @@ func (m *mapper34) selectBNROM(address uint16, value byte) error {
 	value &= m.Read(address)
 	m.SetPrgWindow(0, int(value))
 	m.MarkFeature(feature.PRGBanking)
+
 	return nil
 }
 
@@ -82,6 +87,7 @@ func (m *mapper34) selectNINA(address uint16, value byte) error {
 		m.SetChrWindow(int(address-0x7ffe), int(value))
 		m.MarkFeature(feature.CHRBanking)
 	}
+
 	return nil
 }
 
@@ -97,6 +103,7 @@ func ninaBoard(cart *cartridge.Cartridge) (bool, error) {
 			return false, fmt.Errorf("unsupported mapper 34 submapper %d", cart.NES2.Submapper)
 		}
 	}
+
 	return len(cart.CHR) > 0x2000, nil
 }
 
@@ -104,6 +111,7 @@ func validateCartridge(cart *cartridge.Cartridge, nina bool) error {
 	if cart.Mirror != cartridge.MirrorHorizontal && cart.Mirror != cartridge.MirrorVertical {
 		return errors.New("mapper 34 requires horizontal or vertical mirroring")
 	}
+
 	size := len(cart.PRG)
 	if size < 0x8000 || size > 0x800000 || size&(size-1) != 0 {
 		return fmt.Errorf("unsupported mapper 34 PRG ROM size %d", size)
@@ -111,6 +119,7 @@ func validateCartridge(cart *cartridge.Cartridge, nina bool) error {
 	if nina {
 		return validateNINA(cart)
 	}
+
 	return validateBNROM(cart)
 }
 
@@ -125,6 +134,7 @@ func validateNINA(cart *cartridge.Cartridge) error {
 			return errors.New("NINA requires 8 KiB PRG RAM and no CHR RAM")
 		}
 	}
+
 	return nil
 }
 
@@ -141,6 +151,7 @@ func validateBNROM(cart *cartridge.Cartridge) error {
 			return errors.New("BNROM mixed CHR ROM and RAM is not supported")
 		}
 	}
+
 	if len(cart.CHR) == 0 {
 		if mapperbase.ChrRAMSize(cart) != 0x2000 {
 			return errors.New("BNROM requires 8 KiB CHR RAM")
@@ -148,5 +159,6 @@ func validateBNROM(cart *cartridge.Cartridge) error {
 	} else if len(cart.CHR) != 0x2000 {
 		return fmt.Errorf("unsupported BNROM CHR ROM size %d", len(cart.CHR))
 	}
+
 	return nil
 }

@@ -17,12 +17,16 @@ func TestPPUMappingAllCHRWindows(t *testing.T) {
 		for register := range 0x2000 / size {
 			m.chrBanks[register] = uint16(0x103 + register)
 		}
+
 		for _, source := range []byte{chrSourceROM, chrSourceRAM} {
 			m.chrSource = source
-			memory, data := bus.GraphicsCHRROM, m.chrROM
+			memory := bus.GraphicsCHRROM
+			data := m.chrROM
 			if source == chrSourceRAM {
-				memory, data = bus.GraphicsCHRRAM, m.chrRAM
+				memory = bus.GraphicsCHRRAM
+				data = m.chrRAM
 			}
+
 			for window := range 0x2000 / size {
 				for _, offset := range []int{0, 1, size - 1} {
 					address := uint16(window*size + offset)
@@ -109,6 +113,7 @@ func TestPPUMappingRejectsInvalidAndAbsentMemory(t *testing.T) {
 		_, ok = m.PPUWriteMapping(address)
 		assert.False(t, ok)
 	}
+
 	m.chrFlash.ID = true
 	_, ok := m.PPUReadMapping(0)
 	assert.False(t, ok)

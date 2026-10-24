@@ -92,6 +92,7 @@ func (d *DMC) Clock() {
 	if d.loadDelay > 0 {
 		d.loadDelay--
 	}
+
 	d.cycle++
 
 	if d.cycle&1 == 0 {
@@ -102,6 +103,7 @@ func (d *DMC) Clock() {
 		d.counter = d.timer - 1
 		return
 	}
+
 	d.counter--
 }
 
@@ -118,6 +120,7 @@ func (d *DMC) CompleteDMA(value byte) {
 	if d.remaining == 0 {
 		return
 	}
+
 	d.remaining--
 	if d.remaining == 0 {
 		if d.loop {
@@ -176,12 +179,14 @@ func (d *DMC) SetEnabled(enabled bool) {
 		d.remaining = 0
 		d.irq = false
 		d.loadDelay = 0
+
 		return
 	}
 
 	if d.remaining > 0 {
 		return
 	}
+
 	d.restart()
 	if !d.sampleFull {
 		d.load = true
@@ -201,6 +206,7 @@ func (d *DMC) Write(address uint16, value byte) {
 		if !d.irqEnabled {
 			d.irq = false
 		}
+
 		d.loop = value&0x40 != 0
 		d.timer = ntscRateTable[value&0x0f]
 
@@ -223,11 +229,13 @@ func (d *DMC) clockOutput() {
 	if !d.silence {
 		d.changeLevel(d.shift & 1)
 	}
+
 	d.shift >>= 1
 	d.bits--
 	if d.bits != 0 {
 		return
 	}
+
 	d.bits = sampleBits
 	d.silence = !d.sampleFull
 	if d.sampleFull {
@@ -243,6 +251,7 @@ func (d *DMC) changeLevel(bit byte) {
 		if d.output <= outputLevelMaximum-outputLevelStep {
 			d.output += outputLevelStep
 		}
+
 		return
 	}
 

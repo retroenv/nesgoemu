@@ -31,8 +31,10 @@ func (sys *System) AudioPaused() bool {
 		if sys.AudioStats().Queued < 2*audioSamplesPerCallback {
 			return true
 		}
+
 		sys.audioReady.Store(true)
 	}
+
 	return false
 }
 

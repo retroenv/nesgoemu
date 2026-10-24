@@ -24,6 +24,7 @@ func (c *AccessCounts) PPURegisterWrites() uint64 {
 	for _, count := range c.PPUWrites {
 		total += count
 	}
+
 	return total
 }
 
@@ -46,6 +47,7 @@ func (m *Memory) countRead() {
 		m.counts.DMAReads++
 		return
 	}
+
 	m.counts.Reads++
 }
 

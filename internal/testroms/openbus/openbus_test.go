@@ -77,6 +77,7 @@ func readText(sys *nes.System) string {
 		if value == 0 {
 			break
 		}
+
 		text = append(text, value)
 	}
 

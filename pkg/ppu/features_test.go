@@ -50,5 +50,6 @@ func TestFeaturesMarkControlAndMaskBits(t *testing.T) {
 	} {
 		assert.True(t, used.Contains(id), "feature %d must be marked used", id)
 	}
+
 	assert.False(t, used.Contains(feature.OAMDMA), "OAM DMA must stay unused")
 }

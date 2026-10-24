@@ -50,6 +50,7 @@ func TestBusReadsBreakScanlineSequence(t *testing.T) {
 		nt.Read(0x23C0)
 		nt.Read(0x2000 + uint16(i))
 	}
+
 	assert.True(t, m.scanIRQ.inHBlank)
 }
 

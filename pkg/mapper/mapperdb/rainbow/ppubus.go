@@ -24,6 +24,7 @@ func (m *Mapper) observePPURead(address uint16) {
 	if !m.ppuBus.enabled {
 		return
 	}
+
 	m.MarkFeature(feature.PPUBusTiming)
 	m.ppuBus.reads++
 	if address >= ntBaseAddress && address < ntBaseAddress+ntMirrorSize && address == m.ppuBus.lastAddress {
@@ -34,10 +35,12 @@ func (m *Mapper) observePPURead(address uint16) {
 	} else {
 		m.ppuBus.repeated = 0
 	}
+
 	if m.scanIRQ.inFrame && m.scanIRQ.counter == int16(m.scanIRQ.latch) && m.ppuBus.reads == uint16(m.scanIRQ.offset) {
 		m.scanIRQ.pending = true
 		m.updateIRQStatus()
 	}
+
 	m.ppuBus.idle = ppuBusIdleClockCount
 	m.ppuBus.lastAddress = address
 	if m.scanIRQ.inFrame && address >= ntBaseAddress && address < ntBaseAddress+ntMirrorSize &&
@@ -56,9 +59,12 @@ func (m *Mapper) startBusScanline() {
 	} else {
 		m.scanIRQ.counter++
 	}
+
 	m.scanIRQ.inFrame = true
 	m.scanIRQ.inHBlank = false
-	m.ppuBus.reads, m.ppuBus.tiles, m.ppuBus.repeated = 0, 0, 0
+	m.ppuBus.reads = 0
+	m.ppuBus.tiles = 0
+	m.ppuBus.repeated = 0
 }
 
 // clockPPUBus detects rendering stop from an absence of reads for three M2 clocks.
@@ -67,11 +73,15 @@ func (m *Mapper) clockPPUBus() {
 	if m.ppuBus.idle == 0 {
 		return
 	}
+
 	m.ppuBus.idle--
 	if m.ppuBus.idle == 0 {
-		m.scanIRQ.inFrame, m.scanIRQ.inHBlank, m.bgExtActive = false, false, false
+		m.scanIRQ.inFrame = false
+		m.scanIRQ.inHBlank = false
+		m.bgExtActive = false
 		m.scanIRQ.counter = -1
-		m.ppuBus.tiles, m.ppuBus.repeated = 0, 0
+		m.ppuBus.tiles = 0
+		m.ppuBus.repeated = 0
 	}
 }
 

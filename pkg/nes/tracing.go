@@ -22,6 +22,7 @@ func (sys *System) printTraceStep(state cpuState) {
 
 		opcodes[i] = s
 	}
+
 	unofficial := " "
 	if step.Opcode.Instruction.Unofficial {
 		unofficial = "*"
@@ -81,6 +82,7 @@ func traceCPUParamString(cpu *cpu6502.CPU, ins *cpu6502.Instruction, params ...a
 	}
 
 	s := fun(cpu, ins, params...)
+
 	return s, nil
 }
 
@@ -107,6 +109,7 @@ func paramConverterAbsolute(cpu *cpu6502.CPU, instruction *cpu6502.Instruction, 
 		b2 := uint16(cpu.Memory().Read(cpu.TraceStep.PC + 2))
 		address = cpu6502.Absolute(b2<<8 | b1)
 	}
+
 	if _, ok := cpu6502.BranchingInstructions[instruction.Name]; ok {
 		return fmt.Sprintf("$%04X", address)
 	}
@@ -115,6 +118,7 @@ func paramConverterAbsolute(cpu *cpu6502.CPU, instruction *cpu6502.Instruction, 
 	}
 
 	b := cpu.Memory().Read(uint16(address))
+
 	return fmt.Sprintf("$%04X = %02X", address, b)
 }
 
@@ -122,6 +126,7 @@ func paramConverterAbsoluteX(cpu *cpu6502.CPU, _ *cpu6502.Instruction, params ..
 	address := params[0].(cpu6502.Absolute)
 	offset := address + cpu6502.Absolute(cpu.X)
 	b := cpu.Memory().Read(uint16(offset))
+
 	return fmt.Sprintf("$%04X,X @ %04X = %02X", address, offset, b)
 }
 
@@ -129,6 +134,7 @@ func paramConverterAbsoluteY(cpu *cpu6502.CPU, _ *cpu6502.Instruction, params ..
 	address := params[0].(cpu6502.Absolute)
 	offset := address + cpu6502.Absolute(cpu.Y)
 	b := cpu.Memory().Read(uint16(offset))
+
 	return fmt.Sprintf("$%04X,Y @ %04X = %02X", address, offset, b)
 }
 
@@ -142,6 +148,7 @@ func paramConverterZeroPageX(cpu *cpu6502.CPU, _ *cpu6502.Instruction, params ..
 	address := params[0].(cpu6502.ZeroPage)
 	offset := uint16(byte(address) + cpu.X)
 	b := cpu.Memory().Read(offset)
+
 	return fmt.Sprintf("$%02X,X @ %02X = %02X", address, offset, b)
 }
 
@@ -149,6 +156,7 @@ func paramConverterZeroPageY(cpu *cpu6502.CPU, _ *cpu6502.Instruction, params ..
 	address := params[0].(cpu6502.ZeroPage)
 	offset := uint16(byte(address) + cpu.Y)
 	b := cpu.Memory().Read(offset)
+
 	return fmt.Sprintf("$%02X,Y @ %02X = %02X", address, offset, b)
 }
 
@@ -174,6 +182,7 @@ func paramConverterIndirectX(cpu *cpu6502.CPU, _ *cpu6502.Instruction, params ..
 
 	b := cpu.Memory().Read(address)
 	offset := cpu.X + cpu.TraceStep.OpcodeOperands[1]
+
 	return fmt.Sprintf("($%02X,X) @ %02X = %04X = %02X", cpu.TraceStep.OpcodeOperands[1], offset, address, b)
 }
 
@@ -188,6 +197,7 @@ func paramConverterIndirectY(cpu *cpu6502.CPU, _ *cpu6502.Instruction, params ..
 
 	b := cpu.Memory().Read(address)
 	offset := address - uint16(cpu.Y)
+
 	return fmt.Sprintf("($%02X),Y = %04X @ %04X = %02X", cpu.TraceStep.OpcodeOperands[1], offset, address, b)
 }
 

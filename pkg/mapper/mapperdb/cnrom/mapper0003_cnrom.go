@@ -24,6 +24,7 @@ func New(base *mapperbase.Base) (bus.Mapper, error) {
 	m.Initialize()
 
 	m.AddWriteHook(0x8000, 0xFFFF, m.setChrWindow)
+
 	return m, nil
 }
 

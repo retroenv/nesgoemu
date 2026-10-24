@@ -111,6 +111,7 @@ func (sys *System) Run(ctx context.Context, opts RunOptions) RunResult {
 	if opts.Timeout > 0 {
 		runContext, cancel = context.WithTimeout(ctx, opts.Timeout)
 	}
+
 	defer cancel()
 
 	startCycles := sys.CPU.Cycles()
@@ -130,6 +131,7 @@ func (sys *System) Run(ctx context.Context, opts RunOptions) RunResult {
 			return finishRun(sys, ExitInvalidStep, TimeoutNone, err, startCycles, completedFrames, completedImage,
 				opts.CaptureRAM)
 		}
+
 		cycles = sys.CPU.Cycles() - startCycles
 		if kind, err, stopped := checkRunLimits(ctx, runContext, cycles, opts.MaxCycles, false); stopped {
 			return finishRun(sys, ExitTimeout, kind, err, startCycles, completedFrames, completedImage,
@@ -214,15 +216,18 @@ func validateRAMSelections(opts RunOptions) error {
 			return fmt.Errorf("completion marker: %w", err)
 		}
 	}
+
 	for _, assertion := range opts.Assertions {
 		if err := validateRAMAddress(assertion.Address); err != nil {
 			return fmt.Errorf("assertion: %w", err)
 		}
 	}
+
 	for _, selected := range opts.CaptureRAM {
 		if selected.Length == 0 {
 			return errors.New("RAM capture length must be positive")
 		}
+
 		end := uint32(selected.Start) + uint32(selected.Length)
 		if end > 0x2000 {
 			return fmt.Errorf("RAM capture 0x%04x+%d is outside internal RAM", selected.Start, selected.Length)
@@ -248,6 +253,7 @@ func applyInputEvents(sys *System, events []InputEvent, index int, frame uint64)
 	buttons := events[index].Buttons
 	sys.Bus.Controller1.SetButtonState(controller.Button(0xff), false)
 	sys.Bus.Controller1.SetButtonState(buttons, true)
+
 	return index + 1
 }
 
@@ -300,6 +306,7 @@ func captureRAM(sys *System, ranges []RAMRange) []RAMCapture {
 		for offset := range selected.Length {
 			data[offset], _ = sys.InspectRAM(selected.Start + offset)
 		}
+
 		captures = append(captures, RAMCapture{
 			Start: selected.Start,
 			Data:  data,

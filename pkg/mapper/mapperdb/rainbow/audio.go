@@ -39,6 +39,7 @@ func (m *Mapper) ExpansionAudioOutput() float64 {
 	if m.audio.outputControl&(audioOutputEXP6|audioOutputEXP9) == 0 {
 		return 0
 	}
+
 	volume := float64(m.audio.masterVolume) / audioMasterVolumeMask
 	return float64(m.audio.combinedOutput()) / 15 * audioPulseFullScale * volume
 }

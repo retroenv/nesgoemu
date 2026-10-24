@@ -34,6 +34,7 @@ func (m *Mapper) ClockCPU(cycles uint64) {
 			m.cycleIRQ.parity = 0
 			m.cycleIRQ.parityReset = false
 		}
+
 		m.scanIRQ.jitter++
 		m.clockESP()
 		m.clockAudio()
@@ -66,6 +67,7 @@ func (m *Mapper) TickPPU(cycle, scanLine int, rendering bool) {
 		if !rendering {
 			m.ppuScanLine = ppuLastVisibleLine + 1
 		}
+
 		return
 	}
 	if !rendering {
@@ -74,6 +76,7 @@ func (m *Mapper) TickPPU(cycle, scanLine int, rendering bool) {
 		m.scanIRQ.inHBlank = false
 		m.scanIRQ.readyToFire = false
 		m.bgExtActive = false
+
 		return
 	}
 
@@ -96,6 +99,7 @@ func (m *Mapper) ReadPCM() byte {
 	if m.cycleIRQ.ackOn4011 {
 		m.ackCycleIRQ()
 	}
+
 	return m.audio.pcmOutput()
 }
 
@@ -128,6 +132,7 @@ func (m *Mapper) updateIRQStatus() {
 	if active && !m.cycleIRQ.lineActive {
 		m.scanIRQ.jitter = 0
 	}
+
 	m.cycleIRQ.lineActive = active
 	m.SetMapperIRQ(active)
 }

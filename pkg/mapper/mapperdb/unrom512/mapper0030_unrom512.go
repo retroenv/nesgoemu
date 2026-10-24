@@ -72,9 +72,11 @@ func New(base *mapperbase.Base) (bus.Mapper, error) {
 	if cart.Battery != 0 || submapper == 1 || submapper == 3 || submapper == 4 {
 		start = flashRegisterStart
 	}
+
 	m.AddWriteHook(start, registerEnd, m.setBanks)
 
 	m.SetPrgWindow(1, -1)
+
 	return m, nil
 }
 
@@ -131,5 +133,6 @@ func (m *mapperUNROM512) setBanks(_ uint16, value uint8) error {
 	if err := m.SetNameTableMirrorMode(mirrorMode); err != nil {
 		return fmt.Errorf("setting UNROM-512 mirror mode: %w", err)
 	}
+
 	return nil
 }

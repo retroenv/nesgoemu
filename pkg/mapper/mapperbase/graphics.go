@@ -20,6 +20,7 @@ func (b *Base) notifyCHRMapping(window, bank int) {
 	if len(b.chrRAM) > 0 {
 		source = bus.GraphicsCHRRAM
 	}
+
 	b.NotifyGraphics(bus.GraphicsEvent{
 		Kind: bus.GraphicsCHRMapping,
 		Page: bus.GraphicsPage{

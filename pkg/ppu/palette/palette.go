@@ -36,6 +36,7 @@ func (p *Palette) Data() [nes.PaletteSize]byte {
 	for index := range data {
 		data[index] = byte(p.data[index].Load())
 	}
+
 	return data
 }
 
@@ -47,5 +48,6 @@ func mirroredPaletteAddressToBase(address uint16) uint16 {
 	if address >= 0x10 && address%4 == 0 {
 		address -= 0x10
 	}
+
 	return address
 }

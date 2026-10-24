@@ -31,6 +31,7 @@ func TestNativeDevices(t *testing.T) {
 		n.InspectRAM(0)
 		n.Frame()
 	}
+
 	assert.Equal(t, before, n.Cycles())
 }
 
@@ -40,11 +41,13 @@ func TestNativeDMAAndControllers(t *testing.T) {
 	for index := range 256 {
 		n.Write(0x200+uint16(index), byte(index))
 	}
+
 	n.Write(0x4014, 2)
 	n.Advance(1)
 	for index, value := range n.InspectOAM() {
 		assert.Equal(t, byte(index), value)
 	}
+
 	assert.True(t, n.Cycles() >= 513)
 	n.SetButtons(0xa5)
 	n.Write(0x4016, 1)
@@ -54,6 +57,7 @@ func TestNativeDMAAndControllers(t *testing.T) {
 		n.Advance(8)
 		buttons |= (n.Read(0x4016) & 1) << bit
 	}
+
 	assert.Equal(t, byte(0xa5), buttons)
 }
 
@@ -72,6 +76,7 @@ func TestNativeAudio(t *testing.T) {
 	for _, value := range buffer {
 		audible = audible || value != 0
 	}
+
 	assert.True(t, audible)
 	cycles := n.Cycles()
 	n.AudioCallback(buffer)
@@ -109,6 +114,7 @@ func TestNativeBankedPRGData(t *testing.T) {
 	for bank := range 16 {
 		data[bank*8192] = byte(bank)
 	}
+
 	n, err := NewNative(NativeOptions{
 		Mapper:  4,
 		PRGData: data,
@@ -142,6 +148,7 @@ func TestNativeRainbowBoard(t *testing.T) {
 		{0x4108, 0x80}, {0x4118, 0}, {0x410a, 0x80}, {0x411a, 1}} {
 		n.Write(write[0], byte(write[1]))
 	}
+
 	n.Write(0x8000, 0x11)
 	n.Write(0xbfff, 0x22)
 	n.Write(0x6000, 0x33)
@@ -180,6 +187,7 @@ func TestNativeMirroring(t *testing.T) {
 			assert.Equal(t, mode, device.bus.NameTable.MirrorMode())
 		})
 	}
+
 	for _, mode := range []cartridge.MirrorMode{-1, 255, cartridge.Mirror3Diagonal + 1} {
 		t.Run("invalid "+strconv.Itoa(int(mode)), func(t *testing.T) {
 			device, err := NewNative(NativeOptions{
@@ -319,6 +327,7 @@ func TestNativeDataPortIncrementsAtPowerUp(t *testing.T) {
 	for index := range 4 {
 		n.Write(0x2007, byte(0x90+index))
 	}
+
 	for index := range 4 {
 		value, ok := n.InspectPPU(0x2000 + uint16(index))
 		assert.True(t, ok)

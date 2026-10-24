@@ -140,6 +140,7 @@ func (m *mapperMMC1) applyControl() error {
 	} else {
 		m.MarkFeature(feature.Mirroring)
 	}
+
 	if err := m.SetNameTableMirrorModeIndex(mirrorMode); err != nil {
 		return fmt.Errorf("setting MMC1 mirror mode: %w", err)
 	}
@@ -171,5 +172,6 @@ func (m *mapperMMC1) applyControl() error {
 		// switch two separate 4 KB banks
 		m.SetChrWindow(1, m.chrBank1)
 	}
+
 	return nil
 }

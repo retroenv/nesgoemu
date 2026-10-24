@@ -31,6 +31,7 @@ func (h hexArray) MarshalJSON() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("marshalling JSON: %w", err)
 	}
+
 	return b, nil
 }
 
@@ -46,6 +47,7 @@ func (h hexArrayCombined) MarshalJSON() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("marshalling JSON: %w", err)
 	}
+
 	return b, nil
 }
 
@@ -55,6 +57,7 @@ func (h hexByte) MarshalJSON() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("marshalling JSON: %w", err)
 	}
+
 	return b, nil
 }
 
@@ -64,6 +67,7 @@ func (h hexWord) MarshalJSON() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("marshalling JSON: %w", err)
 	}
+
 	return b, nil
 }
 
@@ -73,6 +77,7 @@ func (h hexQword) MarshalJSON() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("marshalling JSON: %w", err)
 	}
+
 	return b, nil
 }
 

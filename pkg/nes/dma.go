@@ -57,17 +57,21 @@ func (d *dmaController) next(cycle cpu6502.BusCycle, get bool, request dmc.Reque
 	} else if d.dmcPhase == dmcIdle && request.Load == get {
 		d.dmcArmed = true
 	}
+
 	if cycle.Write {
 		return cpuAccess
 	}
+
 	startDMC := d.dmcArmed && d.dmcPhase == dmcIdle
 	if startDMC {
 		d.dmcArmed = false
 	}
+
 	if !d.halted {
 		if !d.oamPending && !startDMC {
 			return cpuAccess
 		}
+
 		d.halted = true
 		d.oamActive = d.oamPending
 		d.oamPending = false
@@ -78,6 +82,7 @@ func (d *dmaController) next(cycle cpu6502.BusCycle, get bool, request dmc.Reque
 			d.dmcCycles = 1
 			d.dmcPhase = dmcDummy
 		}
+
 		return repeatRead
 	}
 
@@ -103,6 +108,7 @@ func (d *dmaController) transfer(get bool, request dmc.Request, startDMC bool) d
 	case d.dmcPhase == dmcReady:
 		d.dmcCycles++
 	}
+
 	if d.oamActive {
 		if get {
 			return oamRead
@@ -111,9 +117,11 @@ func (d *dmaController) transfer(get bool, request dmc.Request, startDMC bool) d
 			return oamWrite
 		}
 	}
+
 	if !d.oamActive && d.dmcPhase == dmcIdle {
 		d.halted = false
 		return cpuAccess
 	}
+
 	return repeatRead
 }

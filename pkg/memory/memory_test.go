@@ -50,6 +50,7 @@ func TestInternalRAMMirrorsEveryTwoKiB(t *testing.T) {
 	for _, address := range []uint16{0x0007, 0x0807, 0x1007, 0x1807} {
 		assert.Equal(t, byte(0xa5), memory.Read(address))
 	}
+
 	memory.Write(0x0fff, 0x5a)
 	value, ok := memory.InspectRAM(0x07ff)
 	assert.True(t, ok)
@@ -83,6 +84,7 @@ func TestControllerStrobeAndAdjacentReads(t *testing.T) {
 	for _, device := range []bus.Controller{systemBus.Controller1, systemBus.Controller2} {
 		device.SetButtonState(controller.A, true)
 	}
+
 	memory.Write(0x4016, 1)
 	memory.Write(0x4016, 0)
 	memory.Write(0, 0x40)
@@ -91,6 +93,7 @@ func TestControllerStrobeAndAdjacentReads(t *testing.T) {
 			memory.BeginCycle()
 			assert.Equal(t, byte(0x41), memory.Read(address), "adjacent reads keep output enable active")
 		}
+
 		memory.BeginCycle()
 		memory.Read(0)
 		memory.BeginCycle()

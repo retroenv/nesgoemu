@@ -43,7 +43,8 @@ func TestCartridgeOptionReplacesMetadata(t *testing.T) {
 func TestLegacyCartridgeSystem(t *testing.T) {
 	rom := make([]byte, 16+0x8000+0x2000)
 	copy(rom, []byte{'N', 'E', 'S', 0x1A, 2, 1, 1})
-	rom[16], rom[16+0x8000] = 0xAA, 0xBB
+	rom[16] = 0xAA
+	rom[16+0x8000] = 0xBB
 	cart, err := cartridge.LoadFile(bytes.NewReader(rom))
 	assert.NoError(t, err)
 	assert.Equal(t, byte(0xAA), cart.PRG[0])

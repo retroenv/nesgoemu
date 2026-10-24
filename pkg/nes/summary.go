@@ -51,6 +51,7 @@ func (sys *System) Summary() Summary {
 	if backer, ok := sys.Bus.Mapper.(bus.BatteryBacker); ok {
 		summary.Battery = backer.BatteryBacked()
 	}
+
 	summary.Groups = appendFeatureGroup(summary.Groups, "PPU", sys.Bus.PPU)
 	summary.Groups = appendFeatureGroup(summary.Groups, "APU", sys.Bus.APU)
 	summary.Groups = appendFeatureGroup(summary.Groups, "Mapper", sys.Bus.Mapper)
@@ -98,6 +99,7 @@ func appendFeatureGroup(groups []FeatureGroup, name string, component any) []Fea
 	if !ok {
 		return groups
 	}
+
 	features := user.Features()
 	if len(features) == 0 {
 		return groups

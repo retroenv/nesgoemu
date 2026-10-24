@@ -20,12 +20,15 @@ func (s *Status) Value() byte {
 	if s.spriteOverflow {
 		value |= 1 << 5
 	}
+
 	if s.spriteZeroHit {
 		value |= 1 << 6
 	}
+
 	if s.verticalBlank {
 		value |= 1 << 7
 	}
+
 	return value
 }
 

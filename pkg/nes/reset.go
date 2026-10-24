@@ -10,12 +10,15 @@ func (sys *System) Reset() {
 	if mapper, ok := sys.Bus.Mapper.(bus.MapperResetter); ok {
 		mapper.Reset()
 	}
+
 	if device, ok := sys.Bus.APU.(resetter); ok {
 		device.Reset()
 	}
+
 	if ppu, ok := sys.Bus.PPU.(resetter); ok {
 		ppu.Reset()
 	}
+
 	sys.CPU.Reset()
 }
 

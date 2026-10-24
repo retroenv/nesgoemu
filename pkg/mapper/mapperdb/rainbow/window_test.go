@@ -19,7 +19,8 @@ func TestWindowFetchPositions(t *testing.T) {
 	m := newTestMapper(t, 0x8000, 0x2000)
 	m.windowSplitRegs = [6]byte{0, 31, 0, 239, 0, 0}
 	for _, test := range tests {
-		m.ppuCycle, m.ppuScanLine = test.cycle, test.line
+		m.ppuCycle = test.cycle
+		m.ppuScanLine = test.line
 		column, line, inside := m.windowPosition()
 		assert.Equal(t, test.column, column)
 		assert.Equal(t, test.fetchLine, line)
@@ -31,7 +32,8 @@ func TestWindowScrollAndPalette(t *testing.T) {
 	m := newTestMapper(t, 0x8000, 0x8000)
 	m.Write(regCHRControl, 0x10)
 	m.windowSplitRegs = [6]byte{0, 31, 0, 239, 0, 0}
-	m.ppuCycle, m.ppuScanLine = 1, 16
+	m.ppuCycle = 1
+	m.ppuScanLine = 16
 	m.fpgaRAM[66] = 3
 	m.fpgaRAM[0x3C0] = 0x80
 	assert.Equal(t, byte(3), m.NameTableMemory().Read(0x2000))
@@ -68,6 +70,7 @@ func TestWindowBounds(t *testing.T) {
 	} {
 		assert.Equal(t, test.inside, windowInRange(test.value, test.start, test.end))
 	}
+
 	m := newTestMapper(t, 0x8000, 0x2000)
 	for _, address := range []uint16{regWindowSplitStart, regWindowSplitStart + 1, regWindowSplitStart + 4} {
 		m.Write(address, 0xFF)
@@ -106,6 +109,7 @@ func TestWindowBoundaryRouting(t *testing.T) {
 		if test.inside {
 			expected = 0xA5
 		}
+
 		assert.Equal(t, expected, m.NameTableMemory().Read(0x2000))
 	}
 }
@@ -114,7 +118,8 @@ func TestWindowPrefetchScrollWrap(t *testing.T) {
 	m := newTestMapper(t, 0x8000, 0x2000)
 	m.windowEnabled = true
 	m.windowSplitRegs = [6]byte{0, 31, 0, 239, 31, 239}
-	m.ppuCycle, m.ppuScanLine = 321, 0
+	m.ppuCycle = 321
+	m.ppuScanLine = 0
 	m.fpgaRAM[31] = 0xAB
 	m.fpgaRAM[0] = 0xCD
 	assert.Equal(t, byte(0xAB), m.NameTableMemory().Read(0x2000))

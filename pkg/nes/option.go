@@ -55,6 +55,7 @@ func (opts *Options) runCPUPreExecutionHooks(cpu *cpu6502.CPU, ins *cpu6502.Inst
 	if opts.tracing {
 		tracePreExecutionHook(cpu, ins, params...)
 	}
+
 	if opts.cpuPreExecutionHook != nil {
 		opts.cpuPreExecutionHook(cpu, ins, params...)
 	}

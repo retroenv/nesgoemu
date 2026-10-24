@@ -20,6 +20,7 @@ func TestBNROMBanksAndConflicts(t *testing.T) {
 		m.Write(0x9234, 3)
 		assert.Equal(t, bank, m.Read(0x8001))
 	}
+
 	offsets, ok := m.(bus.PRGROMMapper)
 	assert.True(t, ok)
 	for value := range 256 {
@@ -32,6 +33,7 @@ func TestBNROMBanksAndConflicts(t *testing.T) {
 			assert.Equal(t, cart.PRG[physical], m.Read(address))
 		}
 	}
+
 	m.Write(0x7ffd, 0)
 	assert.Equal(t, byte(15), m.Read(0x8001))
 	assert.Equal(t, byte(0x5a), m.Read(0x7ffd))
@@ -148,16 +150,20 @@ func testCartridge(nina bool) *cartridge.Cartridge {
 	for i := range cart.PRG {
 		cart.PRG[i] = 0xff
 	}
+
 	if nina {
 		cart.PRG = cart.PRG[:0x10000]
 		cart.CHR = make([]byte, 0x10000)
 	}
+
 	for bank := range len(cart.PRG) / 0x8000 {
 		cart.PRG[bank*0x8000+1] = byte(bank)
 	}
+
 	for i := range cart.CHR {
 		cart.CHR[i] = byte(i / 0x1000)
 	}
+
 	return cart
 }
 
@@ -169,6 +175,7 @@ func testMapper(t *testing.T, cart *cartridge.Cartridge) bus.Mapper {
 		OpenBus:   testOpenBus{},
 	})
 	assert.NoError(t, err)
+
 	return m
 }
 

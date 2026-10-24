@@ -19,6 +19,7 @@ func New(base *mapperbase.Base) (bus.Mapper, error) {
 	}
 	m.SetName("NROM")
 	m.Initialize()
+
 	return m, nil
 }
 

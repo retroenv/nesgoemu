@@ -57,6 +57,7 @@ func TestBackendControllerInput(t *testing.T) {
 				backend.keyUp(key.key)
 				assert.Equal(t, byte(0), readControllerButtons(backend.read, backend.write))
 			}
+
 			backend.keyDown(input.Z)
 			backend.keyDown(input.Right)
 			backend.keyDown(input.Key(-1))
@@ -73,5 +74,6 @@ func readControllerButtons(read func(uint16) byte, write func(uint16, byte)) byt
 	for bit := range 8 {
 		buttons |= (read(0x4016) & 1) << bit
 	}
+
 	return buttons
 }

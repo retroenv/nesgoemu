@@ -16,6 +16,7 @@ func usedFeatures(m *Mapper) set.Set[feature.ID] {
 			used.Add(feature.ID)
 		}
 	}
+
 	return used
 }
 

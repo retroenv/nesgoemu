@@ -38,6 +38,7 @@ func Start(options ...Option) error {
 		if err != nil {
 			return err
 		}
+
 		defer playback.Stop()
 	}
 

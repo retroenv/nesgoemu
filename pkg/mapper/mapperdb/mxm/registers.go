@@ -58,6 +58,7 @@ func (m *Mapper) writeCPURegisters(address uint16, value byte) {
 		if m.prgSelect == 0 {
 			m.MarkFeature(feature.LowBankMapping)
 		}
+
 		setBankByte(&m.prgBanks[m.prgSelect], address == regPRGBankHigh, value)
 		m.mapSelectedCPU()
 
@@ -66,6 +67,7 @@ func (m *Mapper) writeCPURegisters(address uint16, value byte) {
 			if enabled {
 				m.MarkFeature(feature.AlternateBank)
 			}
+
 			m.altEnabled = enabled
 			m.mapAlternateCPU()
 		}
@@ -100,8 +102,10 @@ func (m *Mapper) writePatternRegisters(address uint16, value byte) {
 			offset: int(m.chrBanks[slot]) * chrBankSize,
 		}
 		if m.chrRAM[slot] {
-			w.data, w.writable = m.ram, true
+			w.data = m.ram
+			w.writable = true
 		}
+
 		m.ppuWindows[slot] = w
 	}
 }
@@ -123,7 +127,8 @@ func (m *Mapper) writeIRQRegisters(address uint16, value byte) {
 func (m *Mapper) writeDescriptorRegisters(address uint16, value byte) {
 	switch address {
 	case regDescriptorMode:
-		m.descriptorEnabled, m.attributeMode = value&extendedModeEnable != 0, value&modeMask
+		m.descriptorEnabled = value&extendedModeEnable != 0
+		m.attributeMode = value & modeMask
 		m.markGraphicsModes()
 
 	case regDescriptorSelect:
@@ -145,7 +150,8 @@ func (m *Mapper) writeDescriptorRegisters(address uint16, value byte) {
 func (m *Mapper) writeNametableRegisters(address uint16, value byte) {
 	switch address {
 	case regNametableMode:
-		m.ntEnabled, m.ntMode = value&extendedModeEnable != 0, value&modeMask
+		m.ntEnabled = value&extendedModeEnable != 0
+		m.ntMode = value & modeMask
 		if !m.ntEnabled {
 			// Empty windows use the ordinary mirrored nametables of the PPU.
 			m.ntWindows = [ntWindowCount]window{}
@@ -165,8 +171,10 @@ func (m *Mapper) writeNametableRegisters(address uint16, value byte) {
 				offset: int(m.ntBanks[slot]) * ntBankSize,
 			}
 			if m.ntRAM[slot] {
-				w.data, w.writable = m.ram, true
+				w.data = m.ram
+				w.writable = true
 			}
+
 			m.ntWindows[slot] = w
 		}
 	}
@@ -177,14 +185,16 @@ func (m *Mapper) writePlaneRegisters(address uint16, value byte) {
 	case regPlaneMode:
 		// Background mode makes a descriptor bank two 4 KiB halves wide.
 		// Sprite mode makes fallback reads use the original PPU address.
-		m.wide, m.spriteMode = value&planeBackgroundBit != 0, value&planeSpriteBit != 0
+		m.wide = value&planeBackgroundBit != 0
+		m.spriteMode = value&planeSpriteBit != 0
 		m.markGraphicsModes()
 
 	case regPlaneSelect:
 		// The background bit selects the other half and palette pair. The
 		// sprite bit adds 4 KiB to fallback pattern reads. The bits are
 		// independent.
-		m.second, m.spriteSecond = value&planeBackgroundBit != 0, value&planeSpriteBit != 0
+		m.second = value&planeBackgroundBit != 0
+		m.spriteSecond = value&planeSpriteBit != 0
 
 	case regReadInhibit:
 		m.inhibit = value
@@ -247,6 +257,7 @@ func (m *Mapper) writeRemapRegisters(address uint16, value byte) {
 		if int(m.remapCursor) < len(m.remapTable) {
 			m.remapTable[m.remapCursor] = value
 		}
+
 		m.remapCursor++
 
 	case regRemapPage:
@@ -269,18 +280,23 @@ func (m *Mapper) markGraphicsModes() {
 			m.MarkFeature(feature.GraphicsSets)
 		}
 	}
+
 	if descriptorAttributes || m.metatileEnabled {
 		m.MarkFeature(feature.ExtendedAttributes)
 	}
+
 	if rowAttributes || m.metatileEnabled {
 		m.MarkFeature(feature.RowAttributes)
 	}
+
 	if m.metatileEnabled {
 		m.MarkFeature(feature.Metatiles)
 	}
+
 	if m.spriteMode {
 		m.MarkFeature(feature.SpriteExtendedMode)
 	}
+
 	if m.remapEnabled {
 		m.MarkFeature(feature.ScanlineRemap)
 	}
@@ -294,7 +310,8 @@ func (m *Mapper) readRegister(address uint16) byte {
 	if address >= regPRGReadback && address <= regPRGReadbackEnd {
 		// Decode the readback record. Do not use the write-register meanings
 		// of these addresses. The first byte includes the window index.
-		slot, part := (address-regPRGReadback)/prgReadbackStride, (address-regPRGReadback)%prgReadbackStride
+		slot := (address - regPRGReadback) / prgReadbackStride
+		part := (address - regPRGReadback) % prgReadbackStride
 
 		switch part {
 		case 0:
@@ -356,10 +373,13 @@ func (m *Mapper) copyBlocks(count byte) {
 		source = m.chrROM
 	}
 
-	from, to, size := int(m.copyFrom)*prgBankSize, int(m.copyTo)*prgBankSize, int(count)*prgBankSize
+	from := int(m.copyFrom) * prgBankSize
+	to := int(m.copyTo) * prgBankSize
+	size := int(count) * prgBankSize
 	if from+size > len(source) || to+size > len(m.ram) {
 		return
 	}
+
 	m.MarkFeature(feature.BlockCopy)
 
 	// The forward byte loop is necessary. When the ranges overlap, the copy
@@ -423,5 +443,6 @@ func boolByte(value bool) byte {
 	if value {
 		return 1
 	}
+
 	return 0
 }

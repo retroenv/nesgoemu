@@ -53,8 +53,10 @@ func New(sampleRate int, sink func(level float64)) *Sampler {
 	if sampleRate <= 0 || sampleRate > ntscClockNumerator/ntscClockDenominator {
 		panic("sample rate must be between 1 Hz and the NTSC CPU rate")
 	}
+
 	coefficients := filterCoefficients(sampleRate)
 	exactPhases, phaseStep := exactCoefficients(sampleRate, coefficients)
+
 	return &Sampler{
 		cyclesPerSample: ntscCPURate / float64(sampleRate),
 		increment:       uint64(sampleRate) * ntscClockDenominator,
@@ -75,6 +77,7 @@ func (s *Sampler) Add(level float64) {
 		s.worker.add(level)
 		return
 	}
+
 	s.add(level)
 }
 
@@ -83,6 +86,7 @@ func (s *Sampler) add(level float64) {
 	if s.position < 0 {
 		s.position = len(s.history) - 1
 	}
+
 	s.history[s.position] = level
 	s.accumulator += s.increment
 	if s.accumulator < ntscClockNumerator {
@@ -100,10 +104,12 @@ func (s *Sampler) filtered() float64 {
 		tail := len(s.history) - s.position
 		return dot(s.history[s.position:], weights[:tail]) + dot(s.history[:s.position], weights[tail:])
 	}
+
 	phase := float64(s.accumulator) * filterPhases / float64(s.increment)
 	index := int(phase)
 	fraction := phase - float64(index)
-	first, second := s.coefficients[index], s.coefficients[index+1]
+	first := s.coefficients[index]
+	second := s.coefficients[index+1]
 	var left, right float64
 	coefficient := 0
 	for _, sample := range s.history[s.position:] {
@@ -111,11 +117,13 @@ func (s *Sampler) filtered() float64 {
 		right += sample * second[coefficient]
 		coefficient++
 	}
+
 	for _, sample := range s.history[:s.position] {
 		left += sample * first[coefficient]
 		right += sample * second[coefficient]
 		coefficient++
 	}
+
 	return left + (right-left)*fraction
 }
 
@@ -127,9 +135,11 @@ func dot(samples, weights []float64) float64 {
 		sum += samples[index]*weights[index] + samples[index+1]*weights[index+1] +
 			samples[index+2]*weights[index+2] + samples[index+3]*weights[index+3]
 	}
+
 	for ; index < len(samples); index++ {
 		sum += samples[index] * weights[index]
 	}
+
 	return sum
 }
 
@@ -137,32 +147,42 @@ func dot(samples, weights []float64) float64 {
 // Rates with long schedules use interpolation during playback to limit memory use.
 func exactCoefficients(sampleRate int, coefficients [][]float64) ([][]float64, uint64) {
 	increment := uint64(sampleRate) * ntscClockDenominator
-	step, divisor := increment, uint64(ntscClockNumerator)
+	step := increment
+	divisor := uint64(ntscClockNumerator)
 	for divisor != 0 {
-		step, divisor = divisor, step%divisor
+		remainder := step % divisor
+		step = divisor
+		divisor = remainder
 	}
+
 	count := increment / step
 	if count > maxExactPhases || count > uint64(maxExactWeights/len(coefficients[0])) {
 		return nil, 0
 	}
+
 	kernelMutex.Lock()
 	defer kernelMutex.Unlock()
 	if weights, ok := exactKernelCache[sampleRate]; ok {
 		return weights, step
 	}
+
 	weights := make([][]float64, count)
 	for phase := range weights {
 		position := float64(uint64(phase)*step) * filterPhases / float64(increment)
 		index := int(position)
 		fraction := position - float64(index)
-		first, second := coefficients[index], coefficients[index+1]
+		first := coefficients[index]
+		second := coefficients[index+1]
 		combined := make([]float64, len(first))
 		for i := range combined {
 			combined[i] = first[i] + (second[i]-first[i])*fraction
 		}
+
 		weights[phase] = combined
 	}
+
 	exactKernelCache[sampleRate] = weights
+
 	return weights, step
 }
 
@@ -190,14 +210,19 @@ func filterCoefficients(sampleRate int) [][]float64 {
 			if x != 0 {
 				weight = math.Sin(2*math.Pi*cutoff*x) / (math.Pi * x)
 			}
+
 			weights[index] = weight * window
 			total += weights[index]
 		}
+
 		for index := range weights {
 			weights[index] /= total
 		}
+
 		coefficients[phase] = weights
 	}
+
 	kernelCache[sampleRate] = coefficients
+
 	return coefficients
 }

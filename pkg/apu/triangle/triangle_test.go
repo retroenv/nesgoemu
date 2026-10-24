@@ -129,6 +129,7 @@ func TestReset(t *testing.T) {
 	for range 3 {
 		triangle.ClockHalfFrame()
 	}
+
 	assert.True(t, triangle.LengthActive(), "reset keeps the halt register setting")
 }
 

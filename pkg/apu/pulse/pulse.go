@@ -52,6 +52,7 @@ func (p *Pulse) Clock() {
 		p.sequence = (p.sequence + 7) % 8
 		return
 	}
+
 	p.counter--
 }
 

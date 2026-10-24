@@ -40,12 +40,14 @@ func TestPPUMappingThroughMapperConstruction(t *testing.T) {
 				cart.CHR = make([]byte, 0x8000)
 				source = bus.GraphicsCHRROM
 			}
+
 			m := newTestMapper(t, cart)
 			query, ok := m.(bus.PPUMappingInspector)
 			assert.True(t, ok)
 			for _, write := range tt.writes {
 				m.Write(write[0], byte(write[1]))
 			}
+
 			for window, bank := range tt.banks {
 				for _, offset := range []int{0, 1, 0x3ff} {
 					address := uint16(window*0x400 + offset)

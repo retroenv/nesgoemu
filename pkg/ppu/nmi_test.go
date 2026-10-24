@@ -75,5 +75,6 @@ func newNMITestPPU(t *testing.T) (*PPU, *nmiTestCPU) {
 		CPU:       cpu,
 	}
 	system.Mapper = mapper.NewMockMapper(system)
+
 	return New(system), cpu
 }

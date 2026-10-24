@@ -170,6 +170,7 @@ func (a *APU) clock() {
 		a.pulse2.Clock()
 		a.noise.Clock()
 	}
+
 	a.dmc.Clock()
 	a.triangle.Clock()
 
@@ -177,6 +178,7 @@ func (a *APU) clock() {
 	if quarter || half {
 		a.clockFrames(quarter, half)
 	}
+
 	a.pulse1.CommitLengthWrites()
 	a.pulse2.CommitLengthWrites()
 	a.triangle.CommitLengthWrites()
@@ -211,6 +213,7 @@ func (a *APU) mix() float64 {
 	if source, ok := a.bus.Mapper.(bus.ExpansionAudioSource); ok {
 		level += source.ExpansionAudioOutput()
 	}
+
 	return level
 }
 

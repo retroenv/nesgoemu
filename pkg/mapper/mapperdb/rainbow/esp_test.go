@@ -100,6 +100,7 @@ func TestESPRandomRanges(t *testing.T) {
 		m.executeESP(test.command)
 		assert.Equal(t, test.expected, m.esp.queue[len(m.esp.queue)-1])
 	}
+
 	low, high, valid := espRandomRange([]byte{17, 9, 3}, false)
 	assert.True(t, valid)
 	assert.Equal(t, uint32(3), low)
@@ -114,6 +115,7 @@ func TestESPMaximumMessageAndIRQSources(t *testing.T) {
 	for index := range payload {
 		payload[index] = byte(index)
 	}
+
 	m.fpgaRAM[0x1EFF] = 0xAB
 	m.replyESP(13, payload...)
 	m.ClockCPU(1)
@@ -121,7 +123,8 @@ func TestESPMaximumMessageAndIRQSources(t *testing.T) {
 	assert.Equal(t, byte(0xAB), m.Read(0x4EFF))
 	assert.Equal(t, payload, m.fpgaRAM[0x1F02:])
 	assert.Equal(t, byte(0), m.Read(regScanIRQJitter))
-	m.cycleIRQ.enabled, m.cycleIRQ.pending = true, true
+	m.cycleIRQ.enabled = true
+	m.cycleIRQ.pending = true
 	m.Write(regESPStatus, 0)
 	assert.True(t, m.cycleIRQ.lineActive)
 	m.ackCycleIRQ()

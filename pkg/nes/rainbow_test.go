@@ -92,12 +92,14 @@ func TestRainbowExtendedBackgroundPrefetchAtLeftEdge(t *testing.T) {
 	for row := range 8 {
 		cart.CHR[row] = 0xff
 	}
+
 	sys, err := NewSystem(NewOptions(WithCartridge(cart)))
 	assert.NoError(t, err)
 
 	for offset := range uint16(960) {
 		sys.Bus.NameTable.Write(0x2000+offset, 1)
 	}
+
 	sys.Bus.NameTable.Write(0x20c0, 0)
 	sys.Bus.Mapper.Write(rainbowRegCHRControl, 0)
 	sys.Bus.Mapper.Write(rainbowRegNametableControl0, 3)

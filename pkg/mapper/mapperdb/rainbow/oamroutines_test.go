@@ -20,6 +20,7 @@ func TestOAMGeneratedUpdates(t *testing.T) {
 			m.fpgaRAM[0x1F00+i] = byte(i)
 			m.fpgaRAM[0x1E00+i] = byte(i + 1)
 		}
+
 		cpu := newOAMCPU(t, m, system)
 		cycles := runOAMRoutine(t, m, cpu, oamRoutineStart)
 		// Totals include the caller's JSR and the generated RTS.
@@ -33,8 +34,10 @@ func TestOAMGeneratedUpdates(t *testing.T) {
 					expected &= 0xE3
 				}
 			}
+
 			assert.Equal(t, expected, system.PPU.Read(0x2004))
 		}
+
 		cycles = runOAMRoutine(t, m, cpu, oamSpriteRoutineStart)
 		assert.Equal(t, uint64(12+(int(limit)+1)*6), cycles)
 		for i := range 64 {
@@ -42,6 +45,7 @@ func TestOAMGeneratedUpdates(t *testing.T) {
 			if i <= int(limit) {
 				expected = byte(i*4 + 1)
 			}
+
 			assert.Equal(t, expected, m.spriteBankLower[i])
 		}
 	}
@@ -60,6 +64,7 @@ func TestOAMSlowUpdatePreservesStartAddress(t *testing.T) {
 		system.PPU.Write(0x2003, byte(0xFE+i))
 		assert.Equal(t, expected, system.PPU.Read(0x2004))
 	}
+
 	system.PPU.Write(0x2003, 2)
 	assert.Equal(t, byte(0), system.PPU.Read(0x2004))
 }
@@ -92,6 +97,7 @@ func newOAMCPU(t *testing.T, m *Mapper, system *bus.Bus) *cpu6502.CPU {
 	assert.NoError(t, err)
 	system.CPU = cpu
 	system.PPU = ppu.New(system)
+
 	return cpu
 }
 
@@ -106,6 +112,8 @@ func runOAMRoutine(t *testing.T, m *Mapper, cpu *cpu6502.CPU, address uint16) ui
 			return cpu.Cycles() - start
 		}
 	}
+
 	t.Fatal("OAM routine did not return")
+
 	return 0
 }

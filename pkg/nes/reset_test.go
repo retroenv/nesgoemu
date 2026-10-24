@@ -50,5 +50,6 @@ func (mapper *resetVectorMapper) Read(address uint16) byte {
 	if mapper.reset && address == 0xFFFD {
 		return 0x80
 	}
+
 	return 0
 }

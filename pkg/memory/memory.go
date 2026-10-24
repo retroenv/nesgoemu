@@ -59,15 +59,18 @@ func (m *Memory) Write(address uint16, value byte) {
 	if m.counts != nil {
 		m.countWrite(address)
 	}
+
 	if m.writeObserver != nil {
 		var cycles uint64
 		if m.bus.CPU != nil {
 			cycles = m.bus.CPU.Cycles()
 		}
+
 		var frame uint64
 		if m.bus.PPU != nil {
 			frame = m.bus.PPU.Frame()
 		}
+
 		m.writeObserver(WriteEvent{
 			Address:   address,
 			Value:     value,
@@ -75,6 +78,7 @@ func (m *Memory) Write(address uint16, value byte) {
 			Frame:     frame,
 		})
 	}
+
 	m.openBus = value
 
 	switch {
@@ -112,6 +116,7 @@ func (m *Memory) Read(address uint16) byte {
 	if m.counts != nil {
 		m.countRead()
 	}
+
 	m.openBus = m.read(address)
 
 	return m.openBus
@@ -152,6 +157,7 @@ func (m *Memory) read(address uint16) byte {
 				return reader.ReadPCM()
 			}
 		}
+
 		return m.bus.APU.Read(address)
 
 	case address >= 0x4020: // GTROM allow writes starting 0x5000, MMC1 has RAM starting at 0x6000
@@ -174,6 +180,7 @@ func (m *Memory) readController(address uint16, device bus.Controller) byte {
 	if m.cycle == 0 || m.controllerCycle+1 != m.cycle || m.controllerAddress != address {
 		m.controllerValue = device.Read()
 	}
+
 	m.controllerCycle = m.cycle
 	m.controllerAddress = address
 

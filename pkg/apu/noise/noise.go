@@ -52,6 +52,7 @@ func (n *Noise) Clock() {
 		n.counter = n.timer - 1
 		return
 	}
+
 	n.counter--
 }
 
@@ -131,6 +132,7 @@ func (n *Noise) advance() {
 	if n.mode {
 		tap = n.shift >> 6 & 1
 	}
+
 	feedback := n.shift&1 ^ tap
 
 	n.shift = n.shift>>1 | feedback<<14

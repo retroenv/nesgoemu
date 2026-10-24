@@ -49,7 +49,8 @@ func TestAPU(t *testing.T) {
 // Reset requests require at least 100 ms of emulated time before reset.
 func runROM(t *testing.T, sys *nes.System) {
 	t.Helper()
-	running, resetHandled := false, false
+	running := false
+	resetHandled := false
 	var resetAt uint64
 	for sys.CPU.Cycles() < maxROMCycles {
 		assert.NoError(t, t.Context().Err())
@@ -68,7 +69,8 @@ func runROM(t *testing.T, sys *nes.System) {
 			return
 		}
 		if status != 0x81 {
-			resetAt, resetHandled = 0, false
+			resetAt = 0
+			resetHandled = false
 			continue
 		}
 
@@ -76,12 +78,14 @@ func runROM(t *testing.T, sys *nes.System) {
 			if resetAt == 0 {
 				resetAt = sys.CPU.Cycles() + 200_000
 			}
+
 			if sys.CPU.Cycles() >= resetAt {
 				sys.Reset()
 				resetHandled = true
 			}
 		}
 	}
+
 	t.Fatalf("ROM exceeded %d CPU cycles at PC=$%04X; running=%t; text=%q",
 		maxROMCycles, sys.PC, running, romText(sys))
 }
@@ -101,14 +105,17 @@ func runOlderROM(t *testing.T, sys *nes.System) {
 		} else {
 			samePC = 0
 		}
+
 		if samePC == 100 {
 			text := sys.Bus.NameTable.Data()[0][:960]
 			result := bytes.Trim(text, "\x00 ")
 			assert.Equal(t, "$01", string(result), "ROM screen result")
 			t.Logf("Passed after %d CPU cycles", sys.CPU.Cycles())
+
 			return
 		}
 	}
+
 	t.Fatalf("ROM exceeded %d CPU cycles at PC=$%04X", maxROMCycles, sys.PC)
 }
 
@@ -128,7 +135,9 @@ func romText(sys *nes.System) string {
 		if value == 0 {
 			break
 		}
+
 		text.WriteByte(value)
 	}
+
 	return text.String()
 }

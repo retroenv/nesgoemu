@@ -21,6 +21,7 @@ func (m *Mapper) InspectCHR(address uint16) byte {
 		if len(m.chrRAM) == 0 {
 			return 0
 		}
+
 		return m.chrRAM[offset%len(m.chrRAM)]
 
 	default:
@@ -33,5 +34,6 @@ func (m *Mapper) InspectPRGRAM(offset int) (byte, bool) {
 	if offset < 0 || offset >= len(m.prgRAM) {
 		return 0, false
 	}
+
 	return m.prgRAM[offset], true
 }

@@ -13,16 +13,19 @@ func TestOAMDMAUsesBusCycles(t *testing.T) {
 		if oddStart {
 			program = append([]byte{0x24, 0}, program...)
 		}
+
 		sys := newAudioTestSystem(t, program)
 		var expected [256]byte
 		for i := range expected {
 			expected[i] = byte(i ^ 0xa5)
 			sys.Bus.Memory.Write(0x200+uint16(i), expected[i])
 		}
+
 		if oddStart {
 			_, err := sys.StepSystem()
 			assert.NoError(t, err)
 		}
+
 		_, err := sys.StepSystem()
 		assert.NoError(t, err)
 		write, err := sys.StepSystem()
@@ -34,6 +37,7 @@ func TestOAMDMAUsesBusCycles(t *testing.T) {
 		if oddStart {
 			cycles++
 		}
+
 		assert.Equal(t, cycles, step.CPUCycles, "DMA halt, alignment, 256 transfers, then NOP")
 		assert.Equal(t, expected, sys.InspectOAM())
 		assert.Equal(t, byte(0x5A), sys.Bus.PPU.Read(0x2000), "the last DMA write stays on the PPU I/O bus")
@@ -52,6 +56,7 @@ func TestDMCEnableDefersFetchAndIRQ(t *testing.T) {
 		_, err := sys.StepSystem()
 		assert.NoError(t, err)
 	}
+
 	assert.Equal(t, []apu.RegisterWrite{{Cycle: 13, Address: 0x4015, Value: 0x10}}, writes)
 	assert.Equal(t, byte(0x10), sys.Bus.APU.Read(0x4015), "a register write must not complete a DMA read")
 	before := sys.CPU.Cycles()
@@ -59,6 +64,7 @@ func TestDMCEnableDefersFetchAndIRQ(t *testing.T) {
 		_, err := sys.StepSystem()
 		assert.NoError(t, err)
 	}
+
 	assert.Equal(t, uint64(9), sys.CPU.Cycles()-before, "three NOPs and a three-cycle load DMA")
 	assert.Equal(t, byte(0x80), sys.Bus.APU.Read(0x4015), "the last fetched byte sets DMC IRQ")
 	assert.Len(t, fetches, 1)

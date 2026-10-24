@@ -28,8 +28,10 @@ func TestSpriteFetchTiming(t *testing.T) {
 		if cycle%8 == 5 || cycle%8 == 7 {
 			expected = 1
 		}
+
 		assert.Equal(t, expected, len(mapper.reads)-before)
 	}
+
 	assert.Len(t, mapper.reads, 16)
 	assert.Equal(t, uint16(16), mapper.reads[0])
 	assert.Equal(t, uint16(24), mapper.reads[1])

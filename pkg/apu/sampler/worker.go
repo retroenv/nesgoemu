@@ -11,6 +11,7 @@ func (s *Sampler) StartWorker() {
 	if s.worker != nil {
 		return
 	}
+
 	w := &worker{
 		done:    make(chan struct{}),
 		free:    make(chan []float64, 3),
@@ -20,6 +21,7 @@ func (s *Sampler) StartWorker() {
 	for range 2 {
 		w.free <- make([]float64, workerBatchSize)
 	}
+
 	s.worker = w
 	go w.run(s)
 }
@@ -34,6 +36,7 @@ func (s *Sampler) StopWorker() {
 	if w.used > 0 {
 		w.jobs <- w.pending[:w.used]
 	}
+
 	close(w.jobs)
 	<-w.done
 	s.worker = nil
@@ -67,8 +70,10 @@ func (w *worker) run(s *Sampler) {
 		for _, level := range batch {
 			local.add(level)
 		}
+
 		w.free <- batch
 	}
+
 	s.accumulator = local.accumulator
 	s.position = local.position
 }

@@ -70,10 +70,12 @@ func (fl *flash) read(data []byte, offset int) byte {
 	if len(data) == 0 {
 		return 0
 	}
+
 	offset %= len(data)
 	if !fl.ID {
 		return data[offset]
 	}
+
 	switch offset & flashIDAddressMask {
 	case flashManufacturerIDOffset:
 		return flashManufacturerID
@@ -104,6 +106,7 @@ func (fl *flash) read(data []byte, offset int) byte {
 	case flashProtectionIDOffset:
 		return 0
 	}
+
 	return flashErasedValue
 }
 
@@ -111,6 +114,7 @@ func (fl *flash) write(data []byte, offset int, value byte) {
 	if len(data) == 0 {
 		return
 	}
+
 	offset %= len(data)
 	if fl.Phase == flashProgram {
 		data[offset] &= value
@@ -121,6 +125,7 @@ func (fl *flash) write(data []byte, offset int, value byte) {
 		*fl = flash{}
 		return
 	}
+
 	fl.advance(data, offset, value)
 }
 
@@ -206,6 +211,7 @@ func flashSector(size, offset int) (int, int) {
 				if offset < start+length {
 					return start, start + length
 				}
+
 				start += length
 			}
 
@@ -214,6 +220,7 @@ func flashSector(size, offset int) (int, int) {
 			return start, start + flashSectorSize8K
 		}
 	}
+
 	return start, min(start+flashSectorSize64K, size)
 }
 

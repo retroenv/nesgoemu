@@ -63,6 +63,7 @@ func TestCountAccessesDoNotChangeBehavior(t *testing.T) {
 		assert.Equal(t, plain.Read(address), counted.Read(address))
 		assert.Equal(t, plain.OpenBus(), counted.OpenBus())
 	}
+
 	assert.Equal(t, uint64(0x40), counts.Writes)
 	assert.Equal(t, uint64(0x40), counts.Reads)
 }

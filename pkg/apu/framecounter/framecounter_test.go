@@ -33,6 +33,7 @@ func TestFrameIRQReassertsOnThreeCycles(t *testing.T) {
 		assert.True(t, f.IRQ())
 		f.ClearIRQ()
 	}
+
 	f.Clock()
 	assert.False(t, f.IRQ())
 }
@@ -57,6 +58,7 @@ func TestWriteDelayDependsOnClockPhase(t *testing.T) {
 			assert.False(t, quarter)
 			assert.False(t, half)
 		}
+
 		quarter, half := f.Clock()
 		assert.True(t, quarter)
 		assert.True(t, half)
@@ -151,9 +153,11 @@ func (r *recorder) clock(f *FrameCounter, cycles int) {
 		if quarter {
 			r.quarter = append(r.quarter, uint64(cycle))
 		}
+
 		if half {
 			r.half = append(r.half, uint64(cycle))
 		}
+
 		if f.IRQ() && len(r.irqAt) == 0 {
 			r.irqAt = append(r.irqAt, uint64(cycle))
 		}
@@ -164,7 +168,8 @@ func (r *recorder) clock(f *FrameCounter, cycles int) {
 func clockSteps(t *testing.T, f *FrameCounter, cycles int) [2]bool {
 	t.Helper()
 
-	quarter, half := false, false
+	quarter := false
+	half := false
 	for range cycles {
 		quarter, half = f.Clock()
 	}

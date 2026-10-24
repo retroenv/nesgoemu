@@ -29,6 +29,7 @@ func TestUnusedNametableReads(t *testing.T) {
 			readCycles = append(readCycles, cycle)
 		}
 	}
+
 	assert.Equal(t, []int{257, 259, 265, 267, 273, 275, 281, 283,
 		289, 291, 297, 299, 305, 307, 313, 315, 337, 339}, readCycles)
 }
@@ -78,6 +79,7 @@ func TestGrayscalePixelOutput(t *testing.T) {
 			p.renderState.Tick(p.mask)
 			p.renderPixel()
 		}
+
 		assert.Equal(t, byte(value), p.palette.Read(0))
 	}
 
@@ -94,6 +96,7 @@ func TestBackgroundPrefetchDrawsFirstTileAtLeftEdge(t *testing.T) {
 	for row := range 8 {
 		cart.CHR[row] = 0xff
 	}
+
 	system := &bus.Bus{
 		Cartridge: cart,
 		NameTable: nametable.New(cart.Mirror),

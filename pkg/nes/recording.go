@@ -23,6 +23,7 @@ func (sys *System) WriteWAV(ctx context.Context, destination io.Writer, frames u
 	if err := ctx.Err(); err != nil {
 		return fmt.Errorf("starting audio recording: %w", err)
 	}
+
 	writer := bufio.NewWriter(destination)
 	header := waveHeader(uint32(frames))
 	if _, err := writer.Write(header[:]); err != nil {
@@ -34,6 +35,7 @@ func (sys *System) WriteWAV(ctx context.Context, destination io.Writer, frames u
 	if err := writer.Flush(); err != nil {
 		return fmt.Errorf("flushing WAV output: %w", err)
 	}
+
 	return nil
 }
 
@@ -43,14 +45,17 @@ func (sys *System) writePCM(ctx context.Context, destination io.Writer, frames u
 		if err := ctx.Err(); err != nil {
 			return fmt.Errorf("recording audio: %w", err)
 		}
+
 		available := sys.apu.DrainSamples(buffer[:min(frames, 1024)*2])
 		if available > 0 {
 			if _, err := destination.Write(buffer[:available*2]); err != nil {
 				return fmt.Errorf("writing audio samples: %w", err)
 			}
+
 			frames -= uint64(available)
 			continue
 		}
+
 		end := sys.CPU.Cycles() + 1024
 		for sys.CPU.Cycles() < end {
 			if _, err := sys.StepSystem(); err != nil {
@@ -58,6 +63,7 @@ func (sys *System) writePCM(ctx context.Context, destination io.Writer, frames u
 			}
 		}
 	}
+
 	return nil
 }
 
@@ -75,5 +81,6 @@ func waveHeader(frames uint32) [44]byte {
 	binary.LittleEndian.PutUint16(header[34:], 16)
 	copy(header[36:], "data")
 	binary.LittleEndian.PutUint32(header[40:], frames*2)
+
 	return header
 }

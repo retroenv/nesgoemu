@@ -35,6 +35,7 @@ func (b *Base) LoadBattery(reader io.Reader) error {
 	}
 
 	copy(ram, data)
+
 	return nil
 }
 

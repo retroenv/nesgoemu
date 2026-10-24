@@ -114,6 +114,7 @@ func (m *mapperMMC3) TickPPU(_, _ int, _ bool) {
 	if !m.a12Low || m.a12LowDots >= a12FilterDots {
 		return
 	}
+
 	m.a12LowDots++
 }
 
@@ -135,6 +136,7 @@ func (m *mapperMMC3) writeRegister(address uint16, value uint8) error {
 		if m.Cartridge().Mirror == cartridge.Mirror4 {
 			return nil
 		}
+
 		m.MarkFeature(feature.Mirroring)
 		if err := m.SetNameTableMirrorModeIndex(value & 1); err != nil {
 			return fmt.Errorf("setting MMC3 mirror mode: %w", err)
@@ -178,6 +180,7 @@ func (m *mapperMMC3) writeBankRegister(value uint8) {
 	} else if m.bankSelect >= 6 {
 		value &= 0x3F
 	}
+
 	m.registers[m.bankSelect] = value
 
 	if m.bankSelect <= 5 {
@@ -201,6 +204,7 @@ func (m *mapperMMC3) applyPRGMapping() {
 		m.SetPrgWindow(1, int(m.registers[7]))
 		m.SetPrgWindow(2, -2)
 	}
+
 	// $E000: bank fixed to the last bank.
 	m.SetPrgWindow(3, -1)
 }
@@ -259,12 +263,14 @@ func (m *mapperMMC3) observeA12(high bool) {
 			m.a12Low = true
 			m.a12LowDots = 0
 		}
+
 		return
 	}
 
 	if m.a12Low && m.a12LowDots >= a12FilterDots {
 		m.clockIRQ()
 	}
+
 	m.a12Low = false
 	m.a12LowDots = 0
 }
@@ -280,9 +286,11 @@ func (m *mapperMMC3) clockIRQ() {
 	} else {
 		m.irqCounter--
 	}
+
 	if m.irqCounter == 0 && m.irqEnabled {
 		m.SetMapperIRQ(true)
 	}
+
 	m.irqReload = false
 }
 
@@ -326,8 +334,10 @@ func (m *mapperMMC3) applyPowerOnState() error {
 	if m.Cartridge().Mirror == cartridge.Mirror4 {
 		mode = cartridge.Mirror4
 	}
+
 	if err := m.SetNameTableMirrorMode(mode); err != nil {
 		return fmt.Errorf("setting MMC3 mirror mode: %w", err)
 	}
+
 	return nil
 }

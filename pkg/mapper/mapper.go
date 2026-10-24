@@ -18,6 +18,7 @@ func New(bus *bus.Bus) (bus.Mapper, error) {
 	if size := mapperbase.ChrRAMSize(bus.Cartridge); size > 0 {
 		base.SetChrRAM(make([]byte, size))
 	}
+
 	if size := mapperbase.PrgRAMSize(bus.Cartridge); size > 0 {
 		base.SetPrgRAM(make([]byte, size))
 	}

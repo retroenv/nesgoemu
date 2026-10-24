@@ -69,6 +69,7 @@ func readArguments() optionFlags {
 		flags.PrintDefaults()
 		os.Exit(1)
 	}
+
 	options.input = args[0]
 
 	return options
@@ -105,21 +106,26 @@ func emulateFile(options optionFlags) error {
 	if options.debug {
 		opts = append(opts, nes.WithDebug(options.debugAddress))
 	}
+
 	if options.tracing {
 		opts = append(opts, nes.WithTracing())
 	}
+
 	if options.entrypoint >= 0 {
 		opts = append(opts, nes.WithEntrypoint(options.entrypoint))
 	}
+
 	if options.stopAt >= 0 {
 		opts = append(opts, nes.WithStopAt(options.stopAt))
 	}
+
 	if options.noGui {
 		opts = append(opts, nes.WithDisabledGUI())
 	} else {
 		gui.Setup = guisdl2.Setup
 		audio.Setup = audiosdl2.Setup
 	}
+
 	if options.noAudio {
 		opts = append(opts, nes.WithDisabledAudio())
 	}
@@ -127,6 +133,7 @@ func emulateFile(options optionFlags) error {
 	if err := nes.Start(opts...); err != nil {
 		return fmt.Errorf("starting emulator: %w", err)
 	}
+
 	return nil
 }
 
@@ -138,10 +145,12 @@ func recordWAV(ctx context.Context, cart *cartridge.Cartridge, options optionFla
 	if options.entrypoint >= 0 {
 		sys.PC = uint16(options.entrypoint)
 	}
+
 	file, err := os.OpenFile(options.wav, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
 	if err != nil {
 		return fmt.Errorf("creating WAV file: %w", err)
 	}
+
 	err = sys.WriteWAV(ctx, file, options.audioFrames)
 	closeErr := file.Close()
 	if err != nil {
@@ -150,5 +159,6 @@ func recordWAV(ctx context.Context, cart *cartridge.Cartridge, options optionFla
 	if closeErr != nil {
 		return fmt.Errorf("closing WAV file: %w", closeErr)
 	}
+
 	return nil
 }

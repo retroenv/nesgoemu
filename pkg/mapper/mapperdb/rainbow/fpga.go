@@ -18,6 +18,7 @@ func (m *Mapper) readFPGA(address uint16) uint8 {
 	offset := int(address - fpgaBankedStart)
 	page := int(m.fpgaBankSelect & fpgaBankMask)
 	byteOffset := page*fpgaBankedPageSize + offset
+
 	return m.fpgaRAM[byteOffset%fpgaRAMSize]
 }
 
@@ -35,6 +36,7 @@ func (m *Mapper) readAutoData() uint8 {
 
 	value := m.fpgaRAM[m.fpgaAutoAddr&fpgaAddressMask]
 	m.advanceAutoAddr()
+
 	return value
 }
 

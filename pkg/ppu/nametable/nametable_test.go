@@ -34,6 +34,7 @@ func TestMapperHooksAndCIRAM(t *testing.T) {
 		if address != 0x2000 {
 			return false
 		}
+
 		n.WriteCIRAM(0x400, value)
 		return true
 	})

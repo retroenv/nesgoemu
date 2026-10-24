@@ -76,7 +76,8 @@ func (f *FrameCounter) Clock() (quarter, half bool) {
 			f.mode = f.pending
 			f.restart()
 			if f.mode && f.block == 0 {
-				quarter, half = true, true
+				quarter = true
+				half = true
 			}
 		}
 	}
@@ -84,10 +85,13 @@ func (f *FrameCounter) Clock() (quarter, half bool) {
 	if quarter {
 		f.block = 2
 	}
+
 	if f.block > 0 {
 		f.block--
 	}
+
 	f.elapsed++
+
 	return quarter, half
 }
 
@@ -117,6 +121,7 @@ func (f *FrameCounter) Write(value byte) {
 	if f.inhibit {
 		f.irq = false
 	}
+
 	f.delay = resetDelayCycles + byte(f.elapsed&1)
 }
 
@@ -130,13 +135,16 @@ func (f *FrameCounter) clockSequence() (quarter, half bool) {
 	if current.irq && !f.inhibit {
 		f.irq = true
 	}
+
 	f.step++
 	if f.step == f.sequenceLength() {
 		f.restart()
 	}
+
 	if f.block != 0 {
 		return false, false
 	}
+
 	return current.quarter, current.half
 }
 

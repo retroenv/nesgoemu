@@ -35,6 +35,7 @@ func New(base *mapperbase.Base) (bus.Mapper, error) {
 	m.SetMirrorModeTranslation(translation)
 
 	m.AddWriteHook(0x8000, 0xFFFF, m.setPrgWindow)
+
 	return m, nil
 }
 

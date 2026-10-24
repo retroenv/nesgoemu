@@ -35,9 +35,11 @@ func (m *Mapper) readOAMRoutine(address uint16) byte {
 			m.generateSpriteBankUpdate()
 		}
 	}
+
 	if address >= oamSpriteRoutineStart {
 		m.oamCodeLocked = false
 	}
+
 	return m.oamCode[address-oamRoutineStart]
 }
 
@@ -52,6 +54,7 @@ func (m *Mapper) generateOAMSlowUpdate() {
 		code = append(code, opcodeLDAImmediate, m.fpgaRAM[base+i], opcodeSTAAbsolute,
 			byte(ppuOAMDataAddress&registerLowByteMask), byte(ppuOAMDataAddress>>registerByteShift))
 	}
+
 	m.oamCode[len(code)] = opcodeRTS
 }
 
@@ -63,6 +66,7 @@ func (m *Mapper) generateSpriteBankUpdate() {
 		code = append(code, opcodeLDAImmediate, m.fpgaRAM[base+i*oamBytesPerSprite], opcodeSTAAbsolute,
 			byte(i), byte(spriteBankAddress>>registerByteShift))
 	}
+
 	m.oamCode[len(code)] = opcodeRTS
 }
 

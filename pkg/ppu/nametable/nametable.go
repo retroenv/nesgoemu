@@ -63,7 +63,9 @@ func (n *NameTable) Data() [nes.NameTableCount][]byte {
 		b := n.vram[base : base+nes.NameTableSize]
 		data[table] = b
 	}
+
 	n.mu.RUnlock()
+
 	return data
 }
 
@@ -97,6 +99,7 @@ func (n *NameTable) SetReadHook(hook func(uint16) (uint8, bool)) {
 		n.readHook.Store(nil)
 		return
 	}
+
 	n.readHook.Store(&readHook{call: hook})
 }
 
@@ -134,6 +137,7 @@ func (n *NameTable) Read(address uint16) byte {
 	base := n.mirroredNameTableAddressToBase(address)
 	value := n.vram[base]
 	n.mu.RUnlock()
+
 	return value
 }
 
@@ -180,5 +184,6 @@ func (n *NameTable) mirroredNameTableAddressToBase(address uint16) uint16 {
 	nameTableIndex := nameTableIndexes[table]
 
 	base := nameTableIndex*nes.NameTableSize + offset
+
 	return base
 }

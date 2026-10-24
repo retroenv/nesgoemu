@@ -25,6 +25,7 @@ func TestDefaultPaletteMatchesPublicSource(t *testing.T) {
 			}
 		}
 	}
+
 	assert.Equal(t, sourceSHA256, fmt.Sprintf("%x", sha256.Sum256(rgb)))
 
 	// Entry $00 of the published file for each of the eight emphasis values.
@@ -43,6 +44,7 @@ func TestNewDisplayPalette(t *testing.T) {
 	for i := range data {
 		data[i] = byte(i)
 	}
+
 	palette := newDisplayPalette(string(data))
 
 	for emphasis := range byte(emphasisCount) {

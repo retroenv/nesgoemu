@@ -62,7 +62,9 @@ func (m *Mapper) readCHR(address uint16) uint8 {
 		m.MarkFeature(feature.FPGARAM)
 		return m.fpgaRAM[address&(chrWindowSize4K-1)]
 	}
+
 	offset := m.chrReadOffset(address)
+
 	return m.readCHRSource(offset)
 }
 
@@ -73,6 +75,7 @@ func (m *Mapper) chrReadAddress(address uint16) uint16 {
 				uint16((line+int(m.windowSplitRegs[windowSplitYScrollIndex]))%ppuVisibleHeight&(ppuTileSize-1))
 		}
 	}
+
 	return address
 }
 
@@ -104,6 +107,7 @@ func (m *Mapper) spriteCHROffset(address uint16) int {
 			(uint32(m.spriteBankLower[i]) << spriteBankLowerShift8x8) |
 			(uint32(address) & (chrWindowSize4K - 1))
 	}
+
 	return int(addr)
 }
 
@@ -117,6 +121,7 @@ func (m *Mapper) writeCHR(address uint16, value uint8) {
 		m.fpgaRAM[address&(chrWindowSize4K-1)] = value
 		return
 	}
+
 	regIdx, offset, windowSize := m.chrBankMapping(address)
 
 	bankIndex := int(m.chrBanks[regIdx])
@@ -170,6 +175,7 @@ func (m *Mapper) readCHRSource(offset int) uint8 {
 		if len(m.chrRAM) == 0 {
 			return 0
 		}
+
 		return m.chrRAM[offset%len(m.chrRAM)]
 
 	case chrSourceFPGA:

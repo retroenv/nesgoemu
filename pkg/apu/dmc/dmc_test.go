@@ -26,6 +26,7 @@ func TestEnableWaitsForDMA(t *testing.T) {
 		for range phase {
 			d.Clock()
 		}
+
 		d.Write(0x4012, 2)
 		d.Write(0x4013, 1)
 		d.SetEnabled(true)
@@ -34,6 +35,7 @@ func TestEnableWaitsForDMA(t *testing.T) {
 			assert.False(t, pending)
 			d.Clock()
 		}
+
 		request, pending := d.DMARequest()
 		assert.True(t, pending)
 		assert.Equal(t, Request{
@@ -113,6 +115,7 @@ func TestClockUsesRatePeriod(t *testing.T) {
 		d.Clock()
 		assert.Equal(t, byte(12), d.Output())
 	}
+
 	d.Clock()
 	assert.Equal(t, byte(14), d.Output(), "rate 15 advances every 54 CPU cycles")
 }
@@ -126,6 +129,7 @@ func TestBufferWaitsForOutputCycle(t *testing.T) {
 		d.clockOutput()
 		assert.Equal(t, byte(10), d.Output())
 	}
+
 	d.clockOutput()
 	assert.Equal(t, byte(12), d.Output(), "the new byte starts on the next timer clock")
 }
@@ -137,10 +141,12 @@ func TestRefillStartsWhenBufferEmpties(t *testing.T) {
 	for range 4 {
 		d.Clock()
 	}
+
 	d.CompleteDMA(0xff)
 	for d.sampleFull {
 		d.clockOutput()
 	}
+
 	request, pending := d.DMARequest()
 	assert.True(t, pending)
 	assert.Equal(t, Request{Address: 0xc001}, request)
@@ -157,9 +163,11 @@ func TestOutputStepPreservesParityAtLimits(t *testing.T) {
 			if bit == 0 && level >= 2 {
 				want -= 2
 			}
+
 			if bit == 1 && level <= 125 {
 				want += 2
 			}
+
 			d.changeLevel(byte(bit))
 			assert.Equal(t, byte(want), d.Output())
 		}

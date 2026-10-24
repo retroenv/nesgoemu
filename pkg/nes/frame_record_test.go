@@ -36,12 +36,14 @@ func newToggleSystem(t *testing.T) *System {
 	for row := range 8 {
 		cart.CHR[row] = 0xaa
 	}
+
 	copy(cart.PRG, toggleProgram)
 	cart.PRG[0x7ffc] = 0x00
 	cart.PRG[0x7ffd] = 0x80
 
 	sys, err := NewSystem(NewOptions(WithCartridge(cart), WithSavePath("")))
 	assert.NoError(t, err)
+
 	return sys
 }
 
@@ -83,6 +85,7 @@ func TestObserveFramesRecordsRealRun(t *testing.T) {
 	for _, span := range blank {
 		blankDots += span.End - span.Start
 	}
+
 	assert.True(t, blankDots > ppu.VisibleDots/4 && blankDots < ppu.VisibleDots*3/4)
 
 	// Each loop writes PPUMASK once, and every write changes the enable
@@ -120,17 +123,20 @@ func TestObserveFramesPictureMatchesEmulatorImage(t *testing.T) {
 		if record.RenderedPixels[y] != ppu.Width {
 			continue
 		}
+
 		checked++
 		for x := range ppu.Width {
 			assert.Equal(t, shown.RGBAAt(x, y), img.RGBAAt(x, y))
 		}
 	}
+
 	assert.True(t, checked > 20)
 	// The picture shows both palette entries.
 	var seen [64]bool
 	for _, index := range record.Indices {
 		seen[index] = true
 	}
+
 	assert.True(t, seen[0x21])
 	assert.True(t, seen[0x16])
 }
@@ -150,10 +156,12 @@ func TestObserveFramesDoNotChangeEmulation(t *testing.T) {
 		if observe {
 			sys.ObserveFrames(func(*FrameRecord) { frames++ })
 		}
+
 		stepFrames(t, sys, 8)
 		if observe {
 			assert.True(t, frames >= 7)
 		}
+
 		var res result
 		res.cycles = sys.CPU.Cycles()
 		res.frame = sys.Bus.PPU.Frame()
@@ -163,6 +171,7 @@ func TestObserveFramesDoNotChangeEmulation(t *testing.T) {
 		for address := range res.ram {
 			res.ram[address], _ = sys.InspectRAM(uint16(address))
 		}
+
 		return res
 	}
 
@@ -175,12 +184,14 @@ func TestObserveFramesRunKeepsResults(t *testing.T) {
 		if observe {
 			sys.ObserveFrames(func(*FrameRecord) {})
 		}
+
 		result := sys.Run(t.Context(), RunOptions{
 			Frames:    5,
 			MaxCycles: 1_000_000,
 		})
 		hash := sha256.Sum256(result.Image.Pix)
 		result.Image = nil
+
 		return result, hash
 	}
 	plain, plainHash := run(false)
@@ -230,6 +241,7 @@ func TestObserveFramesNativeCountsCallerAccesses(t *testing.T) {
 		dmaWrites += record.Accesses.OAMDMAWrites
 		dmaReads += record.Accesses.DMAReads
 	}
+
 	assert.Equal(t, uint64(1), dmaWrites)
 	assert.True(t, dmaReads >= 256 && dmaReads <= 258)
 }

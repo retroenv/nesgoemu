@@ -15,11 +15,13 @@ func TestHighPRGRAMWrites(t *testing.T) {
 			m.Write(regHighBankUpperStart+i, 0x80)
 			m.Write(regHighBankLowerStart+i, byte(i))
 		}
+
 		for offset := 0x8000; offset < 0x10000; offset += 0x1000 {
 			address := uint16(offset)
 			m.Write(address+7, byte(address>>8))
 			assert.Equal(t, byte(address>>8), m.Read(address+7))
 		}
+
 		m.Write(regHighBankUpperStart, 0)
 		m.Write(0x8007, 0xCC)
 		assert.Equal(t, byte(0), m.prgROM[7])
@@ -52,6 +54,7 @@ func TestPRGAllWindowMappings(t *testing.T) {
 						physical := (int(bank)*size + offset) % len(data)
 						assert.Equal(t, data[physical], m.Read(uint16(address+offset)))
 					}
+
 					address += size
 				}
 			}
@@ -142,6 +145,7 @@ func TestFPGAPatternMirroring(t *testing.T) {
 		for i := range uint16(16) {
 			m.Write(regCHRBankLowerStart+i, 0xFF)
 		}
+
 		m.Write(0x1123, 0xAB)
 		assert.Equal(t, byte(0xAB), m.fpgaRAM[0x123])
 		assert.Equal(t, byte(0xAB), m.Read(0x123))

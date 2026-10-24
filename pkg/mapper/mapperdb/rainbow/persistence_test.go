@@ -18,11 +18,16 @@ func TestBatteryRoundTrip(t *testing.T) {
 			CHRNonvolatile: 16384,
 		},
 	}
-	m.prgROM[0], m.chrROM[0] = 0xAB, 0xCD
-	m.prgRAM[16384], m.chrRAM[16384] = 0x12, 0x34
+	m.prgROM[0] = 0xAB
+	m.chrROM[0] = 0xCD
+	m.prgRAM[16384] = 0x12
+	m.chrRAM[16384] = 0x34
 	var saved bytes.Buffer
 	assert.NoError(t, m.SaveBattery(&saved))
-	m.prgROM[0], m.chrROM[0], m.prgRAM[16384], m.chrRAM[16384] = 0, 0, 0, 0
+	m.prgROM[0] = 0
+	m.chrROM[0] = 0
+	m.prgRAM[16384] = 0
+	m.chrRAM[16384] = 0
 	m.prgRAM[0] = 0xEF
 	assert.NoError(t, m.LoadBattery(bytes.NewReader(saved.Bytes())))
 	assert.Equal(t, byte(0xAB), m.prgROM[0])

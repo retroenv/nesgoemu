@@ -43,7 +43,9 @@ func TestObserveFramesBlankFrameShowsBackdrop(t *testing.T) {
 	stepToCapture(p, captures)
 
 	assert.Len(t, *captures, 3)
-	first, second, third := (*captures)[0], (*captures)[1], (*captures)[2]
+	first := (*captures)[0]
+	second := (*captures)[1]
+	third := (*captures)[2]
 	assert.True(t, first.Partial)
 	assert.False(t, second.Partial)
 	assert.False(t, third.Partial)
@@ -52,6 +54,7 @@ func TestObserveFramesBlankFrameShowsBackdrop(t *testing.T) {
 	for _, index := range second.Indices {
 		assert.Equal(t, byte(0x21), index)
 	}
+
 	assert.Equal(t, 0, second.Rendered())
 	assert.Equal(t, []DotSpan{{Start: 0, End: VisibleDots}}, second.OffSpans(MaskBoth))
 	assert.Equal(t, []DotSpan{{Start: 0, End: VisibleDots}}, second.OffSpans(MaskBackground))
@@ -76,6 +79,7 @@ func TestObserveFramesRenderedFrame(t *testing.T) {
 	for _, count := range frame.RenderedPixels {
 		assert.Equal(t, uint16(Width), count)
 	}
+
 	assert.Equal(t, MaskBackground, frame.MaskStart)
 	assert.Len(t, frame.OffSpans(MaskBoth), 0)
 	assert.Len(t, frame.OffSpans(MaskBackground), 0)
@@ -125,6 +129,7 @@ func TestObserveFramesMaskSpansInsidePicture(t *testing.T) {
 	for scanline := 11; scanline < 20; scanline++ {
 		assert.Equal(t, uint16(0), frame.RenderedPixels[scanline])
 	}
+
 	assert.Equal(t, uint16(Width), frame.RenderedPixels[5])
 	assert.Equal(t, uint16(Width), frame.RenderedPixels[35])
 	// Dots 1-100 of scanline 10 drew pixels before the write.
@@ -179,6 +184,7 @@ func TestObserveFramesCloneAndDisable(t *testing.T) {
 	for kept == nil {
 		p.Step(1)
 	}
+
 	assert.Equal(t, byte(0), kept.Indices[0])
 	writePaletteEntry(p, 0, 0x06)
 	p.Step(dotsPerFrame)
@@ -202,12 +208,15 @@ func TestObserveFramesDoNotChangePPU(t *testing.T) {
 		if observe {
 			p.ObserveFrames(func(*FrameCapture) {})
 		}
+
 		p.Write(register.PPU_MASK, MaskBoth)
 		for range 4 {
 			p.Step(dotsPerFrame/2 + 17)
 			p.Write(register.PPU_MASK, p.mask.Value()^MaskBoth)
 		}
+
 		img := p.Image()
+
 		return append([]byte(nil), img.Pix...), p.Frame(), p.renderState.ScanLine(), p.renderState.Cycle()
 	}
 	pixelsA, frameA, lineA, dotA := run(false)

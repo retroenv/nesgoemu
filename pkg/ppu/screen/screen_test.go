@@ -29,6 +29,7 @@ func TestSetPixel(t *testing.T) {
 			A: 255,
 		})
 	}
+
 	s.FinishRendering()
 	assert.Equal(t, first, s.Image().RGBAAt(0, 0))
 	assert.Equal(t, last, s.Image().RGBAAt(Width-1, Height-1))

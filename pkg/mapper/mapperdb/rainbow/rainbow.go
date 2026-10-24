@@ -210,7 +210,8 @@ func (m *Mapper) readVector(address uint16) uint8 {
 		m.scanIRQ.pending = false
 		m.scanIRQ.readyToFire = false
 		// NMI ends the frame and breaks the repeated-read detection sequence.
-		m.ppuBus.lastAddress, m.ppuBus.repeated = 0, 0
+		m.ppuBus.lastAddress = 0
+		m.ppuBus.repeated = 0
 		m.updateIRQStatus()
 	}
 

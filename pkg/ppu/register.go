@@ -57,6 +57,7 @@ func (p *PPU) Write(address uint16, value uint8) {
 		if p.probe != nil {
 			p.probeMaskChange(value)
 		}
+
 		p.mask.Set(value)
 		p.markMaskFeatures(value)
 
@@ -75,6 +76,7 @@ func (p *PPU) Write(address uint16, value uint8) {
 		if !p.addressing.Latch() {
 			p.fineX = uint16(value) & 0x07
 		}
+
 		p.addressing.SetScroll(value)
 
 	case register.PPU_ADDR:
@@ -90,11 +92,13 @@ func (p *PPU) Write(address uint16, value uint8) {
 			// The transfer writes each byte to $2004. The last byte refreshes the register.
 			p.openBus.Set(p.sprites.WriteDMA(value))
 		}
+
 		p.features.Mark(feature.OAMDMA)
 
 	default:
 		panic(fmt.Sprintf("unhandled ppu write at address: 0x%04X", address))
 	}
+
 	p.observeMapperWrite(address, value)
 }
 
@@ -102,15 +106,19 @@ func (p *PPU) markControlFeatures(value uint8) {
 	if value&control.CTRL_NMI != 0 {
 		p.features.Mark(feature.NMI)
 	}
+
 	if value&control.CTRL_BG_1000 != 0 {
 		p.features.Mark(feature.BackgroundTableHigh)
 	}
+
 	if value&control.CTRL_SPR_1000 != 0 {
 		p.features.Mark(feature.SpriteTableHigh)
 	}
+
 	if value&control.CTRL_8x16 != 0 {
 		p.features.Mark(feature.SpriteSize8x16)
 	}
+
 	if value&control.CTRL_INC_32 != 0 {
 		p.features.Mark(feature.VRAMIncrement32)
 	}
@@ -120,12 +128,15 @@ func (p *PPU) markMaskFeatures(value uint8) {
 	if value&mask.MASK_BG != 0 {
 		p.features.Mark(feature.BackgroundRendering)
 	}
+
 	if value&mask.MASK_SPR != 0 {
 		p.features.Mark(feature.SpriteRendering)
 	}
+
 	if value&mask.MASK_MONO != 0 {
 		p.features.Mark(feature.Grayscale)
 	}
+
 	if value&(mask.MASK_TINT_RED|mask.MASK_TINT_BLUE|mask.MASK_TINT_GREEN) != 0 {
 		p.features.Mark(feature.ColorEmphasis)
 	}

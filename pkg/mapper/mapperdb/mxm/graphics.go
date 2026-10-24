@@ -27,7 +27,8 @@ func (m *Mapper) observeFetch(address uint16) bool {
 	if name {
 		m.nameReads++
 		if !m.inFrame && m.frameStart {
-			m.frameStart, m.inFrame = false, true
+			m.frameStart = false
+			m.inFrame = true
 		}
 	}
 
@@ -48,6 +49,7 @@ func (m *Mapper) observeFetch(address uint16) bool {
 	}
 
 	m.previousNameReads = byte(m.nameReads)
+
 	return name
 }
 
@@ -69,7 +71,8 @@ func (m *Mapper) trackRepeated(address uint16) {
 	m.nameReads = 0
 
 	if !m.inFrame && !m.frameStart {
-		m.frameStart, m.scanline = true, 0
+		m.frameStart = true
+		m.scanline = 0
 		return
 	}
 
@@ -89,7 +92,8 @@ func (m *Mapper) readVRAM(address uint16) byte {
 
 	name := m.observeFetch(address)
 
-	y, mapped := m.vertical, address
+	y := m.vertical
+	mapped := address
 	if m.remapEnabled {
 		// Remap coarse Y in the bus address. Keep fine Y separate for
 		// descriptors and metatiles. Sprite-mode fallback can keep the
@@ -117,6 +121,7 @@ func (m *Mapper) readVRAM(address uint16) byte {
 	}
 
 	slot := int(address/chrBankSize) & chrSelectMask
+
 	return readWrapped(m.patternMemory(m.chrRAM[slot]), int(m.chrBanks[slot])*chrBankSize+patternPageSize+int(address&chrOffsetMask), 0)
 }
 
@@ -139,6 +144,7 @@ func (m *Mapper) readBackground(address, mapped uint16, y byte, name bool) (byte
 	if m.descriptorEnabled {
 		return m.readDescriptor(address, mapped, y, name)
 	}
+
 	return 0, false
 }
 
@@ -148,11 +154,14 @@ func (m *Mapper) readDescriptor(address, mapped uint16, y byte, name bool) (byte
 		// pattern addresses do not contain enough information to find them
 		// again.
 		m.descriptorPhase = postNameFetchCount
-		m.tileTable, m.tileOffset, m.tileFineY = byte(mapped/ntBankSize)&ntSelectMask, mapped&ntOffsetMask, y&fineYMask
+		m.tileTable = byte(mapped/ntBankSize) & ntSelectMask
+		m.tileOffset = mapped & ntOffsetMask
+		m.tileFineY = y & fineYMask
 
 		if m.ntEnabled && m.ntRAM[m.tileTable] {
 			return readWrapped(m.ram, int(m.ntBanks[m.tileTable])*ntBankSize+int(m.tileOffset), 0), true
 		}
+
 		return m.mappedVRAM(mapped), true
 	}
 
@@ -164,6 +173,7 @@ func (m *Mapper) readDescriptor(address, mapped uint16, y byte, name bool) (byte
 	if m.descriptorPhase == 2 && m.attributeMode != attributeModePatternOnly {
 		return m.fetchAttribute(y), true
 	}
+
 	return m.fetchPattern(address), true
 }
 
@@ -171,6 +181,7 @@ func (m *Mapper) patternMemory(ram bool) []byte {
 	if ram {
 		return m.ram
 	}
+
 	return m.chrROM
 }
 
@@ -190,6 +201,7 @@ func (m *Mapper) fetchAttribute(y byte) byte {
 		if m.attributeMode == attributeModeFineY {
 			base += int(m.tileFineY) * descriptorBankSize
 		}
+
 		value := m.descriptorByte(base)
 		palette = value >> 6
 		if m.wide && m.second {
@@ -254,25 +266,30 @@ func (m *Mapper) fetchMetatile(address uint16, fine byte) {
 	// Each ID owns two pairs of low and high planes. A palette byte holds two
 	// IDs: an even ID uses the upper nibble and an odd ID uses the lower
 	// nibble. The plane set selects the two-bit palette in that nibble.
-	data, packed := metatilePlaneTable+int(id)*metatileRecordSize, m.ramByte(metatilePaletteTable+int(id>>1))
+	data := metatilePlaneTable + int(id)*metatileRecordSize
+	packed := m.ramByte(metatilePaletteTable + int(id>>1))
 	shift := uint(6)
 
 	if id&1 != 0 {
 		shift = 2
 	}
+
 	if m.wide && m.second {
 		data += 2
 		shift -= 2
 	}
 
-	m.metatileLow, m.metatileHigh = m.ramByte(data), m.ramByte(data+1)
-	m.metatilePalette, m.metatilePhase = (packed>>shift&paletteMask)*paletteRepeat, postNameFetchCount
+	m.metatileLow = m.ramByte(data)
+	m.metatileHigh = m.ramByte(data + 1)
+	m.metatilePalette = (packed >> shift & paletteMask) * paletteRepeat
+	m.metatilePhase = postNameFetchCount
 }
 
 func (m *Mapper) ramByte(offset int) byte {
 	if offset >= len(m.ram) {
 		return 0
 	}
+
 	return m.ram[offset]
 }
 
@@ -305,6 +322,7 @@ func (m *Mapper) writeVRAM(address uint16, value byte) {
 			m.MarkFeature(feature.PPUWriteBanking)
 			m.ram[offset] = value
 		}
+
 		return
 	}
 
@@ -313,6 +331,7 @@ func (m *Mapper) writeVRAM(address uint16, value byte) {
 		if w.writable {
 			writeWrapped(w.data, w.offset+int(address&chrOffsetMask), value)
 		}
+
 		return
 	}
 

@@ -84,6 +84,7 @@ func (m *Mapper) writeNametable(address uint16, value byte) bool {
 	if address < ntBaseAddress || address >= ntEndAddress {
 		return false
 	}
+
 	offset := (address - ntBaseAddress) % ntMirrorSize
 	slot := offset / ntSlotSize
 	bank := m.ntBank[slot]
@@ -96,6 +97,7 @@ func (m *Mapper) writeNametable(address uint16, value byte) bool {
 	case ntSourceFPGARAM:
 		m.fpgaRAM[uint16(bank&ntExtPageMask)*ntSlotSize+offset] = value
 	}
+
 	return true
 }
 
@@ -117,6 +119,7 @@ func (m *Mapper) readAttrExtMode(bankIdx int, ctrl byte) (uint8, bool) {
 	extData := m.fpgaRAM[extOffset]
 	palette := (extData >> ntSrcShift) & ntPaletteMask
 	m.MarkFeature(feature.ExtendedAttributes)
+
 	return replicateAttr(palette), true
 }
 
@@ -128,6 +131,7 @@ func (m *Mapper) readSlot(bankIdx int, slotOffset uint16) (uint8, bool) {
 	if m.ppuBus.enabled && !m.scanIRQ.inFrame {
 		ctrl &= ntSrcMask
 	}
+
 	bank := m.ntBank[bankIdx]
 
 	if slotOffset < ntAttrOffset {
@@ -140,6 +144,7 @@ func (m *Mapper) readSlot(bankIdx int, slotOffset uint16) (uint8, bool) {
 		if slotOffset >= ntAttrOffset {
 			return replicateAttr(m.fillAttr & ntPaletteMask), true
 		}
+
 		return m.fillTile, true
 	}
 
@@ -157,6 +162,7 @@ func (m *Mapper) readSlot(bankIdx int, slotOffset uint16) (uint8, bool) {
 		if len(m.chrRAM) == 0 {
 			return 0, true
 		}
+
 		addr := (int(bank)*ntSlotSize + int(slotOffset)) % len(m.chrRAM)
 		return m.chrRAM[addr], true
 
@@ -165,6 +171,7 @@ func (m *Mapper) readSlot(bankIdx int, slotOffset uint16) (uint8, bool) {
 		if addr >= fpgaRAMSize {
 			return 0, true
 		}
+
 		return m.fpgaRAM[addr], true
 
 	case ntSourceCHRROM:
@@ -172,6 +179,7 @@ func (m *Mapper) readSlot(bankIdx int, slotOffset uint16) (uint8, bool) {
 		if int(addr) >= len(m.chrROM) {
 			return 0, true
 		}
+
 		return m.chrROM[addr], true
 	}
 
@@ -189,6 +197,7 @@ func (m *Mapper) updateBGExtState(bankIdx int, slotOffset uint16, ctrl byte) {
 	if !m.bgExtActive {
 		return
 	}
+
 	m.MarkFeature(feature.BGExtendedMode)
 
 	fpgaSrcPage := (ctrl >> ntExtPageShift) & ntExtPageMask
@@ -206,6 +215,7 @@ func (m *Mapper) readWindowNametable(slotOffset uint16) (uint8, bool) {
 	if !inside {
 		return 0, false
 	}
+
 	tileCol := (column + int(m.windowSplitRegs[windowSplitXScrollIndex])) & (ntTileCols - 1)
 	pixelY := (line + int(m.windowSplitRegs[windowSplitYScrollIndex])) % ppuVisibleHeight
 	tileRow := pixelY / ppuTileSize
@@ -214,11 +224,13 @@ func (m *Mapper) readWindowNametable(slotOffset uint16) (uint8, bool) {
 		ntOffset = ntAttrOffset + uint16(tileRow/ntAttributeBlockSize*ppuTileSize+
 			tileCol/ntAttributeBlockSize)
 	}
+
 	value, _ := m.readSlot(ntWindowSlot, ntOffset)
 	if slotOffset >= ntAttrOffset && m.ntControl[ntWindowSlot]&(ntFillBit|ntAttrExtBit) == 0 {
 		shift := (tileRow&2)*2 + (tileCol & 2)
 		value = replicateAttr((value >> shift) & ntPaletteMask)
 	}
+
 	return value, true
 }
 
@@ -236,10 +248,12 @@ func (m *Mapper) windowPosition() (int, int, bool) {
 	case m.ppuCycle >= ppuVisibleFetchStart && m.ppuCycle <= ppuVisibleFetchEnd:
 		column = (m.ppuCycle-ppuVisibleFetchStart)/ppuTileSize + ppuWindowColumnOffset
 	}
+
 	if m.ppuBus.enabled {
 		if !m.scanIRQ.inFrame {
 			return 0, 0, false
 		}
+
 		// Counts 49 and 50 fetch the next line's columns 0 and 1. The first
 		// 48 reads comprise 32 background tiles and 16 unused sprite reads.
 		// Modulo 50 aligns these prefetches with the window's screen coordinates.
@@ -249,9 +263,11 @@ func (m *Mapper) windowPosition() (int, int, bool) {
 			line++
 		}
 	}
+
 	inside := column >= 0 && line >= 0 && line < ppuVisibleHeight &&
 		windowInRange(column, int(m.windowSplitRegs[windowSplitXStartIndex]), int(m.windowSplitRegs[windowSplitXEndIndex])) &&
 		windowInRange(line, int(m.windowSplitRegs[windowSplitYStartIndex]), int(m.windowSplitRegs[windowSplitYEndIndex]))
+
 	return column, line, inside
 }
 
@@ -267,5 +283,6 @@ func windowInRange(val, lo, hi int) bool {
 	if lo <= hi {
 		return val >= lo && val <= hi
 	}
+
 	return val >= lo || val <= hi
 }

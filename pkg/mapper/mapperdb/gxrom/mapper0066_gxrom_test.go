@@ -31,6 +31,7 @@ func TestBankMasksAndBoundaries(t *testing.T) {
 				assert.Equal(t, prg*0x8000+int(address-0x8000), physical)
 				assert.Equal(t, cart.PRG[physical], m.Read(address))
 			}
+
 			assert.Equal(t, mirror, m.MirrorMode())
 		}
 	}
@@ -69,6 +70,7 @@ func TestNoRAMOrWritableCHR(t *testing.T) {
 		m.Write(address, 0x33)
 		assert.Equal(t, byte(0x5a), m.Read(address))
 	}
+
 	m.Write(0, 0xff)
 	assert.Equal(t, byte(0), m.Read(0))
 	assert.Equal(t, byte(0), m.Read(0x8001))
@@ -134,12 +136,14 @@ func testCartridge() *cartridge.Cartridge {
 	for i := range cart.PRG {
 		cart.PRG[i] = 0xff
 	}
+
 	for bank := range 4 {
 		cart.PRG[bank*0x8000+1] = byte(bank)
 		for i := range 0x2000 {
 			cart.CHR[bank*0x2000+i] = byte(bank)
 		}
 	}
+
 	return cart
 }
 
@@ -151,6 +155,7 @@ func testMapper(t *testing.T, cart *cartridge.Cartridge) bus.Mapper {
 		OpenBus:   testOpenBus{},
 	})
 	assert.NoError(t, err)
+
 	return m
 }
 

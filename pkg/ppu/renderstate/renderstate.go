@@ -40,12 +40,14 @@ func (r *RenderState) TickRendering(rendering bool) {
 	if r.cycle <= 340 {
 		return
 	}
+
 	r.cycle = 0
 
 	r.scanLine++
 	if r.scanLine <= 261 {
 		return
 	}
+
 	r.nextFrame()
 }
 

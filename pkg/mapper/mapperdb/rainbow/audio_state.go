@@ -37,6 +37,7 @@ func (p *audioPulse) clock() {
 		p.timer--
 		return
 	}
+
 	p.timer = p.period
 	p.sequence = (p.sequence - 1) & 0x0F
 }
@@ -45,6 +46,7 @@ func (p *audioPulse) output() byte {
 	if !p.enabled || (!p.mode && p.sequence > p.duty) {
 		return 0
 	}
+
 	return p.volume
 }
 
@@ -75,6 +77,7 @@ func (s *audioSaw) clock() {
 		s.timer--
 		return
 	}
+
 	s.timer = s.period
 	s.step++
 	if s.step >= 14 {
@@ -89,6 +92,7 @@ func (s *audioSaw) output() byte {
 	if !s.enabled {
 		return 0
 	}
+
 	return s.accumulator >> 3
 }
 
@@ -113,6 +117,7 @@ func (a *audioState) pcmOutput() byte {
 	if a.outputControl&audioOutputIPCM == 0 {
 		return 0
 	}
+
 	level := uint16(a.combinedOutput()) * uint16(a.masterVolume) / audioMasterVolumeMask
 	return byte(level * 2)
 }

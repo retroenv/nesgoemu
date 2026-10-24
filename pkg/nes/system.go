@@ -48,6 +48,7 @@ func NewSystem(opts *Options) (*System, error) {
 	if opts == nil {
 		opts = &Options{}
 	}
+
 	cart := opts.cartridge
 	if cart == nil {
 		cart = cartridge.New()
@@ -77,12 +78,14 @@ func NewSystem(opts *Options) (*System, error) {
 	if err := sys.initializeCPU(mem); err != nil {
 		return nil, err
 	}
+
 	systemBus.DMA = &sys.dma
 
 	sys.apu = apu.New(systemBus)
 	systemBus.APU = sys.apu
 	systemBus.PPU = ppu.New(systemBus)
 	sys.clockComponents(sys.CPU.Cycles())
+
 	return sys, nil
 }
 
@@ -113,6 +116,7 @@ func (sys *System) InspectPPU(address uint16) (byte, bool) {
 	if !ok {
 		return 0, false
 	}
+
 	return inspector.InspectMemory(address)
 }
 
@@ -124,6 +128,7 @@ func (sys *System) InspectPRGRAM(offset int) (byte, bool) {
 	if !ok {
 		return 0, false
 	}
+
 	return inspector.InspectPRGRAM(offset)
 }
 
@@ -213,6 +218,7 @@ func (sys *System) runEmulatorSteps(ctx context.Context, stopAt int) error {
 			if sleep := time.Until(nextFrame); sleep > 0 {
 				time.Sleep(sleep)
 			}
+
 			nextFrame = nextFrameDeadline(nextFrame, time.Now())
 		}
 	}
@@ -231,6 +237,7 @@ func (sys *System) runRenderer(ctx context.Context, opts *Options, guiStarter gu
 	if err != nil {
 		return err
 	}
+
 	defer cleanup()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -265,6 +272,7 @@ func (sys *System) runRenderer(ctx context.Context, opts *Options, guiStarter gu
 		if !running {
 			return nil
 		}
+
 		time.Sleep(time.Second / ppu.FPS)
 	}
 }
@@ -284,16 +292,20 @@ func (sys *System) initializeCPU(mem *cpu6502.Memory) error {
 	if opts.tracing {
 		cpuOpts = append(cpuOpts, cpu6502.WithTracing())
 	}
+
 	if opts.tracing || opts.cpuPreExecutionHook != nil {
 		cpuOpts = append(cpuOpts, cpu6502.WithPreExecutionHook(opts.runCPUPreExecutionHooks))
 	}
+
 	cpuOpts = append(cpuOpts, opts.cpuOptions...)
 	cpu, err := cpu6502.New(mem, cpuOpts...)
 	if err != nil {
 		return fmt.Errorf("creating CPU: %w", err)
 	}
+
 	sys.CPU = cpu
 	sys.Bus.CPU = sys.CPU
+
 	return nil
 }
 
@@ -317,5 +329,6 @@ func nextFrameDeadline(previous, now time.Time) time.Time {
 	if now.Sub(next) > maxFrameLag {
 		return now.Add(ntscFrameDuration)
 	}
+
 	return next
 }

@@ -128,10 +128,12 @@ func (s *Stage) fill(destination []byte, playback bool) int {
 		binary.LittleEndian.PutUint16(destination[index*2:], uint16(s.ring[s.head]))
 		s.head = (s.head + 1) % len(s.ring)
 	}
+
 	s.size -= available
 	if playback {
 		s.silence += uint64(frames - available)
 	}
+
 	return available
 }
 
@@ -143,6 +145,7 @@ func (s *Stage) push(sample int16) {
 		s.ring[s.tail] = sample
 		s.tail = (s.tail + 1) % len(s.ring)
 		s.head = s.tail
+
 		return
 	}
 

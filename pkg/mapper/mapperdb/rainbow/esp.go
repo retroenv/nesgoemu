@@ -39,9 +39,12 @@ func (m *Mapper) writeESPRegister(address uint16, value byte) {
 		m.espEnabled = value&espEnableBit != 0
 		m.wifiIrqEnable = value&espIRQEnableBit != 0
 		if !m.espEnabled {
-			m.esp.pending, m.esp.queue = nil, nil
-			m.esp.received, m.esp.sent = false, false
+			m.esp.pending = nil
+			m.esp.queue = nil
+			m.esp.received = false
+			m.esp.sent = false
 		}
+
 		m.updateIRQStatus()
 
 	case regESPStatus:
@@ -59,6 +62,7 @@ func (m *Mapper) startESPTransfer() {
 	if !m.espEnabled || m.esp.pending != nil {
 		return
 	}
+
 	m.esp.sent = false
 	start := fpgaFixedRAMOffset + int(m.wifiRegs[regESPTransmitPage-regESPControl])*fpgaPageSize
 	length := int(m.fpgaRAM[start])
@@ -80,6 +84,7 @@ func (m *Mapper) clockESP() {
 		m.executeESP(message)
 		m.esp.sent = true
 	}
+
 	if !m.esp.received && len(m.esp.queue) != 0 {
 		message := m.esp.queue[0]
 		m.esp.queue[0] = nil
@@ -96,6 +101,7 @@ func (m *Mapper) executeESP(message []byte) {
 	if len(message) == 0 {
 		return
 	}
+
 	switch espCommand(message[0]) {
 	case espGetStatus:
 		m.replyESP(espReady, 0)
@@ -157,14 +163,17 @@ func (m *Mapper) dropESPMessages(command byte, keep int) {
 			remaining++
 		}
 	}
+
 	queue := m.esp.queue[:0]
 	for _, message := range m.esp.queue {
 		if message[0] == command && remaining > keep {
 			remaining--
 			continue
 		}
+
 		queue = append(queue, message)
 	}
+
 	clear(m.esp.queue[len(queue):])
 	m.esp.queue = queue
 }
@@ -174,6 +183,7 @@ func (m *Mapper) replyServerStatus() {
 	if m.esp.server.connected {
 		status = byte(espServerConnected)
 	}
+
 	m.replyESP(espServerStatus, status)
 }
 
@@ -189,6 +199,7 @@ func (m *Mapper) replyServerSettings() {
 		m.replyESP(espServerSettings)
 		return
 	}
+
 	m.replyESP(espServerSettings, append([]byte{
 		byte(server.port >> registerByteShift), byte(server.port), byte(len(server.hostname)),
 	}, server.hostname...)...)
@@ -199,6 +210,7 @@ func (m *Mapper) configureServerSettings(message []byte) {
 		m.esp.server.hostname = nil
 		m.esp.server.port = 0
 		m.esp.server.connected = false
+
 		return
 	}
 	if len(message) < espServerSettingsHeaderSize ||
@@ -207,6 +219,7 @@ func (m *Mapper) configureServerSettings(message []byte) {
 
 		return
 	}
+
 	m.esp.server.port = uint16(message[1])<<registerByteShift | uint16(message[2])
 	m.esp.server.hostname = append(m.esp.server.hostname[:0], message[4:]...)
 	m.esp.server.connected = false
@@ -217,24 +230,29 @@ func (m *Mapper) configureServerSettings(message []byte) {
 // Range endpoints are inclusive; reversed endpoints are exchanged by the protocol.
 func (m *Mapper) replyESPRandom(message []byte) {
 	word := espCommand(message[0]) >= espGetRandomWord
-	minimum, maximum := uint32(0), uint32(espRandomByteMaximum)
+	minimum := uint32(0)
+	maximum := uint32(espRandomByteMaximum)
 	if word {
 		maximum = espRandomWordMaximum
 	}
+
 	valid := true
 	if message[0]&1 != 0 {
 		minimum, maximum, valid = espRandomRange(message, word)
 	}
+
 	var value uint32
 	if valid {
 		if m.esp.random == 0 {
 			m.esp.random = espRandomSeed
 		}
+
 		m.esp.random ^= m.esp.random << 13
 		m.esp.random ^= m.esp.random >> 17
 		m.esp.random ^= m.esp.random << 5
 		value = minimum + m.esp.random%(maximum-minimum+1)
 	}
+
 	if word {
 		m.replyESP(espRandomWord, byte(value>>8), byte(value))
 	} else {
@@ -310,7 +328,8 @@ func espRandomRange(message []byte, word bool) (uint32, uint32, bool) {
 	var minimum, maximum uint32
 	switch {
 	case !word && len(message) == 3:
-		minimum, maximum = uint32(message[1]), uint32(message[2])
+		minimum = uint32(message[1])
+		maximum = uint32(message[2])
 
 	case word && len(message) == 5:
 		minimum = uint32(message[1])<<registerByteShift | uint32(message[2])
@@ -319,5 +338,6 @@ func espRandomRange(message []byte, word bool) (uint32, uint32, bool) {
 	default:
 		return 0, 0, false
 	}
+
 	return min(minimum, maximum), max(minimum, maximum), true
 }

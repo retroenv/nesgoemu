@@ -24,6 +24,7 @@ func (e *Envelope) Clock() {
 		e.start = false
 		e.decay = 15
 		e.divider = e.volume
+
 		return
 	}
 
@@ -51,6 +52,7 @@ func (e *Envelope) Output() byte {
 	if e.constant {
 		return e.volume
 	}
+
 	return e.decay
 }
 

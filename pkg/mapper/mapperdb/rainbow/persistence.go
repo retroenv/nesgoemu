@@ -36,6 +36,7 @@ func (m *Mapper) SaveBattery(writer io.Writer) error {
 	if err := json.NewEncoder(writer).Encode(data); err != nil {
 		return fmt.Errorf("writing Rainbow save: %w", err)
 	}
+
 	return nil
 }
 
@@ -46,16 +47,19 @@ func (m *Mapper) LoadBattery(reader io.Reader) error {
 	if err := json.NewDecoder(io.LimitReader(reader, serializedDataLimit)).Decode(&data); err != nil {
 		return fmt.Errorf("reading Rainbow save: %w", err)
 	}
+
 	prg, chr := m.nonvolatileRAM()
 	if data.Version != batteryFormatVersion || data.ROM != m.romHash() || len(data.PRG) != len(m.prgROM) ||
 		len(data.CHR) != len(m.chrROM) || len(data.PRGRAM) != len(prg) || len(data.CHRRAM) != len(chr) {
 
 		return errSaveData
 	}
+
 	copy(m.prgROM, data.PRG)
 	copy(m.chrROM, data.CHR)
 	copy(prg, data.PRGRAM)
 	copy(chr, data.CHRRAM)
+
 	return nil
 }
 
@@ -67,6 +71,7 @@ func (m *Mapper) nonvolatileRAM() ([]byte, []byte) {
 	if m.Cartridge().Battery != 0 {
 		return m.prgRAM, nil
 	}
+
 	return nil, nil
 }
 
@@ -74,6 +79,7 @@ func (m *Mapper) romHash() [romHashSize]byte {
 	hash := sha256.New()
 	_, _ = hash.Write(m.Cartridge().PRG)
 	_, _ = hash.Write(m.Cartridge().CHR)
+
 	return [romHashSize]byte(hash.Sum(nil))
 }
 

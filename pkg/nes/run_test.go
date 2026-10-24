@@ -178,10 +178,12 @@ func newRunnerTestSystem(t *testing.T, writeMarker bool) *System {
 	} else {
 		copy(cart.PRG, []byte{0x4c, 0x00, 0x80})
 	}
+
 	cart.PRG[0x7ffc] = 0x00
 	cart.PRG[0x7ffd] = 0x80
 
 	sys, err := NewSystem(NewOptions(WithCartridge(cart), WithSavePath("")))
 	assert.NoError(t, err)
+
 	return sys
 }

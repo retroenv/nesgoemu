@@ -42,8 +42,10 @@ func (t *Triangle) Clock() {
 		if t.length.Active() && t.linear > 0 {
 			t.sequence = (t.sequence + 1) % 32
 		}
+
 		return
 	}
+
 	t.counter--
 }
 

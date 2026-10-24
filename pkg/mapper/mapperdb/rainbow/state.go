@@ -21,11 +21,13 @@ func (m *Mapper) SaveState(writer io.Writer) error {
 	if err := encoder.Encode(header); err != nil {
 		return fmt.Errorf("writing Rainbow state header: %w", err)
 	}
+
 	for _, field := range m.stateFields() {
 		if err := encoder.Encode(field); err != nil {
 			return fmt.Errorf("writing Rainbow state: %w", err)
 		}
 	}
+
 	return nil
 }
 
@@ -40,16 +42,22 @@ func (m *Mapper) LoadState(reader io.Reader) error {
 	if header.Version != stateFormatVersion || header.ROM != m.romHash() {
 		return errSaveData
 	}
+
 	next := *m
 	// The decoder can reuse slice storage. Detach slices to preserve live memory
 	// if a later field is truncated or fails validation. Arrays copy by value.
-	next.prgROM, next.chrROM, next.prgRAM, next.chrRAM = nil, nil, nil, nil
-	next.esp.pending, next.esp.queue = nil, nil
+	next.prgROM = nil
+	next.chrROM = nil
+	next.prgRAM = nil
+	next.chrRAM = nil
+	next.esp.pending = nil
+	next.esp.queue = nil
 	for _, field := range next.stateFields() {
 		if err := decoder.Decode(field); err != nil {
 			return fmt.Errorf("reading Rainbow state: %w", err)
 		}
 	}
+
 	var extra any
 	if err := decoder.Decode(&extra); !errors.Is(err, io.EOF) {
 		return errSaveData
@@ -57,8 +65,10 @@ func (m *Mapper) LoadState(reader io.Reader) error {
 	if !m.validStateMemory(&next) || !next.validStateRegisters() {
 		return errSaveData
 	}
+
 	*m = next
 	m.updateIRQStatus()
+
 	return nil
 }
 
@@ -110,11 +120,13 @@ func (m *Mapper) validStateMemory(next *Mapper) bool {
 
 		return false
 	}
+
 	for _, message := range next.esp.queue {
 		if len(message) == 0 || len(message) > espMaximumMessageSize {
 			return false
 		}
 	}
+
 	return true
 }
 

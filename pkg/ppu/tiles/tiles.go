@@ -72,6 +72,7 @@ func (t *Tiles) BackgroundPixel(fineX uint16) byte {
 	shift := (7 - fineX) * 4
 	data >>= shift
 	data &= 0x0F
+
 	return byte(data)
 }
 
@@ -95,6 +96,7 @@ func (t *Tiles) storeTileData() {
 		data <<= 4
 		data |= uint32(a | p1 | p2)
 	}
+
 	t.data |= uint64(data)
 }
 

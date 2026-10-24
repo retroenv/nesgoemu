@@ -18,6 +18,7 @@ func (b *Base) SetChrWindow(window, bank int) {
 	if len(b.chrBanks) == 0 {
 		return
 	}
+
 	bank = bankIndex(bank, len(b.chrBanks))
 
 	b.mu.Lock()
@@ -75,6 +76,7 @@ func ChrRAMSize(cart *cartridge.Cartridge) int {
 	if cart.NES2 != nil {
 		return ChrRAMTotal(cart.NES2.RAMSizes)
 	}
+
 	return defaultChrRAMSize
 }
 

@@ -34,6 +34,7 @@ func (b *Base) SetPrgRAM(ram []byte) {
 		b.features.Undeclare(feature.PRGRAM)
 		return
 	}
+
 	b.DeclareFeature(feature.PRGRAM)
 }
 

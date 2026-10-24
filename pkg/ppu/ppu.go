@@ -64,6 +64,7 @@ func New(systemBus *bus.Bus) *PPU {
 	if timing, ok := systemBus.Mapper.(bus.TimingEnabler); ok {
 		timing.EnableBusTiming()
 	}
+
 	return p
 }
 
@@ -102,6 +103,7 @@ func (p *PPU) InspectMemory(address uint16) (byte, bool) {
 		if !ok {
 			return 0, false
 		}
+
 		return inspector.InspectCHR(address), true
 
 	case address < 0x3F00:
@@ -109,6 +111,7 @@ func (p *PPU) InspectMemory(address uint16) (byte, bool) {
 		if !ok {
 			return 0, false
 		}
+
 		return inspector.InspectNameTable(address), true
 
 	default:
@@ -123,6 +126,7 @@ func (p *PPU) Reset() {
 	if p.probe != nil {
 		p.probeMaskChange(0)
 	}
+
 	p.mask.Set(0)
 
 	p.fineX = 0
@@ -186,6 +190,7 @@ func (p *PPU) readData() byte {
 
 	// TODO handle special case of reading during rendering
 	p.addressing.Increment(p.control.VRAMIncrement)
+
 	return data
 }
 
@@ -196,6 +201,7 @@ func (p *PPU) maskPaletteColor(value byte) byte {
 	if p.mask.Grayscale {
 		return value & 0x30
 	}
+
 	return value & 0x3F
 }
 

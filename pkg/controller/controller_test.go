@@ -34,9 +34,11 @@ func TestReadAfterEightButtons(t *testing.T) {
 	for range 8 {
 		assert.Equal(t, byte(0), c.Read())
 	}
+
 	for range 4 {
 		assert.Equal(t, byte(1), c.Read())
 	}
+
 	c.SetStrobeMode(1)
 	c.SetStrobeMode(0)
 	assert.Equal(t, byte(0), c.Read())

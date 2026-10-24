@@ -24,10 +24,12 @@ func initializeDevices(cart *cartridge.Cartridge) (*bus.Bus, *memory.Memory, *cp
 	if err != nil {
 		return nil, nil, nil, err
 	}
+
 	b.Mapper, err = mapper.New(b)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("creating mapper: %w", err)
 	}
+
 	return b, memory, mem, nil
 }
 
@@ -37,6 +39,7 @@ func clockDevices(b *bus.Bus, cycles uint64) {
 		if clocker != nil {
 			clocker.ClockCPU(1)
 		}
+
 		b.APU.Step(1)
 		b.PPU.Step(3)
 	}
@@ -71,6 +74,7 @@ func clockDeviceCycle(b *bus.Bus, a *apu.APU, d *dmaController, m *memory.Memory
 		d.oamOffset++
 		d.oamActive = d.oamOffset < 256
 	}
+
 	return true
 }
 
@@ -80,5 +84,6 @@ func dmaRead(b *bus.Bus, m *memory.Memory, address uint16) byte {
 	m.SetDMAAccess(true)
 	value := b.Memory.Read(address)
 	m.SetDMAAccess(false)
+
 	return value
 }

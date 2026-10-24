@@ -39,10 +39,12 @@ func (p *PPU) observeWrite(register uint16, value byte) {
 	if p.writeObserver == nil {
 		return
 	}
+
 	var cpuCycles uint64
 	if p.bus.CPU != nil {
 		cpuCycles = p.bus.CPU.Cycles()
 	}
+
 	p.writeObserver(WriteEvent{
 		Frame:      p.renderState.Frame(),
 		CPUCycles:  cpuCycles,
@@ -59,6 +61,7 @@ func (p *PPU) writeData(value byte) {
 	if p.vramWriteObserver != nil {
 		p.vramWriteObserver(address)
 	}
+
 	p.memory.Write(address, value)
 	p.addressing.Increment(p.control.VRAMIncrement)
 }

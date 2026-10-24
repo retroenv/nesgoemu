@@ -44,6 +44,7 @@ func TestAddPreservesDCGain(t *testing.T) {
 	for range 20_000 {
 		s.Add(0.25)
 	}
+
 	for _, value := range samples.values[100:] {
 		assert.LessOrEqual(t, math.Abs(value-0.25), 1e-12)
 	}
@@ -84,11 +85,13 @@ func TestFrequencyResponse(t *testing.T) {
 			for index := range cycles {
 				s.Add(math.Sin(2 * math.Pi * frequency * float64(index) / ntscCPURate))
 			}
+
 			var power float64
 			steady := samples.values[256:]
 			for _, sample := range steady {
 				power += sample * sample
 			}
+
 			gain := math.Sqrt(2 * power / float64(len(steady)))
 			if frequency <= 15000 {
 				assert.LessOrEqual(t, math.Abs(gain-1), 0.003, "passband gain")
@@ -102,7 +105,8 @@ func TestFrequencyResponse(t *testing.T) {
 func TestAddMatchesInterpolatedFilter(t *testing.T) {
 	for _, rate := range []int{44100, 48000, 96000, 44101, 1789772} {
 		t.Run(strconv.Itoa(rate), func(t *testing.T) {
-			actual, expected := collect(), collect()
+			actual := collect()
+			expected := collect()
 			optimized := New(rate, actual.add)
 			reference := New(rate, expected.add)
 			reference.exactPhases = nil
@@ -112,10 +116,12 @@ func TestAddMatchesInterpolatedFilter(t *testing.T) {
 				if cycle >= 2000 && cycle < 20_000 {
 					level = math.Sin(float64(cycle)*0.37) + float64(cycle%31)/31
 				}
+
 				optimized.Add(level)
 				reference.Add(level)
 				assert.Len(t, actual.values, len(expected.values), "sample time")
 			}
+
 			assert.Greater(t, len(actual.values), 0)
 			for i, value := range actual.values {
 				assert.LessOrEqual(t, math.Abs(value-expected.values[i]), 1e-12)

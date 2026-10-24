@@ -19,6 +19,7 @@ func TestPRGROMOffsetAllWindowsAndAliases(t *testing.T) {
 			m.Write(regHighBankUpperStart+register, byte(bank>>8)|0x78)
 			m.Write(regHighBankLowerStart+register, byte(bank))
 		}
+
 		for address := 0x8000; address < 0x10000; address++ {
 			physical, ok := m.PRGROMOffset(uint16(address))
 			assert.True(t, ok)
@@ -33,6 +34,7 @@ func TestPRGROMOffsetRejectsNonROMAndHasNoSideEffects(t *testing.T) {
 		_, ok := m.PRGROMOffset(address)
 		assert.False(t, ok)
 	}
+
 	m.Write(regHighBankUpperStart, 0x80)
 	_, ok := m.PRGROMOffset(0x8000)
 	assert.False(t, ok)
@@ -62,11 +64,13 @@ func TestPRGROMOffsetVectorRegisters(t *testing.T) {
 		_, ok := m.PRGROMOffset(address)
 		assert.False(t, ok)
 	}
+
 	for _, address := range []uint16{0xfffc, 0xfffd} {
 		physical, ok := m.PRGROMOffset(address)
 		assert.True(t, ok)
 		assert.Equal(t, int(address-0x8000), physical)
 	}
+
 	assert.Equal(t, before, *m)
 
 	m.nmiVectorEnabled = false
@@ -77,5 +81,6 @@ func TestPRGROMOffsetVectorRegisters(t *testing.T) {
 		assert.True(t, ok)
 		assert.Equal(t, int(address-0x8000), physical)
 	}
+
 	assert.Equal(t, before, *m)
 }

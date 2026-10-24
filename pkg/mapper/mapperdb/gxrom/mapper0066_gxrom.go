@@ -22,6 +22,7 @@ func New(base *mapperbase.Base) (bus.Mapper, error) {
 	if err := validateCartridge(base.Cartridge()); err != nil {
 		return nil, err
 	}
+
 	base.SetPrgRAM(nil)
 	base.SetChrRAM(nil)
 	m := &mapperGxROM{
@@ -34,6 +35,7 @@ func New(base *mapperbase.Base) (bus.Mapper, error) {
 	m.SetChrWindowSize(0x2000)
 	m.Initialize()
 	m.AddWriteHook(0x8000, 0xffff, m.selectBanks)
+
 	return m, nil
 }
 
@@ -49,6 +51,7 @@ func (m *mapperGxROM) selectBanks(address uint16, value byte) error {
 	m.SetChrWindow(0, int(value&3))
 	m.MarkFeature(feature.PRGBanking)
 	m.MarkFeature(feature.CHRBanking)
+
 	return nil
 }
 
@@ -61,6 +64,7 @@ func validateCartridge(cart *cartridge.Cartridge) error {
 			return errors.New("gxrom cartridge RAM is not supported")
 		}
 	}
+
 	if cart.Battery != 0 || len(cart.Trainer) != 0 {
 		return errors.New("gxrom battery or trainer is not supported")
 	}
@@ -73,5 +77,6 @@ func validateCartridge(cart *cartridge.Cartridge) error {
 	if size := len(cart.CHR); size != 0x2000 && size != 0x4000 && size != 0x8000 {
 		return fmt.Errorf("unsupported gxrom CHR ROM size %d", size)
 	}
+
 	return nil
 }

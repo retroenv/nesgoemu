@@ -139,6 +139,7 @@ func (files *memoryBatteryFiles) Open(path string) (io.ReadCloser, error) {
 	if !ok {
 		return nil, fmt.Errorf("test file missing: %w", os.ErrNotExist)
 	}
+
 	return io.NopCloser(bytes.NewReader(data)), nil
 }
 
@@ -154,8 +155,10 @@ func (files *memoryBatteryFiles) Rename(oldPath, newPath string) error {
 	if !ok {
 		return errors.New("temporary test file missing")
 	}
+
 	files.data[newPath] = data
 	delete(files.data, oldPath)
+
 	return nil
 }
 
@@ -166,8 +169,10 @@ func (file *memoryBatteryFile) Close() error {
 	if file.files.data == nil {
 		file.files.data = make(map[string][]byte)
 	}
+
 	file.files.data[file.name] = bytes.Clone(file.Buffer.Bytes())
 	file.closed = true
+
 	return nil
 }
 
@@ -180,7 +185,9 @@ func (mapper *testBatteryMapper) LoadBattery(reader io.Reader) error {
 	if _, err := io.ReadFull(reader, data[:]); err != nil {
 		return fmt.Errorf("reading test save: %w", err)
 	}
+
 	mapper.value = data[0]
+
 	return nil
 }
 
@@ -188,9 +195,11 @@ func (mapper *testBatteryMapper) SaveBattery(writer io.Writer) error {
 	if mapper.saveErr != nil {
 		return mapper.saveErr
 	}
+
 	_, err := writer.Write([]byte{mapper.value})
 	if err != nil {
 		return fmt.Errorf("writing test save: %w", err)
 	}
+
 	return nil
 }

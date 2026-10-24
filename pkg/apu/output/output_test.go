@@ -28,6 +28,7 @@ func TestQueueStatistics(t *testing.T) {
 	for range ringFrames + 3 {
 		stage.Write(0)
 	}
+
 	assert.Equal(t, Stats{
 		Produced: ringFrames + 3,
 		Queued:   ringFrames,
@@ -56,6 +57,7 @@ func TestWriteRemovesDirectCurrent(t *testing.T) {
 	for range ringFrames {
 		stage.Write(1)
 	}
+
 	buffer := make([]byte, ringFrames*2)
 	stage.Fill(buffer)
 
@@ -69,6 +71,7 @@ func TestQueueKeepsNewestSamples(t *testing.T) {
 	for index := range total {
 		stage.push(int16(index))
 	}
+
 	buffer := make([]byte, (ringFrames+1)*2)
 
 	written := stage.Fill(buffer)

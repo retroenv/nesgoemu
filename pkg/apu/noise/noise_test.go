@@ -57,6 +57,7 @@ func TestClockReloadsPeriodAfterShift(t *testing.T) {
 	for range 3 {
 		n.Clock()
 	}
+
 	assert.Equal(t, uint16(0), n.counter)
 
 	n.Clock()

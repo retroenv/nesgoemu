@@ -12,6 +12,7 @@ func TestNextFrameDeadline(t *testing.T) {
 	for _, delay := range []time.Duration{0, 20 * time.Millisecond, 150 * time.Millisecond} {
 		assert.Equal(t, previous.Add(ntscFrameDuration), nextFrameDeadline(previous, previous.Add(delay)))
 	}
+
 	now := previous.Add(time.Second)
 	assert.Equal(t, now.Add(ntscFrameDuration), nextFrameDeadline(previous, now))
 }

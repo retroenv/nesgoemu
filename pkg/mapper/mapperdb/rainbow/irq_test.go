@@ -18,6 +18,7 @@ func TestIRQOffsetUnits(t *testing.T) {
 			assert.Equal(t, dot >= int(offset)*2-1, m.scanIRQ.pending)
 			assert.Equal(t, dot >= 256, m.scanIRQ.inHBlank)
 		}
+
 		assert.Equal(t, byte(12), m.Read(regScanIRQLatch))
 		assert.Equal(t, byte(0xC0), m.Read(regScanIRQControl))
 		assert.False(t, m.scanIRQ.pending)
@@ -132,7 +133,8 @@ func TestIRQLineAcknowledgement(t *testing.T) {
 	m.ClockCPU(7)
 	assert.True(t, input.active)
 	assert.Equal(t, byte(5), m.scanIRQ.jitter)
-	m.scanIRQ.pending, m.scanIRQ.enabled = true, true
+	m.scanIRQ.pending = true
+	m.scanIRQ.enabled = true
 	m.Write(regCycleIRQAcknowledge, 0)
 	assert.True(t, input.active)
 	m.Read(regScanIRQControl)
@@ -161,6 +163,7 @@ func TestCombinedIRQStatusDoesNotAcknowledge(t *testing.T) {
 		assert.Equal(t, byte(0xC0), m.Read(regIRQStatus))
 		assert.True(t, m.cycleIRQ.lineActive)
 	}
+
 	m.Read(regScanIRQControl)
 	assert.Equal(t, byte(0x40), m.Read(regIRQStatus))
 	assert.True(t, m.cycleIRQ.lineActive)

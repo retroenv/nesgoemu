@@ -45,6 +45,7 @@ func TestAudioPaused(t *testing.T) {
 		_, err := sys.StepSystem()
 		assert.NoError(t, err)
 	}
+
 	assert.False(t, sys.AudioPaused())
 	sys.AudioCallback(make([]byte, 8192))
 	assert.False(t, sys.AudioPaused())
@@ -101,9 +102,11 @@ func TestAudioWorkerPreservesPCM(t *testing.T) {
 		_, err = reference.StepSystem()
 		assert.NoError(t, err)
 	}
+
 	async.apu.StopAudioWorker()
 	assert.Equal(t, reference.AudioStats(), async.AudioStats())
-	actual, expected := make([]byte, 8192), make([]byte, 8192)
+	actual := make([]byte, 8192)
+	expected := make([]byte, 8192)
 	async.AudioCallback(actual)
 	reference.AudioCallback(expected)
 	assert.Equal(t, expected, actual)
@@ -217,6 +220,7 @@ func TestIRQSourcesRemainIndependent(t *testing.T) {
 			sys.Bus.SetMapperIRQ(false)
 			sys.Bus.APU.Step(1)
 		}
+
 		sys.CPU.Flags.I = 0
 		assert.NoError(t, sys.CPU.Step())
 		assert.True(t, sys.CPU.CheckInterrupts())
@@ -285,6 +289,7 @@ func testPlayback(started *bool) *audio.Playback {
 			if started != nil {
 				*started = true
 			}
+
 			return nil
 		},
 		Stop:   func() {},
@@ -320,12 +325,14 @@ func measureFrequency(samples []int16, sampleRate int) float64 {
 			realPart += value * math.Cos(phase)
 			imaginaryPart += value * math.Sin(phase)
 		}
+
 		power := realPart*realPart + imaginaryPart*imaginaryPart
 		if power > best {
 			best = power
 			frequency = float64(bin*sampleRate) / float64(len(samples))
 		}
 	}
+
 	return frequency
 }
 

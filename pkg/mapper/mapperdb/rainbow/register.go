@@ -213,9 +213,11 @@ func (m *Mapper) readCHRControlReg() uint8 {
 	if m.windowEnabled {
 		v |= chrWindowEnableBit
 	}
+
 	if m.spriteExtMode {
 		v |= chrSpriteExtBit
 	}
+
 	return v | m.chrSource<<chrSourceShift
 }
 
@@ -224,6 +226,7 @@ func (m *Mapper) writeCHRControl(value uint8) {
 	if value>>chrSourceShift&chrSourceMask != chrSourceROM {
 		m.MarkFeature(feature.CHRSourceSelect)
 	}
+
 	if value&chrSpriteExtBit != 0 {
 		m.MarkFeature(feature.SpriteExtendedMode)
 	}
@@ -260,6 +263,7 @@ func (m *Mapper) writeWindowSplit(address uint16, value uint8) {
 	if idx == windowSplitXStartIndex || idx == windowSplitXEndIndex || idx == windowSplitXScrollIndex {
 		value &= ntTileCols - 1
 	}
+
 	m.windowSplitRegs[idx] = value
 }
 
@@ -276,11 +280,14 @@ func (m *Mapper) readScanlineIRQStatus() uint8 {
 	if m.scanIRQ.inHBlank {
 		v |= irqStatusHBlankBit
 	}
+
 	if m.scanIRQ.inFrame {
 		v |= irqStatusInFrameBit
 	}
+
 	m.scanIRQ.pending = false
 	m.updateIRQStatus()
+
 	return v
 }
 
@@ -327,6 +334,7 @@ func (m *Mapper) writeCycleIRQReg(address uint16, value uint8) {
 		if m.cycleIRQ.enabled {
 			m.cycleIRQ.counter = m.cycleIRQ.reloadValue
 		}
+
 		m.updateIRQStatus()
 
 	case regCycleIRQAcknowledge:
@@ -339,12 +347,15 @@ func (m *Mapper) readCombinedIRQStatus() uint8 {
 	if m.scanIRQ.pending {
 		v |= irqStatusPendingScanlineBit
 	}
+
 	if m.cycleIRQ.pending {
 		v |= irqStatusPendingCycleBit
 	}
+
 	if m.esp.received {
 		v |= irqStatusReceivedESPBit
 	}
+
 	return v
 }
 
@@ -353,9 +364,11 @@ func (m *Mapper) readESPConfig() uint8 {
 	if m.espEnabled {
 		v |= espEnableBit
 	}
+
 	if m.wifiIrqEnable {
 		v |= espIRQEnableBit
 	}
+
 	return v
 }
 
@@ -370,9 +383,11 @@ func (m *Mapper) readESPRegisters(address uint16) uint8 {
 		if m.esp.received {
 			value |= espStatusReceivedBit
 		}
+
 		if len(m.esp.queue) != 0 {
 			value |= espStatusQueuedBit
 		}
+
 		return value
 
 	case regESPStart:
@@ -380,6 +395,7 @@ func (m *Mapper) readESPRegisters(address uint16) uint8 {
 			return espStatusSentBit
 		}
 	}
+
 	return 0
 }
 
@@ -396,6 +412,7 @@ func (m *Mapper) readNTRegister(address uint16) uint8 {
 	case address == regNTWindowControl:
 		return m.ntControl[ntWindowSlot]
 	}
+
 	return 0
 }
 

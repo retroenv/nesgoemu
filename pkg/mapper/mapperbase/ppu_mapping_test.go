@@ -19,11 +19,13 @@ func TestPPUMappingBanksAndSources(t *testing.T) {
 			if ram {
 				source = bus.GraphicsCHRRAM
 			}
+
 			for _, address := range []uint16{0, 1, uint16(size - 1), 0x1fff} {
 				bank := 19 % (0x8000 / size)
 				if address >= uint16(0x2000-size) {
 					bank = 0x8000/size - 1
 				}
+
 				want := bus.GraphicsMapping{
 					Memory: source,
 					Offset: bank*size + int(address)%size,
@@ -52,11 +54,13 @@ func TestPPUMappingAbsentMemoryAndInvalidAddresses(t *testing.T) {
 		if initialized {
 			base.Initialize()
 		}
+
 		_, ok := base.PPUReadMapping(0)
 		assert.False(t, ok)
 		_, ok = base.PPUWriteMapping(0)
 		assert.False(t, ok)
 	}
+
 	base = newPPUMappingTestBase(t, 0x2000, true)
 	for _, address := range []uint16{0x2000, 0x3000, 0x3f00, 0xffff} {
 		_, ok := base.PPUReadMapping(address)
@@ -105,7 +109,9 @@ func newPPUMappingTestBase(t *testing.T, size int, ram bool) *Base {
 	} else {
 		base.Cartridge().CHR = make([]byte, 0x8000)
 	}
+
 	base.SetChrWindowSize(size)
 	base.Initialize()
+
 	return base
 }

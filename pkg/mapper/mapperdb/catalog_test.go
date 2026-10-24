@@ -36,6 +36,7 @@ func TestCatalogMatchesREADME(t *testing.T) {
 		assert.NoError(t, err)
 		documented = append(documented, uint16(id))
 	}
+
 	assert.NotEmpty(t, documented)
 
 	assert.Equal(t, slices.Sorted(slices.Values(documented)), slices.Sorted(maps.Keys(constructors)))
