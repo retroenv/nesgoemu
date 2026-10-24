@@ -14,10 +14,7 @@ func (b *Base) PrgBankCount() int {
 // A negative bank counts from the end of the PRG ROM. -1 is the last bank,
 // and -2 is the bank before it. A bank that is too large wraps around.
 func (b *Base) SetPrgWindow(window, bank int) {
-	if bank < 0 {
-		bank = len(b.prgBanks) + bank
-	}
-	bank %= len(b.prgBanks)
+	bank = bankIndex(bank, len(b.prgBanks))
 
 	b.mu.Lock()
 	b.prgWindows[window] = bank
@@ -44,28 +41,18 @@ func (b *Base) SetPrgRAM(ram []byte) {
 // Some mapper and modes can have a mix of sizes, for example One 16KB bank and two 8KB banks for MMC5.
 // In case of mixed sizing the bank sizes need to be initialized manually.
 func (b *Base) setDefaultPrgBankSizes() {
-	prgSize := len(b.bus.Cartridge.PRG)
-	banks := prgSize / b.prgWindowSize
-	b.prgBanks = make([]bank, banks)
-
-	for i := range banks {
-		bank := &b.prgBanks[i]
-		bank.length = b.prgWindowSize
-	}
+	b.prgBanks = defaultBanks(len(b.bus.Cartridge.PRG), b.prgWindowSize)
 }
 
 // setPrgBanks sets the bank data based on each bank's length. This needs to be called after the bank lengths
 // have been set, either by calling setDefaultPrgBankSizes() or setting it manually.
 func (b *Base) setPrgBanks() {
-	prg := b.bus.Cartridge.PRG
-	startOffset := 0
+	assignBankData(b.prgBanks, b.bus.Cartridge.PRG)
+}
 
-	for i := range len(b.prgBanks) {
-		bank := &b.prgBanks[i]
-		endOffset := startOffset + bank.length
-		bank.data = prg[startOffset:endOffset]
-		startOffset += bank.length
-	}
+// PrgRAMTotal returns the sum of the volatile and the nonvolatile PRG RAM sizes of NES 2.0 metadata.
+func PrgRAMTotal(sizes cartridge.RAMSizes) int {
+	return sizes.PRGVolatile + sizes.PRGNonvolatile
 }
 
 // PrgRAMSize returns the PRG RAM size of a cartridge in bytes.
@@ -83,7 +70,7 @@ func (b *Base) setPrgBanks() {
 // https://www.nesdev.org/wiki/INES
 func PrgRAMSize(cart *cartridge.Cartridge) int {
 	if cart.NES2 != nil {
-		return cart.NES2.RAMSizes.PRGVolatile + cart.NES2.RAMSizes.PRGNonvolatile
+		return PrgRAMTotal(cart.NES2.RAMSizes)
 	}
 
 	return defaultPrgRAMSize

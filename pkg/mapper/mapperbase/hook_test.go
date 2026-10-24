@@ -50,13 +50,13 @@ func TestWriteHookProxyOnlyKeepsMemoryWrite(t *testing.T) {
 	base.SetPrgRAM(make([]byte, 0x2000))
 
 	calls := 0
-	base.AddWriteHook(prgRAMStart, prgRAMEnd, func(uint16, uint8) error {
+	base.AddWriteHook(PRGRAMStart, PRGRAMEnd, func(uint16, uint8) error {
 		calls++
 		return nil
 	}).SetProxyOnly(true)
 
-	base.Write(prgRAMStart, 0x5A)
-	assert.Equal(t, byte(0x5A), base.Read(prgRAMStart))
+	base.Write(PRGRAMStart, 0x5A)
+	assert.Equal(t, byte(0x5A), base.Read(PRGRAMStart))
 	assert.Equal(t, 1, calls)
 }
 
@@ -67,12 +67,12 @@ func TestWriteHookBlocksMemoryWrite(t *testing.T) {
 	base := New(&bus.Bus{Cartridge: &cartridge.Cartridge{}})
 	base.SetPrgRAM(make([]byte, 0x2000))
 
-	base.AddWriteHook(prgRAMStart, prgRAMEnd, func(uint16, uint8) error {
+	base.AddWriteHook(PRGRAMStart, PRGRAMEnd, func(uint16, uint8) error {
 		return nil
 	})
 
-	base.Write(prgRAMStart, 0x5A)
-	assert.Equal(t, byte(0x00), base.Read(prgRAMStart))
+	base.Write(PRGRAMStart, 0x5A)
+	assert.Equal(t, byte(0x00), base.Read(PRGRAMStart))
 }
 
 func newHookTestBase(t *testing.T) (*Base, []byte) {

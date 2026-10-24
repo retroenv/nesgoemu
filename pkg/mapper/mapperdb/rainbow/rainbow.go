@@ -21,8 +21,6 @@ const (
 	fpgaFixedEnd         = 0x4FFF
 	fpgaBankedStart      = 0x5000
 	fpgaBankedEnd        = 0x5FFF
-	prgRAMStart          = 0x6000
-	prgRAMEnd            = 0x7FFF
 	prgROMStart          = 0x8000
 	nmiVectorLower       = 0xFFFA
 	nmiVectorUpper       = 0xFFFB
@@ -120,8 +118,8 @@ func New(base *mapperbase.Base) (bus.Mapper, error) {
 	chrRAMSize := defaultRAMBlockSize
 	if metadata := cart.NES2; metadata != nil {
 		sizes := metadata.RAMSizes
-		prgRAMSize = sizes.PRGVolatile + sizes.PRGNonvolatile
-		chrRAMSize = sizes.CHRVolatile + sizes.CHRNonvolatile
+		prgRAMSize = mapperbase.PrgRAMTotal(sizes)
+		chrRAMSize = mapperbase.ChrRAMTotal(sizes)
 	}
 
 	m := &Mapper{
@@ -161,7 +159,7 @@ func (m *Mapper) Read(address uint16) uint8 {
 	case address >= fpgaBankedStart && address <= fpgaBankedEnd:
 		return m.readFPGA(address)
 
-	case address >= prgRAMStart && address <= prgRAMEnd:
+	case address >= mapperbase.PRGRAMStart && address <= mapperbase.PRGRAMEnd:
 		return m.readPRGRAM(address)
 
 	case address >= nmiVectorLower:
@@ -191,7 +189,7 @@ func (m *Mapper) Write(address uint16, value uint8) {
 	case address >= fpgaBankedStart && address <= fpgaBankedEnd:
 		m.writeFPGA(address, value)
 
-	case address >= prgRAMStart && address <= prgRAMEnd:
+	case address >= mapperbase.PRGRAMStart && address <= mapperbase.PRGRAMEnd:
 		m.writePRGRAM(address, value)
 
 	case address >= prgROMStart:

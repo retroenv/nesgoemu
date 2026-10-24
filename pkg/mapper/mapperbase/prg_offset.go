@@ -9,10 +9,8 @@ func (b *Base) PRGROMOffset(address uint16) (int, bool) {
 	if address < nes.CodeBaseAddress {
 		return 0, false
 	}
-	for _, hook := range b.readHooks {
-		if address >= hook.startAddress && address <= hook.endAddress && !hook.onlyProxy {
-			return 0, false
-		}
+	if b.readHookReplaces(address) {
+		return 0, false
 	}
 
 	b.mu.RLock()

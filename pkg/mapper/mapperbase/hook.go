@@ -39,6 +39,26 @@ func (b *Base) AddWriteHook(startAddress, endAddress uint16, hookFunc WriteHookF
 	return hook
 }
 
+// readHookReplaces reports whether a read hook replaces the memory read of the address.
+func (b *Base) readHookReplaces(address uint16) bool {
+	for _, hook := range b.readHooks {
+		if hook.covers(address) && !hook.onlyProxy {
+			return true
+		}
+	}
+	return false
+}
+
+// writeHookReplaces reports whether a write hook replaces the memory write of the address.
+func (b *Base) writeHookReplaces(address uint16) bool {
+	for _, hook := range b.writeHooks {
+		if hook.covers(address) && !hook.onlyProxy {
+			return true
+		}
+	}
+	return false
+}
+
 type hook struct {
 	startAddress uint16
 	endAddress   uint16
@@ -62,4 +82,9 @@ type writeHook struct {
 // A proxy-only hook observes the access and lets the default memory function run.
 func (h *hook) SetProxyOnly(proxy bool) {
 	h.onlyProxy = proxy
+}
+
+// covers reports whether the address is in the hook address range.
+func (h *hook) covers(address uint16) bool {
+	return address >= h.startAddress && address <= h.endAddress
 }

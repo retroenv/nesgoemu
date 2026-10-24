@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/retroenv/nesgoemu/pkg/feature"
+	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
 	"github.com/retroenv/retrogolib/assert"
 	"github.com/retroenv/retrogolib/set"
 )
@@ -76,12 +77,12 @@ func TestFeaturesMarkFPGARAMAccessPaths(t *testing.T) {
 
 	m = newTestMapper(t, 0x8000, 0x2000)
 	m.lowBanks[0] = uint16(prgLowBankSourceFPGA << prgLowBankSourceShift)
-	m.Read(prgRAMStart)
+	m.Read(mapperbase.PRGRAMStart)
 	assert.True(t, usedFeatures(m).Contains(feature.FPGARAM))
 
 	m = newTestMapper(t, 0x8000, 0x2000)
 	m.lowBanks[0] = uint16(prgLowBankSourceFPGA << prgLowBankSourceShift)
-	m.Write(prgRAMStart, 1)
+	m.Write(mapperbase.PRGRAMStart, 1)
 	assert.True(t, usedFeatures(m).Contains(feature.FPGARAM))
 
 	m = newTestMapper(t, 0x8000, 0x2000)

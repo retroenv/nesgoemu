@@ -5,10 +5,8 @@ import "github.com/retroenv/nesgoemu/pkg/bus"
 // PPUReadMapping returns the physical CHR byte at a pattern-table address.
 // The query does not call read hooks or change state.
 func (b *Base) PPUReadMapping(address uint16) (bus.GraphicsMapping, bool) {
-	for _, hook := range b.readHooks {
-		if address >= hook.startAddress && address <= hook.endAddress && !hook.onlyProxy {
-			return bus.GraphicsMapping{}, false
-		}
+	if b.readHookReplaces(address) {
+		return bus.GraphicsMapping{}, false
 	}
 	return b.chrMapping(address, false)
 }
@@ -16,10 +14,8 @@ func (b *Base) PPUReadMapping(address uint16) (bus.GraphicsMapping, bool) {
 // PPUWriteMapping returns the physical CHR RAM byte at a pattern-table address.
 // Writes without CHR RAM and writes that a hook handles return false.
 func (b *Base) PPUWriteMapping(address uint16) (bus.GraphicsMapping, bool) {
-	for _, hook := range b.writeHooks {
-		if address >= hook.startAddress && address <= hook.endAddress && !hook.onlyProxy {
-			return bus.GraphicsMapping{}, false
-		}
+	if b.writeHookReplaces(address) {
+		return bus.GraphicsMapping{}, false
 	}
 	return b.chrMapping(address, true)
 }

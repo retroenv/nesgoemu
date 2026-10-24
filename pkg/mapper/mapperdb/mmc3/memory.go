@@ -22,8 +22,8 @@ func prepareMemory(base *mapperbase.Base) error {
 		if sizes.PRGVolatile < 0 || sizes.PRGNonvolatile < 0 || sizes.CHRVolatile < 0 || sizes.CHRNonvolatile < 0 {
 			return fmt.Errorf("invalid MMC3 RAM sizes: %+v", sizes)
 		}
-		prgRAM = sizes.PRGVolatile + sizes.PRGNonvolatile
-		chrRAM = sizes.CHRVolatile + sizes.CHRNonvolatile
+		prgRAM = mapperbase.PrgRAMTotal(sizes)
+		chrRAM = mapperbase.ChrRAMTotal(sizes)
 	}
 
 	if err := validateMemorySizes(len(cart.PRG), len(cart.CHR), prgRAM, chrRAM); err != nil {

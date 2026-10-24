@@ -17,8 +17,9 @@ const (
 	defaultPrgWindowSize = 0x4000 // 16K
 	prgMemSize           = 0x8000 // 32K
 
-	prgRAMStart = 0x6000
-	prgRAMEnd   = 0x7FFF
+	// PRGRAMStart and PRGRAMEnd are the first and last CPU address of the PRG RAM window.
+	PRGRAMStart = 0x6000
+	PRGRAMEnd   = 0x7FFF
 
 	defaultPrgRAMSize = 0x2000 // 8K, the size that a legacy iNES file implies
 )
@@ -120,7 +121,7 @@ func (b *Base) Read(address uint16) uint8 {
 	var value byte
 
 	for _, hook := range b.readHooks {
-		if address >= hook.startAddress && address <= hook.endAddress {
+		if hook.covers(address) {
 			value, err := hook.hookFunc(address)
 			if err != nil {
 				panic(fmt.Sprintf("read hook error: %v", err))
@@ -146,13 +147,9 @@ func (b *Base) Read(address uint16) uint8 {
 		value = bank.data[offset]
 		b.mu.RUnlock()
 
-	case address >= prgRAMStart && address <= prgRAMEnd && len(b.prgRAM) > 0:
+	case b.hasPrgRAM(address):
 		b.MarkFeature(feature.PRGRAM)
-
-		// A PRG RAM that is smaller than its window repeats inside it, the address
-		// decoding covers only the size of the RAM.
-		offset := int(address-prgRAMStart) % len(b.prgRAM)
-		value = b.prgRAM[offset]
+		value = b.prgRAM[b.prgRAMOffset(address)]
 
 	case address >= nes.CodeBaseAddress:
 		b.mu.RLock()
@@ -172,7 +169,7 @@ func (b *Base) Read(address uint16) uint8 {
 // Write a byte to a CHR or PRG memory address.
 func (b *Base) Write(address uint16, value uint8) {
 	for _, hook := range b.writeHooks {
-		if address >= hook.startAddress && address <= hook.endAddress {
+		if hook.covers(address) {
 			if err := hook.hookFunc(address, value); err != nil {
 				panic(fmt.Errorf("write hook error: %w", err))
 			}
@@ -190,13 +187,9 @@ func (b *Base) Write(address uint16, value uint8) {
 		bank.data[offset] = value
 		b.mu.Unlock()
 
-	case address >= prgRAMStart && address <= prgRAMEnd && len(b.prgRAM) > 0:
+	case b.hasPrgRAM(address):
 		b.MarkFeature(feature.PRGRAM)
-
-		// A PRG RAM that is smaller than its window repeats inside it, the address
-		// decoding covers only the size of the RAM.
-		offset := int(address-prgRAMStart) % len(b.prgRAM)
-		b.prgRAM[offset] = value
+		b.prgRAM[b.prgRAMOffset(address)] = value
 
 	default:
 		// Addresses without memory ignore writes.
@@ -246,6 +239,18 @@ func (b *Base) CPUCycles() (uint64, bool) {
 // SetMapperIRQ sets the mapper IRQ input state.
 func (b *Base) SetMapperIRQ(active bool) {
 	b.bus.SetMapperIRQ(active)
+}
+
+// hasPrgRAM reports whether the address is in the PRG RAM window and the mapper has PRG RAM.
+func (b *Base) hasPrgRAM(address uint16) bool {
+	return address >= PRGRAMStart && address <= PRGRAMEnd && len(b.prgRAM) > 0
+}
+
+// prgRAMOffset returns the PRG RAM index of an address in the PRG RAM window.
+// A PRG RAM that is smaller than its window repeats inside it, the address
+// decoding covers only the size of the RAM.
+func (b *Base) prgRAMOffset(address uint16) int {
+	return int(address-PRGRAMStart) % len(b.prgRAM)
 }
 
 func (b *Base) defaultChrBankMapper(address uint16) (int, uint16) {

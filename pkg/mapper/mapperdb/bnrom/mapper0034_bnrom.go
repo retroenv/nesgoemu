@@ -121,7 +121,7 @@ func validateNINA(cart *cartridge.Cartridge) error {
 	}
 	if cart.NES2 != nil {
 		ram := cart.NES2.RAMSizes
-		if ram.PRGVolatile+ram.PRGNonvolatile != 0x2000 || ram.CHRVolatile+ram.CHRNonvolatile != 0 {
+		if mapperbase.PrgRAMTotal(ram) != 0x2000 || mapperbase.ChrRAMTotal(ram) != 0 {
 			return errors.New("NINA requires 8 KiB PRG RAM and no CHR RAM")
 		}
 	}
@@ -134,10 +134,10 @@ func validateBNROM(cart *cartridge.Cartridge) error {
 	}
 	if cart.NES2 != nil {
 		ram := cart.NES2.RAMSizes
-		if ram.PRGVolatile+ram.PRGNonvolatile != 0 {
+		if mapperbase.PrgRAMTotal(ram) != 0 {
 			return errors.New("BNROM PRG RAM is not supported")
 		}
-		if len(cart.CHR) > 0 && ram.CHRVolatile+ram.CHRNonvolatile != 0 {
+		if len(cart.CHR) > 0 && mapperbase.ChrRAMTotal(ram) != 0 {
 			return errors.New("BNROM mixed CHR ROM and RAM is not supported")
 		}
 	}

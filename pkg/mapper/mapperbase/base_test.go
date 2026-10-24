@@ -40,11 +40,11 @@ func TestPrgRAMSupports64KiB(t *testing.T) {
 	base := New(&bus.Bus{Cartridge: &cartridge.Cartridge{}})
 	base.SetPrgRAM(make([]byte, 64*1024))
 
-	base.Write(prgRAMStart, 0x5A)
-	base.Write(prgRAMEnd, 0xA5)
+	base.Write(PRGRAMStart, 0x5A)
+	base.Write(PRGRAMEnd, 0xA5)
 
-	assert.Equal(t, byte(0x5A), base.Read(prgRAMStart))
-	assert.Equal(t, byte(0xA5), base.Read(prgRAMEnd))
+	assert.Equal(t, byte(0x5A), base.Read(PRGRAMStart))
+	assert.Equal(t, byte(0xA5), base.Read(PRGRAMEnd))
 }
 
 func TestReadReturnsOpenBusValue(t *testing.T) {

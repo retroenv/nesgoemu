@@ -18,10 +18,7 @@ func (b *Base) SetChrWindow(window, bank int) {
 	if len(b.chrBanks) == 0 {
 		return
 	}
-	if bank < 0 {
-		bank = len(b.chrBanks) + bank
-	}
-	bank %= len(b.chrBanks)
+	bank = bankIndex(bank, len(b.chrBanks))
 
 	b.mu.Lock()
 	changed := b.chrWindows[window] != bank
@@ -51,13 +48,7 @@ func (b *Base) setDefaultChrBankSizes() {
 		chrSize = len(b.chrRAM)
 	}
 
-	banks := chrSize / b.chrWindowSize
-	b.chrBanks = make([]bank, banks)
-
-	for i := range banks {
-		bank := &b.chrBanks[i]
-		bank.length = b.chrWindowSize
-	}
+	b.chrBanks = defaultBanks(chrSize, b.chrWindowSize)
 }
 
 // setChrBanks sets the bank data based on each bank's length. This needs to be called after the bank lengths
@@ -68,14 +59,7 @@ func (b *Base) setChrBanks() {
 		chr = b.chrRAM
 	}
 
-	startOffset := 0
-
-	for i := range len(b.chrBanks) {
-		bank := &b.chrBanks[i]
-		endOffset := startOffset + bank.length
-		bank.data = chr[startOffset:endOffset]
-		startOffset += bank.length
-	}
+	assignBankData(b.chrBanks, chr)
 }
 
 // ChrRAMSize returns the CHR RAM size of a cartridge without CHR ROM. A legacy
@@ -89,7 +73,12 @@ func ChrRAMSize(cart *cartridge.Cartridge) int {
 		return 0
 	}
 	if cart.NES2 != nil {
-		return cart.NES2.RAMSizes.CHRVolatile + cart.NES2.RAMSizes.CHRNonvolatile
+		return ChrRAMTotal(cart.NES2.RAMSizes)
 	}
 	return defaultChrRAMSize
+}
+
+// ChrRAMTotal returns the sum of the volatile and the nonvolatile CHR RAM sizes of NES 2.0 metadata.
+func ChrRAMTotal(sizes cartridge.RAMSizes) int {
+	return sizes.CHRVolatile + sizes.CHRNonvolatile
 }

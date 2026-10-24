@@ -155,7 +155,7 @@ func New(base *mapperbase.Base) (bus.Mapper, error) {
 	ramSize := mapperbase.PrgRAMSize(cart)
 	chrSize := defaultCHRRAM
 	if cart.NES2 != nil {
-		chrSize = cart.NES2.RAMSizes.CHRVolatile + cart.NES2.RAMSizes.CHRNonvolatile
+		chrSize = mapperbase.ChrRAMTotal(cart.NES2.RAMSizes)
 	}
 
 	m := &Mapper{

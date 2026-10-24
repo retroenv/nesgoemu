@@ -59,7 +59,7 @@ func TestPrgRAMFeatureDeclaredAndMarkedOnAccess(t *testing.T) {
 		},
 	}, usage)
 
-	base.Write(prgRAMStart, 0x5A)
+	base.Write(PRGRAMStart, 0x5A)
 
 	usage = base.Features()
 	assert.Equal(t, []feature.Usage{

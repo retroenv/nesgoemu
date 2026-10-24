@@ -1,6 +1,9 @@
 package rainbow
 
-import "github.com/retroenv/nesgoemu/pkg/feature"
+import (
+	"github.com/retroenv/nesgoemu/pkg/feature"
+	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
+)
 
 // Specification: https://github.com/BrokeStudio/rainbow-net/blob/master/NES/mapper-doc.md#prg-banking-modes-4100-readwrite
 
@@ -72,7 +75,7 @@ func (m *Mapper) writePRG(address uint16, value uint8) {
 }
 
 func (m *Mapper) readPRGRAM(address uint16) uint8 {
-	offset := int(address - prgRAMStart)
+	offset := int(address - mapperbase.PRGRAMStart)
 
 	if m.prgRAMMode == prgRAMMode8K {
 		return m.readLowBank(m.lowBanks[0], offset, prgWindowSize8K)
@@ -84,7 +87,7 @@ func (m *Mapper) readPRGRAM(address uint16) uint8 {
 }
 
 func (m *Mapper) writePRGRAM(address uint16, value uint8) {
-	offset := int(address - prgRAMStart)
+	offset := int(address - mapperbase.PRGRAMStart)
 
 	if m.prgRAMMode == prgRAMMode8K {
 		m.writeLowBank(m.lowBanks[0], offset, prgWindowSize8K, value)

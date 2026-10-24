@@ -16,25 +16,13 @@ CHR capacity: 8K
 
 // NewOR returns a new mapper with the OR logic configuration.
 func NewOR(base *mapperbase.Base) (bus.Mapper, error) {
-	m := newMapperUxROM(base)
-	m.SetName("UxROM")
-
-	// $8000-$BFFF: 16 KB switchable PRG ROM bank
-	// $C000-$FFFF: 16 KB PRG ROM bank, fixed to the last bank
-	m.SetPrgWindow(1, -1) // $C000-$FFFF: 16 KB PRG ROM bank, fixed to the last bank
-	return m, nil
+	return newFixedLast(base, "UxROM", 0), nil
 }
 
 // NewUN1 returns a new mapper with the UN1ROM configuration.
+// It is very similar to UxROM, but the register is shifted by two bits.
 func NewUN1(base *mapperbase.Base) (bus.Mapper, error) {
-	m := newMapperUxROM(base)
-	m.SetName("UN1ROM")
-
-	// $8000-$BFFF: 16 KB switchable PRG ROM bank
-	// $C000-$FFFF: 16 KB PRG ROM bank, fixed to the last bank
-	m.SetPrgWindow(1, -1) // $C000-$FFFF: 16 KB PRG ROM bank, fixed to the last bank
-	m.valueShift = 2      // very similar to UxROM, but the register is shifted by two bits
-	return m, nil
+	return newFixedLast(base, "UN1ROM", 2), nil
 }
 
 // NewAND returns a new mapper with the AND logic configuration.
@@ -53,6 +41,18 @@ type mapperUxROM struct {
 
 	valueShift  int
 	windowIndex int
+}
+
+// newFixedLast returns a mapper with a switchable bank at $8000 and the last bank fixed at $C000.
+func newFixedLast(base *mapperbase.Base, name string, valueShift int) *mapperUxROM {
+	m := newMapperUxROM(base)
+	m.SetName(name)
+
+	// $8000-$BFFF: 16 KB switchable PRG ROM bank
+	// $C000-$FFFF: 16 KB PRG ROM bank, fixed to the last bank
+	m.SetPrgWindow(1, -1)
+	m.valueShift = valueShift
+	return m
 }
 
 func newMapperUxROM(base *mapperbase.Base) *mapperUxROM {

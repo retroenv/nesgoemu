@@ -23,8 +23,6 @@ const (
 	chrWindowSize = 0x0400 // 1K
 	prgWindowSize = 0x2000 // 8K
 
-	prgRAMStart       = 0x6000
-	prgRAMEnd         = 0x7FFF
 	registerRangeLow  = 0x8000
 	registerRangeHigh = 0xFFFF
 
@@ -67,8 +65,8 @@ func New(base *mapperbase.Base) (bus.Mapper, error) {
 	m.SetPrgWindowSize(prgWindowSize)
 	m.Initialize()
 
-	m.wramReadHook = m.AddReadHook(prgRAMStart, prgRAMEnd, m.readWram)
-	m.wramWriteHook = m.AddWriteHook(prgRAMStart, prgRAMEnd, m.writeWram)
+	m.wramReadHook = m.AddReadHook(mapperbase.PRGRAMStart, mapperbase.PRGRAMEnd, m.readWram)
+	m.wramWriteHook = m.AddWriteHook(mapperbase.PRGRAMStart, mapperbase.PRGRAMEnd, m.writeWram)
 	m.AddReadHook(0, 0x1FFF, m.observePatternRead).SetProxyOnly(true)
 	m.AddWriteHook(0, 0x1FFF, m.observePatternWrite).SetProxyOnly(true)
 	m.AddWriteHook(registerRangeLow, registerRangeHigh, m.writeRegister)
