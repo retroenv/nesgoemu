@@ -89,4 +89,5 @@ nesgoemu -c game.nes
 
 See the [usage guide](docs/usage.md) for command-line options and controls,
 the [advanced usage guide](docs/advanced-usage.md) for tracing and debugging,
+the [debug printing guide](docs/debug-printing.md) for program text output,
 and the [architecture guide](docs/architecture.md) for internals.

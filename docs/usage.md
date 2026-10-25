@@ -28,6 +28,8 @@ usage: nesgoemu [options] <file to emulate>
   -e int
         entrypoint to start the CPU (default -1)
   -m    mute audio output
+  -no-printf
+        ignore program text output written to $401B and $401C
   -s int
         stop execution at address (default -1)
   -t    print CPU tracing

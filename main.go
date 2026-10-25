@@ -56,7 +56,7 @@ func readArguments() optionFlags {
 	flags.StringVar(&options.debugAddress, "a", "127.0.0.1:8080", "listening address for the debug server to use")
 	flags.IntVar(&options.entrypoint, "e", -1, "entrypoint to start the CPU")
 	flags.BoolVar(&options.noGui, "c", false, "console mode, disable GUI")
-	flags.BoolVar(&options.noPrintf, "no-printf", false, "ignore program text output written to $401B")
+	flags.BoolVar(&options.noPrintf, "no-printf", false, "ignore program text output written to $401B and $401C")
 	flags.BoolVar(&options.noAudio, "m", false, "mute audio output")
 	flags.IntVar(&options.stopAt, "s", -1, "stop execution at address")
 	flags.BoolVar(&options.tracing, "t", false, "print CPU tracing")

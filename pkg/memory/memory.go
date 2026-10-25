@@ -104,10 +104,10 @@ func (m *Memory) Write(address uint16, value byte) {
 
 	case address <= nes.IORegisterEndAddress: // $4018 to $401F are not mapped
 		// The APU and I/O test mode registers are disabled, writes are ignored.
-		// The only exception is the printf address, which is a debug aid.
+		// The only exceptions are the printf addresses, which are a debug aid.
 		// https://www.nesdev.org/wiki/CPU_memory_map
-		if address == PrintfAddress && m.printf != nil {
-			m.printf.writeByte(value)
+		if m.printf != nil {
+			m.printf.write(address, value)
 		}
 
 	default:
