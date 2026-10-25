@@ -57,6 +57,22 @@ Run tracing and the web debugger together:
 nesgoemu -d -t game.nes
 ```
 
+### Program Text Output
+
+A program can print text. It writes one character at a time to address `$401B`.
+The llvm-mos SDK uses this address for `stdout`, and the Mesen script
+`printf-mesen.lua` reads it. The emulator writes the text to stderr, so the
+text stays separate from the trace output on stdout. The emulator writes each
+line when it receives a newline character. It writes an unfinished line when
+the program stops.
+
+```bash
+nesgoemu -c game.nes 2> printf.log
+```
+
+Real hardware ignores writes to `$401B`. Use the `-no-printf` flag to ignore
+them in the emulator too.
+
 ### Execution Control
 
 The `-e` and `-s` flags accept decimal or Go-style base-prefixed integers such as `0x8000`.

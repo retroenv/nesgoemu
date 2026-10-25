@@ -32,6 +32,7 @@ type Memory struct {
 	openBus byte
 
 	writeObserver func(WriteEvent)
+	printf        *printfWriter // optional text output of the program
 
 	counts    *AccessCounts // optional bus access counters
 	dmaAccess bool          // the current read belongs to a DMA transfer
@@ -103,7 +104,11 @@ func (m *Memory) Write(address uint16, value byte) {
 
 	case address <= nes.IORegisterEndAddress: // $4018 to $401F are not mapped
 		// The APU and I/O test mode registers are disabled, writes are ignored.
+		// The only exception is the printf address, which is a debug aid.
 		// https://www.nesdev.org/wiki/CPU_memory_map
+		if address == PrintfAddress && m.printf != nil {
+			m.printf.writeByte(value)
+		}
 
 	default:
 		panic(fmt.Sprintf("unhandled memory write at address: 0x%04X", address))

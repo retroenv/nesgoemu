@@ -29,6 +29,9 @@ type Options struct {
 	tracingTarget io.Writer
 
 	summaryTarget io.Writer
+
+	noPrintf     bool
+	printfTarget io.Writer
 }
 
 // Option defines a Start parameter.
@@ -46,6 +49,10 @@ func NewOptions(optionList ...Option) *Options {
 
 	if opts.tracing && opts.tracingTarget == nil {
 		opts.tracingTarget = os.Stdout
+	}
+
+	if !opts.noPrintf && opts.printfTarget == nil {
+		opts.printfTarget = os.Stderr
 	}
 
 	return opts
@@ -142,4 +149,15 @@ func WithSavePath(path string) Option {
 // WithSummaryTarget sets the target for the run summary. A nil target disables the summary.
 func WithSummaryTarget(target io.Writer) Option {
 	return func(opts *Options) { opts.summaryTarget = target }
+}
+
+// WithPrintfTarget sets the target for text that the program writes to the
+// printf address $401B. The default target is stderr.
+func WithPrintfTarget(target io.Writer) Option {
+	return func(opts *Options) { opts.printfTarget = target }
+}
+
+// WithDisabledPrintf ignores writes to the printf address $401B.
+func WithDisabledPrintf() Option {
+	return func(opts *Options) { opts.noPrintf = true }
 }

@@ -28,6 +28,7 @@ type optionFlags struct {
 	entrypoint int
 	noAudio    bool
 	noGui      bool
+	noPrintf   bool
 	stopAt     int
 	tracing    bool
 }
@@ -55,6 +56,7 @@ func readArguments() optionFlags {
 	flags.StringVar(&options.debugAddress, "a", "127.0.0.1:8080", "listening address for the debug server to use")
 	flags.IntVar(&options.entrypoint, "e", -1, "entrypoint to start the CPU")
 	flags.BoolVar(&options.noGui, "c", false, "console mode, disable GUI")
+	flags.BoolVar(&options.noPrintf, "no-printf", false, "ignore program text output written to $401B")
 	flags.BoolVar(&options.noAudio, "m", false, "mute audio output")
 	flags.IntVar(&options.stopAt, "s", -1, "stop execution at address")
 	flags.BoolVar(&options.tracing, "t", false, "print CPU tracing")
@@ -128,6 +130,10 @@ func emulateFile(options optionFlags) error {
 
 	if options.noAudio {
 		opts = append(opts, nes.WithDisabledAudio())
+	}
+
+	if options.noPrintf {
+		opts = append(opts, nes.WithDisabledPrintf())
 	}
 
 	if err := nes.Start(opts...); err != nil {

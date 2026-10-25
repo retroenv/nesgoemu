@@ -59,6 +59,8 @@ func NewSystem(opts *Options) (*System, error) {
 		return nil, err
 	}
 
+	systemMemory.SetPrintfTarget(opts.printfTarget)
+
 	sys := &System{
 		opts:    opts,
 		storage: diskBatteryStorage{files: osBatteryFiles{}},
