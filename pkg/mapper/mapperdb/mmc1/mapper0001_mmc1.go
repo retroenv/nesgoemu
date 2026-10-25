@@ -20,9 +20,15 @@ import (
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 )
 
-// prgModeFixLast is the control register value of PRG mode 3, which fixes the
-// last bank at $C000.
-const prgModeFixLast = 0x0C
+const (
+	// prgModeFixLast is the control register value of PRG mode 3, which fixes the
+	// last bank at $C000.
+	prgModeFixLast = 0x0C
+
+	chrBank0RegisterStart = 0xa000
+	chrBank1RegisterStart = 0xc000
+	prgBankRegisterStart  = 0xe000
+)
 
 // New returns a new MMC1 mapper.
 func New(base *mapperbase.Base) (bus.Mapper, error) {
@@ -112,16 +118,16 @@ func (m *mapperMMC1) writeShiftBit(address uint16, value uint8) error {
 	}
 
 	switch {
-	case address < 0xA000: // $8000-$9FFF
+	case address < chrBank0RegisterStart: // $8000-$9FFF
 		m.control = m.shiftRegister
 
-	case address < 0xC000: // $A000-$BFFF
+	case address < chrBank1RegisterStart: // $A000-$BFFF
 		m.chrBank0 = int(m.shiftRegister)
 
-	case address < 0xE000: // $C000-$DFFF
+	case address < prgBankRegisterStart: // $C000-$DFFF
 		m.chrBank1 = int(m.shiftRegister)
 
-	case address >= 0xE000: // $E000-$FFFF
+	case address >= prgBankRegisterStart: // $E000-$FFFF
 		m.prgBank = int(m.shiftRegister) & 0b0000_1111
 	}
 

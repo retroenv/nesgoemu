@@ -133,7 +133,7 @@ func (b *Base) Read(address uint16) uint8 {
 	}
 
 	switch {
-	case address < 0x2000:
+	case address < chrMemSize:
 		if len(b.chrBanks) == 0 {
 			// The video memory bus is multiplexed with the low byte of the
 			// address. A read with no CHR memory returns it.
@@ -181,7 +181,7 @@ func (b *Base) Write(address uint16, value uint8) {
 	}
 
 	switch {
-	case address < 0x2000 && len(b.chrRAM) > 0:
+	case address < chrMemSize && len(b.chrRAM) > 0:
 		b.mu.Lock()
 		bankNr, offset := b.chrBankMapper(address)
 		bank := &b.chrBanks[bankNr]

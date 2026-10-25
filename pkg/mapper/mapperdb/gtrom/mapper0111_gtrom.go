@@ -17,6 +17,13 @@ import (
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
 )
 
+const (
+	controlLowStart  = 0x5000
+	controlLowEnd    = 0x5fff
+	controlHighStart = 0x7000
+	controlHighEnd   = 0x7fff
+)
+
 // New returns a new GTROM mapper.
 func New(base *mapperbase.Base) (bus.Mapper, error) {
 	m := &mapperGTROM{
@@ -31,10 +38,10 @@ func New(base *mapperbase.Base) (bus.Mapper, error) {
 	m.SetChrRAM(make([]byte, 0x4000)) // 16K
 	m.Initialize()
 
-	m.AddReadHook(0x5000, 0x5FFF, m.getControl)
-	m.AddReadHook(0x7000, 0x7FFF, m.getControl)
-	m.AddWriteHook(0x5000, 0x5FFF, m.setBanks)
-	m.AddWriteHook(0x7000, 0x7FFF, m.setBanks)
+	m.AddReadHook(controlLowStart, controlLowEnd, m.getControl)
+	m.AddReadHook(controlHighStart, controlHighEnd, m.getControl)
+	m.AddWriteHook(controlLowStart, controlLowEnd, m.setBanks)
+	m.AddWriteHook(controlHighStart, controlHighEnd, m.setBanks)
 
 	return m, nil
 }

@@ -41,6 +41,7 @@ const (
 	bankSelectMask = 0x07 // $8000 bits 0-2
 	prgModeMask    = 0x40 // $8000 bit 6
 	chrModeMask    = 0x80 // $8000 bit 7
+	ppuA12Mask     = 0x1000
 
 	// Hardware filters A12 with three falling edges of M2. This filter uses
 	// nine elapsed PPU dots as an approximation. CPU/PPU phase is not modeled.
@@ -238,22 +239,22 @@ func (m *mapperMMC3) applyCHRMapping() {
 }
 
 func (m *mapperMMC3) observePatternRead(address uint16) (uint8, error) {
-	m.observeA12(address&0x1000 != 0)
+	m.observeA12(address&ppuA12Mask != 0)
 	return 0, nil
 }
 
 func (m *mapperMMC3) observePatternWrite(address uint16, _ uint8) error {
-	m.observeA12(address&0x1000 != 0)
+	m.observeA12(address&ppuA12Mask != 0)
 	return nil
 }
 
 func (m *mapperMMC3) observeNameTableRead(address uint16) (uint8, bool) {
-	m.observeA12(address&0x1000 != 0)
+	m.observeA12(address&ppuA12Mask != 0)
 	return 0, false
 }
 
 func (m *mapperMMC3) observeNameTableWrite(address uint16, _ byte) bool {
-	m.observeA12(address&0x1000 != 0)
+	m.observeA12(address&ppuA12Mask != 0)
 	return false
 }
 

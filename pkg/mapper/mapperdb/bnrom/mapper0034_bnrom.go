@@ -25,6 +25,12 @@ import (
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 )
 
+const (
+	ninaPRGBankRegister  = 0x7ffd
+	ninaCHRBank0Register = 0x7ffe
+	ninaCHRBank1Register = 0x7fff
+)
+
 // New creates a mapper 34 board after it checks the cartridge memory layout.
 func New(base *mapperbase.Base) (bus.Mapper, error) {
 	cart := base.Cartridge()
@@ -48,7 +54,7 @@ func New(base *mapperbase.Base) (bus.Mapper, error) {
 		m.SetChrWindowSize(0x1000)
 		m.DeclareFeature(feature.CHRBanking)
 		// The default RAM write follows the register hook and keeps the full byte.
-		m.AddWriteHook(0x7ffd, 0x7fff, m.selectNINA).SetProxyOnly(true)
+		m.AddWriteHook(ninaPRGBankRegister, ninaCHRBank1Register, m.selectNINA).SetProxyOnly(true)
 	} else {
 		m.SetName("BNROM")
 		m.SetPrgRAM(nil)
@@ -80,11 +86,11 @@ func (m *mapper34) selectBNROM(address uint16, value byte) error {
 }
 
 func (m *mapper34) selectNINA(address uint16, value byte) error {
-	if address == 0x7ffd {
+	if address == ninaPRGBankRegister {
 		m.SetPrgWindow(0, int(value))
 		m.MarkFeature(feature.PRGBanking)
 	} else {
-		m.SetChrWindow(int(address-0x7ffe), int(value))
+		m.SetChrWindow(int(address-ninaCHRBank0Register), int(value))
 		m.MarkFeature(feature.CHRBanking)
 	}
 
