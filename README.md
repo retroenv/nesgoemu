@@ -34,11 +34,12 @@ links to its NESdev documentation.
       <td><a href="https://www.nesdev.org/wiki/CNROM">003 CNROM</a></td>
       <td><a href="https://www.nesdev.org/wiki/MMC3">004 MMC3</a></td>
       <td><a href="https://www.nesdev.org/wiki/AxROM">007 AxROM</a></td>
+      <td><a href="https://www.nesdev.org/wiki/UNROM_512">030 UNROM-512</a></td>
     </tr>
     <tr>
-      <td><a href="https://www.nesdev.org/wiki/UNROM_512">030 UNROM-512</a></td>
       <td><a href="https://www.nesdev.org/wiki/INES_Mapper_034">034 BNROM / NINA-001</a></td>
       <td><a href="https://www.nesdev.org/wiki/GxROM">066 GxROM</a></td>
+      <td><a href="https://www.nesdev.org/wiki/INES_Mapper_071">071 Camerica</a></td>
       <td><a href="https://www.nesdev.org/wiki/INES_Mapper_094">094 UN1ROM</a></td>
       <td><a href="https://www.nesdev.org/wiki/GTROM">111 GTROM</a></td>
       <td><a href="https://www.nesdev.org/wiki/INES_Mapper_180">180 UxROM AND</a></td>
