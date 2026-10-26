@@ -3,6 +3,7 @@ package mapperbase
 
 import (
 	"fmt"
+	"slices"
 	"sync"
 
 	"github.com/retroenv/nesgoemu/pkg/bus"
@@ -82,8 +83,8 @@ func (b *Base) State() bus.MapperState {
 	state := bus.MapperState{
 		ID:         b.bus.Cartridge.Mapper,
 		Name:       b.name,
-		ChrWindows: b.chrWindows,
-		PrgWindows: b.prgWindows,
+		ChrWindows: slices.Clone(b.chrWindows),
+		PrgWindows: slices.Clone(b.prgWindows),
 	}
 
 	return state
