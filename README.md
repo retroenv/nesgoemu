@@ -40,6 +40,7 @@ links to its NESdev documentation.
       <td><a href="https://www.nesdev.org/wiki/INES_Mapper_034">034 BNROM / NINA-001</a></td>
       <td><a href="https://www.nesdev.org/wiki/GxROM">066 GxROM</a></td>
       <td><a href="https://www.nesdev.org/wiki/INES_Mapper_071">071 Camerica</a></td>
+      <td><a href="https://www.nesdev.org/wiki/NINA-003-006">079 NINA-003/006</a></td>
       <td><a href="https://www.nesdev.org/wiki/INES_Mapper_094">094 UN1ROM</a></td>
       <td><a href="https://www.nesdev.org/wiki/GTROM">111 GTROM</a></td>
       <td><a href="https://www.nesdev.org/wiki/INES_Mapper_180">180 UxROM AND</a></td>
