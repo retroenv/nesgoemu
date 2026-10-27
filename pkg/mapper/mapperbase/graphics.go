@@ -17,7 +17,7 @@ func (b *Base) NotifyGraphics(event bus.GraphicsEvent) {
 
 func (b *Base) notifyCHRMapping(window, bank int) {
 	source := bus.GraphicsCHRROM
-	if len(b.chrRAM) > 0 {
+	if b.chrWritable {
 		source = bus.GraphicsCHRRAM
 	}
 

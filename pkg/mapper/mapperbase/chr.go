@@ -56,6 +56,7 @@ func (b *Base) setDefaultChrBankSizes() {
 // have been set, either by calling setDefaultChrBankSizes() or setting it manually.
 func (b *Base) setChrBanks() {
 	chr := b.bus.Cartridge.CHR
+	b.chrWritable = len(chr) == 0 && len(b.chrRAM) > 0
 	if len(chr) == 0 {
 		chr = b.chrRAM
 	}

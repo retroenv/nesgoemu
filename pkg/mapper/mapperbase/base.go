@@ -39,6 +39,8 @@ type Base struct {
 	chrRAM []byte
 	prgRAM []byte
 
+	chrWritable bool
+
 	mirrorModeTranslation MirrorModeTranslation
 	nameTableCount        int
 	nameTableBanks        []bank
@@ -182,7 +184,7 @@ func (b *Base) Write(address uint16, value uint8) {
 	}
 
 	switch {
-	case address < chrMemSize && len(b.chrRAM) > 0:
+	case address < chrMemSize && b.chrWritable:
 		b.mu.Lock()
 		bankNr, offset := b.chrBankMapper(address)
 		bank := &b.chrBanks[bankNr]

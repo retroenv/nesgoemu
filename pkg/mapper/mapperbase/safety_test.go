@@ -4,11 +4,18 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/retroenv/nesgoemu/pkg/bus"
+	"github.com/retroenv/nesgoemu/pkg/ppu/nametable"
+	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 	"github.com/retroenv/retrogolib/assert"
 )
 
 const (
 	safetyTestCHRWindowSize = 0x2000
+	safetyTestPRGROMSize    = 0x8000
+	safetyTestCHRROMSize    = 0x4000
+	safetyTestCHRRAMSize    = 0x4000
+	safetyTestWriteValue    = 0x5a
 	snapshotChangedBank     = 99
 	stateSwitchIterations   = 1000
 	stateSwitchBankCount    = 2
@@ -44,4 +51,26 @@ func TestStateDuringBankSwitches(t *testing.T) {
 		assert.NoError(t, err)
 	}
 	<-done
+}
+
+func TestCHRROMStaysReadOnlyWithRAMBuffer(t *testing.T) {
+	base := New(&bus.Bus{
+		Cartridge: &cartridge.Cartridge{
+			PRG: make([]byte, safetyTestPRGROMSize),
+			CHR: make([]byte, safetyTestCHRROMSize),
+		},
+		NameTable: nametable.New(cartridge.MirrorHorizontal),
+	})
+	base.SetChrRAM(make([]byte, safetyTestCHRRAMSize))
+	base.Initialize()
+	var event bus.GraphicsEvent
+	base.ObserveGraphics(func(value bus.GraphicsEvent) { event = value })
+	base.SetChrWindow(0, 1)
+
+	// The selected bank uses ROM even when a separate RAM buffer exists.
+	base.Write(0, safetyTestWriteValue)
+	assert.Equal(t, byte(0), base.Read(0))
+	_, writable := base.PPUWriteMapping(0)
+	assert.False(t, writable)
+	assert.Equal(t, bus.GraphicsCHRROM, event.Page.Memory)
 }

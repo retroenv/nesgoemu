@@ -30,12 +30,12 @@ func (b *Base) chrMapping(address uint16, write bool) (bus.GraphicsMapping, bool
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 
-	if len(b.chrBanks) == 0 || b.chrBankMapper == nil || (write && len(b.chrRAM) == 0) {
+	if len(b.chrBanks) == 0 || b.chrBankMapper == nil || (write && !b.chrWritable) {
 		return bus.GraphicsMapping{}, false
 	}
 
 	source := bus.GraphicsCHRROM
-	if len(b.bus.Cartridge.CHR) == 0 {
+	if b.chrWritable {
 		source = bus.GraphicsCHRRAM
 	}
 

@@ -34,6 +34,10 @@ func TestPRGROMOffsetBankSwitching(t *testing.T) {
 				PRG:    make([]byte, 0x10000),
 				CHR:    make([]byte, 0x4000),
 			}
+			if tt.id == 111 {
+				cart.CHR = nil
+			}
+
 			for i := range cart.PRG {
 				cart.PRG[i] = byte(i>>8) ^ byte(i)
 			}

@@ -12,6 +12,8 @@ CHR window: 8K
 */
 
 import (
+	"errors"
+
 	"github.com/retroenv/nesgoemu/pkg/bus"
 	"github.com/retroenv/nesgoemu/pkg/feature"
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
@@ -26,6 +28,10 @@ const (
 
 // New returns a new GTROM mapper.
 func New(base *mapperbase.Base) (bus.Mapper, error) {
+	if len(base.Cartridge().CHR) != 0 {
+		return nil, errors.New("gtrom requires CHR RAM and no CHR ROM")
+	}
+
 	m := &mapperGTROM{
 		Base: base,
 	}
