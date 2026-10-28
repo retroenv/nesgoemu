@@ -1,6 +1,7 @@
 package camerica_test
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/retroenv/nesgoemu/pkg/bus"
@@ -13,7 +14,14 @@ import (
 const (
 	fireHawkBoard = "Fire Hawk"
 	standardBoard = "standard"
+	chrROMBoard   = "CHR ROM"
+	prgRAMBoard   = "PRG RAM"
 )
+
+var unsupportedCamericaBoards = []string{
+	"missing PRG", "partial PRG", "small PRG", "oversized PRG", chrROMBoard, "four screen", "battery", "trainer",
+	"submapper", prgRAMBoard, "missing CHR RAM", "large CHR RAM", "nonvolatile CHR RAM",
+}
 
 func TestCamericaPRGBanksAndWriteRanges(t *testing.T) {
 	cart := testCartridge(0x40000)
@@ -105,10 +113,7 @@ func TestCamericaUnconnectedBankBits(t *testing.T) {
 }
 
 func TestCamericaRejectsUnsupportedBoards(t *testing.T) {
-	for _, kind := range []string{
-		"missing PRG", "partial PRG", "small PRG", "oversized PRG", "CHR ROM", "four screen", "battery", "trainer",
-		"submapper", "Fire Hawk size", "PRG RAM", "missing CHR RAM", "large CHR RAM", "nonvolatile CHR RAM",
-	} {
+	for _, kind := range slices.Concat(unsupportedCamericaBoards, []string{"Fire Hawk size"}) {
 		t.Run(kind, func(t *testing.T) {
 			cart := unsupportedCartridge(kind)
 			m, err := mapper.New(&bus.Bus{
@@ -167,7 +172,7 @@ func unsupportedCartridge(kind string) *cartridge.Cartridge {
 		cart.PRG = cart.PRG[:0x8000]
 	case "oversized PRG":
 		cart.PRG = make([]byte, 0x80000)
-	case "CHR ROM":
+	case chrROMBoard:
 		cart.CHR = make([]byte, 0x2000)
 	case "four screen":
 		cart.Mirror = cartridge.Mirror4
@@ -179,7 +184,7 @@ func unsupportedCartridge(kind string) *cartridge.Cartridge {
 		cart.NES2.Submapper = 2
 	case "Fire Hawk size":
 		cart.NES2.Submapper = 1
-	case "PRG RAM":
+	case prgRAMBoard:
 		cart.NES2.RAMSizes.PRGVolatile = 0x2000
 	case "missing CHR RAM":
 		cart.NES2.RAMSizes.CHRVolatile = 0

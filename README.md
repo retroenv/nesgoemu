@@ -44,6 +44,7 @@ links to its NESdev documentation.
       <td><a href="https://www.nesdev.org/wiki/INES_Mapper_094">094 UN1ROM</a></td>
       <td><a href="https://www.nesdev.org/wiki/GTROM">111 GTROM</a></td>
       <td><a href="https://www.nesdev.org/wiki/INES_Mapper_180">180 UxROM AND</a></td>
+      <td><a href="https://www.nesdev.org/wiki/INES_Mapper_232">232 Camerica Quattro</a></td>
     </tr>
   </tbody>
 </table>

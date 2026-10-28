@@ -1,12 +1,3 @@
-// Package camerica implements mapper 71 BF9093 and BF9097 cartridge boards.
-// These boards have a switchable 16 KiB lower PRG window, a fixed last bank,
-// 8 KiB CHR RAM, and no PRG RAM or bus conflicts. The emulator selects lower
-// bank zero at power-on. NES 2.0 submapper 1 selects the Fire Hawk board.
-// Legacy headers use fixed mirroring until a write to $9000-$9FFF.
-// Register addresses, bank masks, and the legacy mirroring rule follow:
-// https://www.nesdev.org/wiki/INES_Mapper_071
-// Board ROM capacities follow:
-// https://www.nesdev.org/wiki/Camerica_BF909x_pinout
 package camerica
 
 import (
@@ -90,35 +81,14 @@ func (m *mapper71) selectMirroring(address uint16, value byte) error {
 }
 
 func validateCartridge(cart *cartridge.Cartridge) error {
-	size := len(cart.PRG)
-	if size < 0x10000 || size > 0x40000 || size&(size-1) != 0 {
-		return fmt.Errorf("unsupported mapper 71 PRG ROM size %d", size)
+	if err := validateBoard(cart, "mapper 71"); err != nil {
+		return err
 	}
-	if len(cart.CHR) != 0 || mapperbase.ChrRAMSize(cart) != 0x2000 {
-		return errors.New("mapper 71 requires 8 KiB CHR RAM and no CHR ROM")
+	if err := validateSubmapper(cart, "mapper 71"); err != nil {
+		return err
 	}
-	if cart.Mirror != cartridge.MirrorHorizontal && cart.Mirror != cartridge.MirrorVertical {
-		return errors.New("mapper 71 requires horizontal or vertical initial mirroring")
-	}
-	if cart.Battery != 0 || len(cart.Trainer) != 0 {
-		return errors.New("mapper 71 battery or trainer is not supported")
-	}
-
-	return validateMetadata(cart)
-}
-
-func validateMetadata(cart *cartridge.Cartridge) error {
-	if cart.NES2 == nil {
-		return nil
-	}
-	if cart.NES2.Submapper > 1 {
-		return fmt.Errorf("unsupported mapper 71 submapper %d", cart.NES2.Submapper)
-	}
-	if cart.NES2.Submapper == 1 && len(cart.PRG) > 0x20000 {
+	if cart.NES2 != nil && cart.NES2.Submapper == 1 && len(cart.PRG) > 0x20000 {
 		return errors.New("mapper 71 Fire Hawk PRG ROM exceeds 128 KiB")
-	}
-	if mapperbase.PrgRAMTotal(cart.NES2.RAMSizes) != 0 || cart.NES2.RAMSizes.CHRNonvolatile != 0 {
-		return errors.New("mapper 71 PRG RAM or nonvolatile CHR RAM is not supported")
 	}
 
 	return nil

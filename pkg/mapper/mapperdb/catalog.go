@@ -55,6 +55,7 @@ var constructors = map[uint16]constructor{
 	94:  uxrom.NewUN1,
 	111: gtrom.New,
 	180: uxrom.NewAND,
+	232: camerica.NewQuattro,
 	682: rainbow.New,
 	800: mxm.New,
 }
