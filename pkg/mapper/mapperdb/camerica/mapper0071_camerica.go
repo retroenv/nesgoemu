@@ -29,7 +29,9 @@ func New(base *mapperbase.Base) (bus.Mapper, error) {
 	m.SetChrRAM(make([]byte, 0x2000))
 	m.SetPrgWindowSize(0x4000)
 	m.DeclareFeature(feature.PRGBanking)
-	m.Initialize()
+	if err := m.Initialize(); err != nil {
+		return nil, fmt.Errorf("initializing mapper: %w", err)
+	}
 	m.SetPrgWindow(1, -1)
 	m.AddWriteHook(0xc000, 0xffff, m.selectPRG)
 	fireHawk := cart.NES2 != nil && cart.NES2.Submapper == 1

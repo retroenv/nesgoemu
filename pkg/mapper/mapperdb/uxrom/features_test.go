@@ -14,8 +14,9 @@ import (
 func TestFeaturesPrgBankingMarkedOnWrite(t *testing.T) {
 	base := mapperbase.New(&bus.Bus{
 		Cartridge: &cartridge.Cartridge{
-			CHR: make([]byte, 0x2000),
-			PRG: make([]byte, 0xC000),
+			NES2: &cartridge.NES2Metadata{},
+			CHR:  make([]byte, 0x2000),
+			PRG:  make([]byte, 0xC000),
 		},
 		NameTable: nametable.New(cartridge.MirrorHorizontal),
 	})

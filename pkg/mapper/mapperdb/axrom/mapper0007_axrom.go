@@ -26,7 +26,9 @@ func New(base *mapperbase.Base) (bus.Mapper, error) {
 	m.DeclareFeature(feature.PRGBanking)
 	m.DeclareFeature(feature.SingleScreenMirroring)
 	m.SetPrgWindowSize(0x8000) // 32K
-	m.Initialize()
+	if err := m.Initialize(); err != nil {
+		return nil, fmt.Errorf("initializing mapper: %w", err)
+	}
 
 	translation := mapperbase.MirrorModeTranslation{
 		0: cartridge.MirrorSingle0,

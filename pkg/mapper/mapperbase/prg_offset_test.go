@@ -16,7 +16,7 @@ func TestPRGROMOffsetRejectsAbsentROM(t *testing.T) {
 	})
 	_, ok := base.PRGROMOffset(0x8000)
 	assert.False(t, ok)
-	base.Initialize()
+	assert.Error(t, base.Initialize())
 	_, ok = base.PRGROMOffset(0xffff)
 	assert.False(t, ok)
 }
@@ -26,7 +26,7 @@ func TestPRGROMOffsetDoesNotCallReadHooks(t *testing.T) {
 		Cartridge: &cartridge.Cartridge{PRG: make([]byte, 0x8000)},
 		NameTable: nametable.New(cartridge.MirrorHorizontal),
 	})
-	base.Initialize()
+	assert.NoError(t, base.Initialize())
 	called := false
 	hook := base.AddReadHook(0x8000, 0x9fff, func(uint16) (byte, error) {
 		called = true

@@ -9,6 +9,8 @@ CHR window: 8K
 */
 
 import (
+	"fmt"
+
 	"github.com/retroenv/nesgoemu/pkg/bus"
 	"github.com/retroenv/nesgoemu/pkg/feature"
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
@@ -21,7 +23,9 @@ func New(base *mapperbase.Base) (bus.Mapper, error) {
 	}
 	m.SetName("CNROM")
 	m.DeclareFeature(feature.CHRBanking)
-	m.Initialize()
+	if err := m.Initialize(); err != nil {
+		return nil, fmt.Errorf("initializing mapper: %w", err)
+	}
 
 	m.AddWriteHook(0x8000, 0xFFFF, m.setChrWindow)
 

@@ -36,10 +36,11 @@ type Base struct {
 
 	features *feature.Set
 
-	chrRAM []byte
-	prgRAM []byte
-
-	chrWritable bool
+	chrRAM           []byte
+	prgRAM           []byte
+	chrRAMConfigured bool
+	prgRAMConfigured bool
+	chrWritable      bool
 
 	mirrorModeTranslation MirrorModeTranslation
 	nameTableCount        int
@@ -201,14 +202,20 @@ func (b *Base) Write(address uint16, value uint8) {
 	}
 }
 
-// Initialize the mapper base with default settings.
-func (b *Base) Initialize() {
+// Initialize checks the bank sizes and allocates RAM that the board did not set.
+func (b *Base) Initialize() error {
+	if err := b.prepareMemory(); err != nil {
+		return err
+	}
+
 	b.chrBankMapper = b.defaultChrBankMapper
 	b.prgBankMapper = b.defaultPrgBankMapper
 
 	b.setDefaultBankSizes()
 	b.setBanks()
 	b.setWindows()
+
+	return nil
 }
 
 // Cartridge returns the current cartridge.

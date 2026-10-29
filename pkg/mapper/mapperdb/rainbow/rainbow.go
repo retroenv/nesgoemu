@@ -8,6 +8,8 @@
 package rainbow
 
 import (
+	"fmt"
+
 	"github.com/retroenv/nesgoemu/pkg/bus"
 	"github.com/retroenv/nesgoemu/pkg/feature"
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
@@ -109,6 +111,9 @@ type Mapper struct {
 // New creates and initializes a new Rainbow mapper instance.
 func New(base *mapperbase.Base) (bus.Mapper, error) {
 	cart := base.Cartridge()
+	if err := mapperbase.ValidateRAMSizes(cart); err != nil {
+		return nil, fmt.Errorf("checking RAM sizes: %w", err)
+	}
 
 	// Derive PRG-RAM size from iNES header (cart.RAM = number of 8 KB banks).
 	// Use a size from 32 KB through 512 KB, aligned to 32 KB.
@@ -130,8 +135,12 @@ func New(base *mapperbase.Base) (bus.Mapper, error) {
 		chrRAM: make([]byte, chrRAMSize),
 	}
 	m.SetName("Rainbow")
+	m.SetPrgRAM(nil)
+	m.SetChrRAM(nil)
 	m.declareFeatures()
-	m.Base.Initialize()
+	if err := m.Base.Initialize(); err != nil {
+		return nil, fmt.Errorf("initializing mapper: %w", err)
+	}
 
 	m.applyPowerUpDefaults()
 	base.NameTableMemory().SetReadHook(m.readNametable)

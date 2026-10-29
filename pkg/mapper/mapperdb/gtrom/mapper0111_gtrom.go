@@ -13,6 +13,7 @@ CHR window: 8K
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/retroenv/nesgoemu/pkg/bus"
 	"github.com/retroenv/nesgoemu/pkg/feature"
@@ -42,7 +43,9 @@ func New(base *mapperbase.Base) (bus.Mapper, error) {
 	m.SetPrgWindowSize(0x8000) // 32K
 	m.SetNameTableCount(2)
 	m.SetChrRAM(make([]byte, 0x4000)) // 16K
-	m.Initialize()
+	if err := m.Initialize(); err != nil {
+		return nil, fmt.Errorf("initializing mapper: %w", err)
+	}
 
 	m.AddReadHook(controlLowStart, controlLowEnd, m.getControl)
 	m.AddReadHook(controlHighStart, controlHighEnd, m.getControl)

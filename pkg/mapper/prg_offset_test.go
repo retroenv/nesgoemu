@@ -29,15 +29,7 @@ func TestPRGROMOffsetBankSwitching(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cart := &cartridge.Cartridge{
-				Mapper: tt.id,
-				PRG:    make([]byte, 0x10000),
-				CHR:    make([]byte, 0x4000),
-			}
-			if tt.id == 111 {
-				cart.CHR = nil
-			}
-
+			cart := mappingTestCartridge(tt.id, 0x4000)
 			for i := range cart.PRG {
 				cart.PRG[i] = byte(i>>8) ^ byte(i)
 			}

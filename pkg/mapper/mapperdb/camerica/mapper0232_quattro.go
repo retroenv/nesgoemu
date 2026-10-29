@@ -1,6 +1,8 @@
 package camerica
 
 import (
+	"fmt"
+
 	"github.com/retroenv/nesgoemu/pkg/bus"
 	"github.com/retroenv/nesgoemu/pkg/feature"
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
@@ -30,7 +32,9 @@ func NewQuattro(base *mapperbase.Base) (bus.Mapper, error) {
 	m.SetChrRAM(make([]byte, 0x2000))
 	m.SetPrgWindowSize(0x4000)
 	m.DeclareFeature(feature.PRGBanking)
-	m.Initialize()
+	if err := m.Initialize(); err != nil {
+		return nil, fmt.Errorf("initializing mapper: %w", err)
+	}
 	m.updateBanks()
 	m.AddWriteHook(0x8000, 0xffff, m.selectPRG)
 

@@ -57,7 +57,7 @@ func TestMapperUNROM512(t *testing.T) {
 
 	chr := make([]byte, 0x8000)
 	base.SetChrRAM(chr)
-	base.Initialize()
+	assert.NoError(t, base.Initialize())
 
 	chr[0x1010] = 0x03 // bank 0
 	chr[0x3010] = 0x04 // bank 1

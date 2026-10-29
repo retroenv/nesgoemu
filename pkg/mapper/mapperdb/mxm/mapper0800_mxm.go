@@ -145,6 +145,9 @@ type Mapper struct {
 // PPU hooks.
 func New(base *mapperbase.Base) (bus.Mapper, error) {
 	cart := base.Cartridge()
+	if err := mapperbase.ValidateRAMSizes(cart); err != nil {
+		return nil, fmt.Errorf("checking RAM sizes: %w", err)
+	}
 	if cart.NES2 != nil && cart.NES2.Submapper != 0 {
 		return nil, fmt.Errorf("MXM submapper %d is not supported", cart.NES2.Submapper)
 	}
@@ -171,7 +174,9 @@ func New(base *mapperbase.Base) (bus.Mapper, error) {
 	m.SetChrRAM(m.chrMemory)
 	m.SetPrgWindowSize(prgBankSize)
 	m.SetChrWindowSize(chrBankSize)
-	m.Base.Initialize()
+	if err := m.Base.Initialize(); err != nil {
+		return nil, fmt.Errorf("initializing mapper: %w", err)
+	}
 
 	for _, id := range declaredFeatures {
 		m.DeclareFeature(id)

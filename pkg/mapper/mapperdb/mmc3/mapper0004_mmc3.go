@@ -52,7 +52,7 @@ const (
 
 // New returns a new MMC3 mapper.
 func New(base *mapperbase.Base) (bus.Mapper, error) {
-	if err := prepareMemory(base); err != nil {
+	if err := validateCartridge(base); err != nil {
 		return nil, err
 	}
 
@@ -64,7 +64,9 @@ func New(base *mapperbase.Base) (bus.Mapper, error) {
 	m.DeclareFeature(feature.ScanlineIRQ)
 	m.SetChrWindowSize(chrWindowSize)
 	m.SetPrgWindowSize(prgWindowSize)
-	m.Initialize()
+	if err := m.Initialize(); err != nil {
+		return nil, fmt.Errorf("initializing mapper: %w", err)
+	}
 
 	m.wramReadHook = m.AddReadHook(mapperbase.PRGRAMStart, mapperbase.PRGRAMEnd, m.readWram)
 	m.wramWriteHook = m.AddWriteHook(mapperbase.PRGRAMStart, mapperbase.PRGRAMEnd, m.writeWram)

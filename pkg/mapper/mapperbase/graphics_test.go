@@ -17,7 +17,7 @@ func TestGraphicsReportsEffectiveCHRMapping(t *testing.T) {
 		},
 		NameTable: nametable.New(cartridge.MirrorHorizontal),
 	})
-	base.Initialize()
+	assert.NoError(t, base.Initialize())
 	var events []bus.GraphicsEvent
 	base.ObserveGraphics(func(event bus.GraphicsEvent) {
 		// Observers can inspect mapper state without a lock conflict.
@@ -48,7 +48,7 @@ func TestGraphicsIdentifiesCHRMemorySource(t *testing.T) {
 		NameTable: nametable.New(cartridge.MirrorHorizontal),
 	})
 	base.SetChrRAM(make([]byte, 0x4000))
-	base.Initialize()
+	assert.NoError(t, base.Initialize())
 	var event bus.GraphicsEvent
 	base.ObserveGraphics(func(value bus.GraphicsEvent) { event = value })
 	base.SetChrWindow(0, 1)

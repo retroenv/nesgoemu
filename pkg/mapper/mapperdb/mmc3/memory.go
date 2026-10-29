@@ -6,41 +6,33 @@ import (
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
 )
 
-// prepareMemory checks the standard MMC3 memory limits before bank setup.
+// validateCartridge checks the standard MMC3 memory limits before bank setup.
 // Mixed CHR ROM and RAM require mapper 119. Other explicit submappers use
 // different registers, IRQ behavior, or fixed mirroring.
 // https://www.nesdev.org/wiki/MMC3
 // https://www.nesdev.org/wiki/NES_2.0_submappers#004:_MMC3
-func prepareMemory(base *mapperbase.Base) error {
+func validateCartridge(base *mapperbase.Base) error {
 	cart := base.Cartridge()
-	prgRAM, chrRAM := base.MemorySizes()
+	prgRAM := mapperbase.PrgRAMSize(cart)
+	chrRAM := mapperbase.ChrRAMSize(cart)
+	if err := mapperbase.ValidateRAMSizes(cart); err != nil {
+		return fmt.Errorf("checking RAM sizes: %w", err)
+	}
+	if err := mapperbase.ValidateSubmapper(cart, "mmc3", 0); err != nil {
+		return fmt.Errorf("checking submapper: %w", err)
+	}
 	if cart.NES2 != nil {
-		if cart.NES2.Submapper != 0 {
-			return fmt.Errorf("mmc3 submapper %d is not supported", cart.NES2.Submapper)
-		}
-
 		sizes := cart.NES2.RAMSizes
-		if sizes.PRGVolatile < 0 || sizes.PRGNonvolatile < 0 || sizes.CHRVolatile < 0 || sizes.CHRNonvolatile < 0 {
-			return fmt.Errorf("invalid MMC3 RAM sizes: %+v", sizes)
-		}
-
 		prgRAM = mapperbase.PrgRAMTotal(sizes)
 		chrRAM = mapperbase.ChrRAMTotal(sizes)
 	}
 
-	if err := validateMemorySizes(len(cart.PRG), len(cart.CHR), prgRAM, chrRAM); err != nil {
-		return err
-	}
-	if cart.NES2 != nil && chrRAM > 0 {
-		base.SetChrRAM(make([]byte, chrRAM))
-	}
-
-	return nil
+	return validateMemorySizes(len(cart.PRG), len(cart.CHR), prgRAM, chrRAM)
 }
 
 func validateMemorySizes(prgROM, chrROM, prgRAM, chrRAM int) error {
-	if prgROM < 2*prgWindowSize || prgROM > 0x80000 || prgROM%prgWindowSize != 0 {
-		return fmt.Errorf("unsupported MMC3 PRG ROM size %d", prgROM)
+	if err := mapperbase.ValidateSize("MMC3 PRG ROM", prgROM, 2*prgWindowSize, 0x80000, prgWindowSize); err != nil {
+		return fmt.Errorf("checking memory size: %w", err)
 	}
 	if prgRAM < 0 || prgRAM > 0x2000 {
 		return fmt.Errorf("unsupported MMC3 PRG RAM size %d", prgRAM)
@@ -50,8 +42,8 @@ func validateMemorySizes(prgROM, chrROM, prgRAM, chrRAM int) error {
 	}
 
 	chrSize := chrROM + chrRAM
-	if chrSize < 2*chrWindowSize || chrSize > 0x40000 || chrSize%chrWindowSize != 0 {
-		return fmt.Errorf("unsupported MMC3 CHR size %d", chrSize)
+	if err := mapperbase.ValidateSize("MMC3 CHR", chrSize, 2*chrWindowSize, 0x40000, chrWindowSize); err != nil {
+		return fmt.Errorf("checking CHR size: %w", err)
 	}
 
 	return nil

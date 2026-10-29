@@ -79,7 +79,7 @@ func TestReadDuringBankSwitches(t *testing.T) {
 		Cartridge: cart,
 		NameTable: nametable.New(cart.Mirror),
 	})
-	base.Initialize()
+	assert.NoError(t, base.Initialize())
 	done := make(chan struct{})
 	go func() {
 		defer close(done)

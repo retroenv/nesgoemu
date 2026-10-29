@@ -109,3 +109,20 @@ type openBusTestValue byte
 func (v openBusTestValue) OpenBus() byte {
 	return byte(v)
 }
+
+func mappingTestCartridge(id uint16, chrSize int) *cartridge.Cartridge {
+	prgSize := 0x10000
+	if id == 0 {
+		prgSize = 0x8000
+		chrSize = 0x2000
+	}
+	if id == 30 || id == 111 {
+		chrSize = 0
+	}
+
+	return &cartridge.Cartridge{
+		Mapper: id,
+		PRG:    make([]byte, prgSize),
+		CHR:    make([]byte, chrSize),
+	}
+}

@@ -8,7 +8,6 @@
 package gxrom
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/retroenv/nesgoemu/pkg/bus"
@@ -33,7 +32,9 @@ func New(base *mapperbase.Base) (bus.Mapper, error) {
 	m.DeclareFeature(feature.CHRBanking)
 	m.SetPrgWindowSize(0x8000)
 	m.SetChrWindowSize(0x2000)
-	m.Initialize()
+	if err := m.Initialize(); err != nil {
+		return nil, fmt.Errorf("initializing mapper: %w", err)
+	}
 	m.AddWriteHook(0x8000, 0xffff, m.selectBanks)
 
 	return m, nil
@@ -56,26 +57,15 @@ func (m *mapperGxROM) selectBanks(address uint16, value byte) error {
 }
 
 func validateCartridge(cart *cartridge.Cartridge) error {
-	if cart.NES2 != nil {
-		if cart.NES2.Submapper != 0 {
-			return fmt.Errorf("gxrom submapper %d is not supported", cart.NES2.Submapper)
-		}
-		if cart.NES2.RAMSizes != (cartridge.RAMSizes{}) {
-			return errors.New("gxrom cartridge RAM is not supported")
-		}
+	if err := mapperbase.ValidateROMOnly(cart, "gxrom"); err != nil {
+		return fmt.Errorf("checking ROM-only metadata: %w", err)
+	}
+	if err := mapperbase.ValidatePowerOfTwoSize("gxrom PRG ROM", len(cart.PRG), 0x8000, 0x20000); err != nil {
+		return fmt.Errorf("checking ROM size: %w", err)
 	}
 
-	if cart.Battery != 0 || len(cart.Trainer) != 0 {
-		return errors.New("gxrom battery or trainer is not supported")
-	}
-	if cart.Mirror != cartridge.MirrorHorizontal && cart.Mirror != cartridge.MirrorVertical {
-		return errors.New("gxrom requires horizontal or vertical mirroring")
-	}
-	if size := len(cart.PRG); size != 0x8000 && size != 0x10000 && size != 0x20000 {
-		return fmt.Errorf("unsupported gxrom PRG ROM size %d", size)
-	}
-	if size := len(cart.CHR); size != 0x2000 && size != 0x4000 && size != 0x8000 {
-		return fmt.Errorf("unsupported gxrom CHR ROM size %d", size)
+	if err := mapperbase.ValidatePowerOfTwoSize("gxrom CHR ROM", len(cart.CHR), 0x2000, 0x8000); err != nil {
+		return fmt.Errorf("checking CHR size: %w", err)
 	}
 
 	return nil

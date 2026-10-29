@@ -6,7 +6,6 @@
 package nina003
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/retroenv/nesgoemu/pkg/bus"
@@ -31,7 +30,9 @@ func New(base *mapperbase.Base) (bus.Mapper, error) {
 	m.DeclareFeature(feature.CHRBanking)
 	m.SetPrgWindowSize(0x8000)
 	m.SetChrWindowSize(0x2000)
-	m.Initialize()
+	if err := m.Initialize(); err != nil {
+		return nil, fmt.Errorf("initializing mapper: %w", err)
+	}
 	m.AddWriteHook(bankRegisterBase, 0x5fff, m.selectBanks)
 
 	return m, nil
@@ -53,30 +54,15 @@ func (m *mapperNINA003) selectBanks(address uint16, value byte) error {
 }
 
 func validateCartridge(cart *cartridge.Cartridge) error {
-	if cart.NES2 != nil {
-		if cart.NES2.Submapper != 0 {
-			return fmt.Errorf("nina-003 submapper %d is not supported", cart.NES2.Submapper)
-		}
-
-		if cart.NES2.RAMSizes != (cartridge.RAMSizes{}) {
-			return errors.New("nina-003 cartridge RAM is not supported")
-		}
+	if err := mapperbase.ValidateROMOnly(cart, "nina-003"); err != nil {
+		return fmt.Errorf("checking ROM-only metadata: %w", err)
+	}
+	if err := mapperbase.ValidatePowerOfTwoSize("nina-003 PRG ROM", len(cart.PRG), 0x8000, 0x10000); err != nil {
+		return fmt.Errorf("checking ROM size: %w", err)
 	}
 
-	if cart.Battery != 0 || len(cart.Trainer) != 0 {
-		return errors.New("nina-003 battery or trainer is not supported")
-	}
-
-	if cart.Mirror != cartridge.MirrorHorizontal && cart.Mirror != cartridge.MirrorVertical {
-		return errors.New("nina-003 requires horizontal or vertical mirroring")
-	}
-
-	if size := len(cart.PRG); size != 0x8000 && size != 0x10000 {
-		return fmt.Errorf("unsupported nina-003 PRG ROM size %d", size)
-	}
-
-	if size := len(cart.CHR); size < 0x2000 || size > 0x10000 || size&(size-1) != 0 {
-		return fmt.Errorf("unsupported nina-003 CHR ROM size %d", size)
+	if err := mapperbase.ValidatePowerOfTwoSize("nina-003 CHR ROM", len(cart.CHR), 0x2000, 0x10000); err != nil {
+		return fmt.Errorf("checking CHR size: %w", err)
 	}
 
 	return nil

@@ -47,12 +47,15 @@ func TestPPUMappingBanksAndSources(t *testing.T) {
 
 func TestPPUMappingAbsentMemoryAndInvalidAddresses(t *testing.T) {
 	base := New(&bus.Bus{
-		Cartridge: &cartridge.Cartridge{},
+		Cartridge: &cartridge.Cartridge{
+			PRG:  make([]byte, 0x8000),
+			NES2: &cartridge.NES2Metadata{},
+		},
 		NameTable: nametable.New(cartridge.MirrorHorizontal),
 	})
 	for _, initialized := range []bool{false, true} {
 		if initialized {
-			base.Initialize()
+			assert.NoError(t, base.Initialize())
 		}
 
 		_, ok := base.PPUReadMapping(0)
@@ -111,7 +114,7 @@ func newPPUMappingTestBase(t *testing.T, size int, ram bool) *Base {
 	}
 
 	base.SetChrWindowSize(size)
-	base.Initialize()
+	assert.NoError(t, base.Initialize())
 
 	return base
 }

@@ -62,7 +62,7 @@ func TestCHRROMStaysReadOnlyWithRAMBuffer(t *testing.T) {
 		NameTable: nametable.New(cartridge.MirrorHorizontal),
 	})
 	base.SetChrRAM(make([]byte, safetyTestCHRRAMSize))
-	base.Initialize()
+	assert.NoError(t, base.Initialize())
 	var event bus.GraphicsEvent
 	base.ObserveGraphics(func(value bus.GraphicsEvent) { event = value })
 	base.SetChrWindow(0, 1)

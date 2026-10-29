@@ -45,7 +45,9 @@ func New(base *mapperbase.Base) (bus.Mapper, error) {
 	m.DeclareFeature(feature.SingleScreenMirroring)
 	m.SetChrWindowSize(0x1000) // 4K
 	m.SetPrgRAM(m.ram)
-	m.Initialize()
+	if err := m.Initialize(); err != nil {
+		return nil, fmt.Errorf("initializing mapper: %w", err)
+	}
 
 	m.AddWriteHook(0x8000, 0xFFFF, m.writeShiftBit)
 

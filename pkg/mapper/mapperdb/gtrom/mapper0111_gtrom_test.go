@@ -25,7 +25,7 @@ func TestMapperGTROM(t *testing.T) {
 
 	chr := make([]byte, 0x4000)
 	base.SetChrRAM(chr)
-	base.Initialize()
+	assert.NoError(t, base.Initialize())
 
 	prg[0x7010] = 0x03 // bank 0
 	prg[0xF010] = 0x04 // bank 1
@@ -56,7 +56,7 @@ func TestMapperGTROMControlReadReturnsOpenBus(t *testing.T) {
 	t.Parallel()
 
 	base := mapperbase.New(&bus.Bus{
-		Cartridge: &cartridge.Cartridge{},
+		Cartridge: &cartridge.Cartridge{PRG: make([]byte, 0x8000)},
 		NameTable: nametable.New(cartridge.Mirror4),
 		OpenBus:   openBusTestValue(0x5A),
 	})

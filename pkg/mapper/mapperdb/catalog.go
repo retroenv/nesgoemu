@@ -35,6 +35,10 @@ func New(base *mapperbase.Base) (bus.Mapper, error) {
 		return nil, fmt.Errorf("mapper %d is not supported", mapperNumber)
 	}
 
+	if err := mapperbase.ValidateRAMSizes(base.Cartridge()); err != nil {
+		return nil, fmt.Errorf("checking RAM sizes: %w", err)
+	}
+
 	return newMapper(base)
 }
 

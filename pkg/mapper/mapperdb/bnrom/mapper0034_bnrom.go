@@ -68,7 +68,9 @@ func New(base *mapperbase.Base) (bus.Mapper, error) {
 		m.AddWriteHook(0x8000, 0xffff, m.selectBNROM)
 	}
 
-	m.Initialize()
+	if err := m.Initialize(); err != nil {
+		return nil, fmt.Errorf("initializing mapper: %w", err)
+	}
 
 	return m, nil
 }
@@ -114,13 +116,12 @@ func ninaBoard(cart *cartridge.Cartridge) (bool, error) {
 }
 
 func validateCartridge(cart *cartridge.Cartridge, nina bool) error {
-	if cart.Mirror != cartridge.MirrorHorizontal && cart.Mirror != cartridge.MirrorVertical {
-		return errors.New("mapper 34 requires horizontal or vertical mirroring")
+	if err := mapperbase.ValidateFixedMirroring(cart, "mapper 34"); err != nil {
+		return fmt.Errorf("checking mirroring: %w", err)
 	}
 
-	size := len(cart.PRG)
-	if size < 0x8000 || size > 0x800000 || size&(size-1) != 0 {
-		return fmt.Errorf("unsupported mapper 34 PRG ROM size %d", size)
+	if err := mapperbase.ValidatePowerOfTwoSize("mapper 34 PRG ROM", len(cart.PRG), 0x8000, 0x800000); err != nil {
+		return fmt.Errorf("checking ROM size: %w", err)
 	}
 	if nina {
 		return validateNINA(cart)
@@ -130,9 +131,8 @@ func validateCartridge(cart *cartridge.Cartridge, nina bool) error {
 }
 
 func validateNINA(cart *cartridge.Cartridge) error {
-	size := len(cart.CHR)
-	if size < 0x1000 || size > 0x100000 || size&(size-1) != 0 {
-		return fmt.Errorf("unsupported NINA CHR ROM size %d", size)
+	if err := mapperbase.ValidatePowerOfTwoSize("NINA CHR ROM", len(cart.CHR), 0x1000, 0x100000); err != nil {
+		return fmt.Errorf("checking ROM size: %w", err)
 	}
 	if cart.NES2 != nil {
 		ram := cart.NES2.RAMSizes
@@ -145,8 +145,8 @@ func validateNINA(cart *cartridge.Cartridge) error {
 }
 
 func validateBNROM(cart *cartridge.Cartridge) error {
-	if cart.Battery != 0 || len(cart.Trainer) != 0 {
-		return errors.New("BNROM battery or trainer is not supported")
+	if err := mapperbase.ValidateNoBatteryTrainer(cart, "BNROM"); err != nil {
+		return fmt.Errorf("checking battery and trainer: %w", err)
 	}
 	if cart.NES2 != nil {
 		ram := cart.NES2.RAMSizes

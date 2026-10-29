@@ -37,7 +37,9 @@ func New(base *mapperbase.Base) (bus.Mapper, error) {
 	m.DeclareFeature(feature.CHRBanking)
 	m.DeclareFeature(feature.PRGBanking)
 	m.SetChrRAM(make([]byte, 0x8000)) // 32K
-	m.Initialize()
+	if err := m.Initialize(); err != nil {
+		return nil, fmt.Errorf("initializing mapper: %w", err)
+	}
 
 	cart := m.Cartridge()
 	var submapper byte

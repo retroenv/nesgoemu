@@ -86,7 +86,7 @@ func newHookTestBase(t *testing.T) (*Base, []byte) {
 		},
 		NameTable: nametable.New(cartridge.MirrorHorizontal),
 	})
-	base.Initialize()
+	assert.NoError(t, base.Initialize())
 
 	return base, chr
 }

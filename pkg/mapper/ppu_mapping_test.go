@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/retroenv/nesgoemu/pkg/bus"
-	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 	"github.com/retroenv/retrogolib/assert"
 )
 
@@ -31,16 +30,14 @@ func TestPPUMappingThroughMapperConstruction(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cart := &cartridge.Cartridge{
-				Mapper: tt.id,
-				PRG:    make([]byte, 0x10000),
-			}
+			chrSize := 0
 			source := bus.GraphicsCHRRAM
 			if !tt.ram {
-				cart.CHR = make([]byte, 0x8000)
+				chrSize = 0x8000
 				source = bus.GraphicsCHRROM
 			}
 
+			cart := mappingTestCartridge(tt.id, chrSize)
 			m := newTestMapper(t, cart)
 			query, ok := m.(bus.PPUMappingInspector)
 			assert.True(t, ok)

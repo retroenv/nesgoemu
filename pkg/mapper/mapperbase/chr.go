@@ -36,7 +36,9 @@ func (b *Base) SetChrWindowSize(size int) {
 }
 
 // SetChrRAM enables the usage of CHR RAM and sets the RAM buffer.
+// An empty buffer disables default CHR RAM allocation during initialization.
 func (b *Base) SetChrRAM(ram []byte) {
+	b.chrRAMConfigured = true
 	b.chrRAM = ram
 }
 
