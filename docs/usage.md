@@ -65,8 +65,13 @@ nesgoemu -e 0x8000 -s 0x8100 game.nes
 
 ## Run Summary
 
-The emulator prints a summary when it stops. The summary shows the ROM details and the hardware
-features that the run used. A used feature has an `x` mark. An unused feature has no mark.
+The emulator prints a summary when it stops. The summary shows the ROM details, the SDL library
+that the GUI and the audio output used, and the hardware features that the run used. A used feature
+has an `x` mark. An unused feature has no mark.
+
+The `GUI` and `Audio` lines show the renderer name and the SDL library version. They are absent in
+console mode. If SDL3 did not start and SDL2 started instead, the line ends with `(fallback, ...)`
+and the reason that SDL3 failed.
 
 ```text
 Run summary
@@ -77,6 +82,8 @@ Run summary
   CHR RAM:    32 KB
   Mirroring:  horizontal
   Battery:    no
+  GUI:        sdl3 3.4.2
+  Audio:      sdl3 3.4.2
 
 PPU features
   [x] Background rendering
@@ -112,8 +119,9 @@ For debugger endpoints, batch testing, and profiling examples, see [advanced-usa
 
 ## Audio
 
-GUI mode plays sound through the SDL2 audio renderer. Audio output needs SDL2
-runtime libraries, like the GUI. Console mode does not open an audio device.
+GUI mode plays sound through the SDL3 audio renderer and uses the SDL2 audio
+renderer if SDL3 does not start. Audio output needs SDL3 or SDL2 runtime
+libraries, like the GUI. Console mode does not open an audio device.
 
 Mute the audio output:
 

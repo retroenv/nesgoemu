@@ -7,14 +7,14 @@
 [![License](https://img.shields.io/github/license/retroenv/nesgoemu)](LICENSE)
 ![LLM assisted: human reviewed](https://img.shields.io/badge/LLM%20assisted-human%20reviewed-6f42c1)
 
-A pure Go Nintendo Entertainment System emulator with SDL2 graphics and audio,
+A pure Go Nintendo Entertainment System emulator with SDL3 or SDL2 graphics and audio,
 headless execution, CPU tracing, and HTTP debugging.
 
 ## Features
 
 * **NES emulation** - Emulates the CPU, graphics, controllers, memory, and common cartridge mappers
-* **Audio** - Emulates the APU sound channels and plays them through SDL2
-* **Graphical and headless modes** - Runs interactively through SDL2 or without a window for automation
+* **Audio** - Emulates the APU sound channels and plays them through SDL3 or SDL2
+* **Graphical and headless modes** - Runs interactively through SDL3 or SDL2, or without a window for automation
 * **Development tools** - Provides CPU tracing, execution control, and an HTTP debugger
 * **Portable builds** - Builds without CGO for Linux, macOS, and Windows
 
@@ -72,8 +72,8 @@ source with Go 1.25 or newer:
 go install github.com/retroenv/nesgoemu@latest
 ```
 
-GUI mode requires SDL2 runtime libraries. See the [GUI setup guide](docs/gui.md)
-for platform-specific installation instructions. Console mode does not require SDL2.
+GUI mode requires SDL3 or SDL2 runtime libraries. It uses SDL3 first and SDL2 if SDL3 does not start. See the [GUI setup guide](docs/gui.md)
+for platform-specific installation instructions. Console mode does not require SDL.
 
 ### Basic Usage
 

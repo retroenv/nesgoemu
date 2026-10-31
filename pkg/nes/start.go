@@ -28,8 +28,8 @@ func Start(options ...Option) error {
 	}
 
 	guiStarter := setupNoGui
-	if gui.Setup != nil && !opts.noGui {
-		guiStarter = gui.Setup
+	if gui.Available() && !opts.noGui {
+		guiStarter = sys.setupGUI
 	}
 
 	var playback *audio.Playback

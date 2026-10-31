@@ -1,4 +1,7 @@
-// Package main implements a NES ROM emulator
+// Package main implements a NES ROM emulator.
+//
+// The blank imports register the SDL renderers with retrogolib. GUI and audio use
+// SDL3 first and use SDL2 if SDL3 does not start.
 package main
 
 import (
@@ -9,11 +12,11 @@ import (
 
 	"github.com/retroenv/nesgoemu/pkg/nes"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
-	"github.com/retroenv/retrogolib/audio"
-	audiosdl2 "github.com/retroenv/retrogolib/audio/sdl2"
+	_ "github.com/retroenv/retrogolib/audio/sdl2"
+	_ "github.com/retroenv/retrogolib/audio/sdl3"
 	"github.com/retroenv/retrogolib/buildinfo"
-	"github.com/retroenv/retrogolib/gui"
-	guisdl2 "github.com/retroenv/retrogolib/gui/sdl2"
+	_ "github.com/retroenv/retrogolib/gui/sdl2"
+	_ "github.com/retroenv/retrogolib/gui/sdl3"
 )
 
 type optionFlags struct {
@@ -123,9 +126,6 @@ func emulateFile(options optionFlags) error {
 
 	if options.noGui {
 		opts = append(opts, nes.WithDisabledGUI())
-	} else {
-		gui.Setup = guisdl2.Setup
-		audio.Setup = audiosdl2.Setup
 	}
 
 	if options.noAudio {

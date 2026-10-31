@@ -22,7 +22,7 @@ with the race detector.
 - Go 1.25 or later
 - Make
 - `golangci-lint` and `retrogolint` for `make lint`
-- SDL2 runtime libraries only when running GUI mode
+- SDL3 or SDL2 runtime libraries only when running GUI mode
 
 Install the configured linter versions with:
 

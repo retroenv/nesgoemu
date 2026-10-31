@@ -16,6 +16,7 @@ import (
 	"github.com/retroenv/retrogolib/arch/cpu/cpu6502"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 	"github.com/retroenv/retrogolib/gui"
+	"github.com/retroenv/retrogolib/renderer"
 )
 
 // System implements a NES system.
@@ -31,8 +32,10 @@ type System struct {
 	Bus *bus.Bus
 
 	dimensions gui.Dimensions
+	guiInfo    *renderer.Info // Renderer of the started GUI, nil without GUI.
 
-	audioReady atomic.Bool // Playback starts after the initial sample buffer is ready.
+	audioReady atomic.Bool    // Playback starts after the initial sample buffer is ready.
+	audioInfo  *renderer.Info // Renderer of the started audio output, nil without audio.
 }
 
 // StepResult reports the time advanced by one system step.
@@ -277,6 +280,18 @@ func (sys *System) runRenderer(ctx context.Context, opts *Options, guiStarter gu
 
 		time.Sleep(time.Second / ppu.FPS)
 	}
+}
+
+// setupGUI starts the registered GUI renderer and records which renderer started.
+func (sys *System) setupGUI(backend gui.Backend) (func() (bool, error), func(), error) {
+	render, cleanup, info, err := gui.SetupWithInfo(backend)
+	if err != nil {
+		return nil, nil, err //nolint:wrapcheck // SetupWithInfo adds the renderer context.
+	}
+
+	sys.guiInfo = &info
+
+	return render, cleanup, nil
 }
 
 // clockCPUCycle selects a bus owner, clocks the devices, and completes a DMA

@@ -46,20 +46,23 @@ func (sys *System) AudioStats() output.Stats {
 // audioEnabled reports whether the system opens an audio device. Audio output
 // needs a registered renderer, the GUI, and an unmuted system.
 func audioEnabled(opts *Options) bool {
-	return audio.Setup != nil && !opts.noGui && !opts.noAudio
+	return audio.Available() && !opts.noGui && !opts.noAudio
 }
 
 // startAudio opens the audio device and starts playback.
 func startAudio(sys *System) (*audio.Playback, error) {
 	sys.audioReady.Store(false)
-	playback, err := audio.Setup(sys)
+	playback, info, err := audio.SetupWithInfo(sys)
 	if err != nil {
 		return nil, fmt.Errorf("setting up audio output: %w", err)
 	}
+
 	if err := playback.Start(); err != nil {
 		playback.Stop()
 		return nil, fmt.Errorf("starting audio playback: %w", err)
 	}
+
+	sys.audioInfo = &info
 
 	return playback, nil
 }

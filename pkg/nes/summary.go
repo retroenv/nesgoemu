@@ -10,6 +10,7 @@ import (
 	"github.com/retroenv/nesgoemu/pkg/feature"
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
+	"github.com/retroenv/retrogolib/renderer"
 )
 
 // summaryFieldFormat aligns a summary field name and its value.
@@ -31,7 +32,11 @@ type Summary struct {
 	ChrRAMSize int
 	MirrorMode cartridge.MirrorMode
 	Battery    bool
-	Groups     []FeatureGroup
+
+	GUI   *renderer.Info // Renderer of the GUI, nil when the run had no GUI.
+	Audio *renderer.Info // Renderer of the audio output, nil when the run had no audio output.
+
+	Groups []FeatureGroup
 }
 
 // Summary returns the ROM details and feature usage of the current system.
@@ -47,6 +52,8 @@ func (sys *System) Summary() Summary {
 		PrgRAMSize: prgRAM,
 		ChrRAMSize: chrRAM,
 		MirrorMode: cart.Mirror,
+		GUI:        sys.guiInfo,
+		Audio:      sys.audioInfo,
 	}
 	if backer, ok := sys.Bus.Mapper.(bus.BatteryBacker); ok {
 		summary.Battery = backer.BatteryBacked()
@@ -72,6 +79,14 @@ func (s Summary) String() string {
 		fmt.Sprintf(summaryFieldFormat, "Battery:", yesNo(s.Battery)),
 	}
 
+	if s.GUI != nil {
+		lines = append(lines, fmt.Sprintf(summaryFieldFormat, "GUI:", rendererText(s.GUI)))
+	}
+
+	if s.Audio != nil {
+		lines = append(lines, fmt.Sprintf(summaryFieldFormat, "Audio:", rendererText(s.Audio)))
+	}
+
 	for _, group := range s.Groups {
 		lines = append(lines, "", group.Name+" features")
 		for _, feature := range group.Features {
@@ -92,6 +107,22 @@ func (sys *System) writeSummary(target io.Writer) error {
 	}
 
 	return nil
+}
+
+// rendererText returns the renderer name and library version. A renderer that
+// started after preferred renderers failed also shows the failures on one line.
+func rendererText(info *renderer.Info) string {
+	text := info.Name
+	if info.Version != "" {
+		text += " " + info.Version
+	}
+
+	if info.Skipped != nil {
+		failures := strings.ReplaceAll(info.Skipped.Error(), "\n", "; ")
+		text += " (fallback, " + failures + ")"
+	}
+
+	return text
 }
 
 func appendFeatureGroup(groups []FeatureGroup, name string, component any) []FeatureGroup {

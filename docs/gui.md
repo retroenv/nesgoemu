@@ -3,10 +3,12 @@
 nesgoemu can run in two modes:
 
 - Console mode (`-c`): no additional runtime libraries required.
-- GUI mode (default): requires SDL2 runtime libraries.
+- GUI mode (default): requires SDL3 or SDL2 runtime libraries.
 
-The Go build itself does not require CGO. GUI mode uses SDL2 through retrogolib for window setup,
-input handling, rendering, and audio output.
+The Go build itself does not require CGO. GUI mode uses SDL through retrogolib for window setup,
+input handling, rendering, and audio output. GUI mode uses SDL3 first. If SDL3 is not installed or
+does not start, GUI mode uses SDL2. The GUI and the audio output select their library separately.
+The SDL2 steps below install the fallback. Install SDL3 with your platform package manager to use it.
 
 Use the `-m` flag to run GUI mode without audio output. Console mode does not open an audio device.
 

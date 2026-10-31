@@ -12,6 +12,7 @@ import (
 	"github.com/retroenv/retrogolib/assert"
 	"github.com/retroenv/retrogolib/audio"
 	"github.com/retroenv/retrogolib/gui"
+	"github.com/retroenv/retrogolib/renderer"
 )
 
 // toneProgram enables pulse 1 with a period that plays a 440 Hz tone.
@@ -266,13 +267,15 @@ func newAudioTestSystem(t *testing.T, program []byte) *System {
 	return sys
 }
 
-// setTestRenderer replaces the audio renderer for one test.
+// setTestRenderer registers the audio renderer for one test. A nil setup
+// registers no renderer.
 func setTestRenderer(t *testing.T, setup audio.Initializer) {
 	t.Helper()
 
-	previous := audio.Setup
-	t.Cleanup(func() { audio.Setup = previous })
-	audio.Setup = setup
+	if setup == nil {
+		return
+	}
+	t.Cleanup(audio.Register("test", 0, renderer.Renderer[audio.Initializer]{Setup: setup}))
 }
 
 // testRenderer returns a renderer that reports a working playback.
