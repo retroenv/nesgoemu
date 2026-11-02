@@ -4,8 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/retroenv/nesgoemu/pkg/bus"
-	"github.com/retroenv/nesgoemu/pkg/ppu/nametable"
+	"github.com/retroenv/nesgoemu/pkg/mapper/internal/mappertest"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 	"github.com/retroenv/retrogolib/assert"
 )
@@ -19,10 +18,7 @@ func TestNewRejectsInvalidPRGBanks(t *testing.T) {
 					Mapper: id,
 					PRG:    make([]byte, size),
 				}
-				m, err := New(&bus.Bus{
-					Cartridge: cart,
-					NameTable: nametable.New(cart.Mirror),
-				})
+				m, err := New(mappertest.NewBus(cart))
 				assert.Error(t, err)
 				assert.Nil(t, m)
 			})
@@ -37,10 +33,7 @@ func TestNewRejectsGTROMWithCHRROM(t *testing.T) {
 		PRG:    make([]byte, 0x8000),
 		CHR:    make([]byte, 0x2000),
 	}
-	m, err := New(&bus.Bus{
-		Cartridge: cart,
-		NameTable: nametable.New(cart.Mirror),
-	})
+	m, err := New(mappertest.NewBus(cart))
 	assert.Error(t, err)
 	assert.Nil(t, m)
 }
@@ -56,10 +49,7 @@ func TestNewRejectsInvalidRAMMetadata(t *testing.T) {
 				},
 			},
 		}
-		m, err := New(&bus.Bus{
-			Cartridge: cart,
-			NameTable: nametable.New(cart.Mirror),
-		})
+		m, err := New(mappertest.NewBus(cart))
 		assert.Error(t, err)
 		assert.Nil(t, m)
 	}

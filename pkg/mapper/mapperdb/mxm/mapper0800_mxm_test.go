@@ -7,8 +7,8 @@ import (
 
 	"github.com/retroenv/nesgoemu/pkg/bus"
 	"github.com/retroenv/nesgoemu/pkg/feature"
+	"github.com/retroenv/nesgoemu/pkg/mapper/internal/mappertest"
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
-	"github.com/retroenv/nesgoemu/pkg/ppu/nametable"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 	"github.com/retroenv/retrogolib/assert"
 )
@@ -112,10 +112,7 @@ func newTestMapper(t *testing.T) (*Mapper, *bus.Bus) {
 		}},
 	}
 
-	b := &bus.Bus{
-		Cartridge: cart,
-		NameTable: nametable.New(cart.Mirror),
-	}
+	b := mappertest.NewBus(cart)
 
 	mapper, err := New(mapperbase.New(b))
 	assert.NoError(t, err)

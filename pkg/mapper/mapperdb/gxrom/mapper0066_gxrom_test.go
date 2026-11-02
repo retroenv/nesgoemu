@@ -6,7 +6,7 @@ import (
 	"github.com/retroenv/nesgoemu/pkg/bus"
 	"github.com/retroenv/nesgoemu/pkg/feature"
 	"github.com/retroenv/nesgoemu/pkg/mapper"
-	"github.com/retroenv/nesgoemu/pkg/ppu/nametable"
+	"github.com/retroenv/nesgoemu/pkg/mapper/internal/mappertest"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 	"github.com/retroenv/retrogolib/assert"
 )
@@ -116,10 +116,7 @@ func TestUnsupportedCartridges(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			cart := testCartridge()
 			change(cart)
-			m, err := mapper.New(&bus.Bus{
-				Cartridge: cart,
-				NameTable: nametable.New(cart.Mirror),
-			})
+			m, err := mapper.New(mappertest.NewBus(cart))
 			assert.Error(t, err)
 			assert.Nil(t, m)
 		})
@@ -149,16 +146,8 @@ func testCartridge() *cartridge.Cartridge {
 
 func testMapper(t *testing.T, cart *cartridge.Cartridge) bus.Mapper {
 	t.Helper()
-	m, err := mapper.New(&bus.Bus{
-		Cartridge: cart,
-		NameTable: nametable.New(cart.Mirror),
-		OpenBus:   testOpenBus{},
-	})
+	m, err := mapper.New(mappertest.NewBus(cart))
 	assert.NoError(t, err)
 
 	return m
 }
-
-type testOpenBus struct{}
-
-func (testOpenBus) OpenBus() byte { return 0x5a }

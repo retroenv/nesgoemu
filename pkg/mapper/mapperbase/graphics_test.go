@@ -4,19 +4,16 @@ import (
 	"testing"
 
 	"github.com/retroenv/nesgoemu/pkg/bus"
-	"github.com/retroenv/nesgoemu/pkg/ppu/nametable"
+	"github.com/retroenv/nesgoemu/pkg/mapper/internal/mappertest"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 	"github.com/retroenv/retrogolib/assert"
 )
 
 func TestGraphicsReportsEffectiveCHRMapping(t *testing.T) {
-	base := New(&bus.Bus{
-		Cartridge: &cartridge.Cartridge{
-			PRG: make([]byte, 0x8000),
-			CHR: make([]byte, 0x8000),
-		},
-		NameTable: nametable.New(cartridge.MirrorHorizontal),
-	})
+	base := New(mappertest.NewBus(&cartridge.Cartridge{
+		PRG: make([]byte, 0x8000),
+		CHR: make([]byte, 0x8000),
+	}))
 	assert.NoError(t, base.Initialize())
 	var events []bus.GraphicsEvent
 	base.ObserveGraphics(func(event bus.GraphicsEvent) {
@@ -41,12 +38,9 @@ func TestGraphicsReportsEffectiveCHRMapping(t *testing.T) {
 }
 
 func TestGraphicsIdentifiesCHRMemorySource(t *testing.T) {
-	base := New(&bus.Bus{
-		Cartridge: &cartridge.Cartridge{
-			PRG: make([]byte, 0x8000),
-		},
-		NameTable: nametable.New(cartridge.MirrorHorizontal),
-	})
+	base := New(mappertest.NewBus(&cartridge.Cartridge{
+		PRG: make([]byte, 0x8000),
+	}))
 	base.SetChrRAM(make([]byte, 0x4000))
 	assert.NoError(t, base.Initialize())
 	var event bus.GraphicsEvent

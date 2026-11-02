@@ -3,8 +3,7 @@ package mapper
 import (
 	"testing"
 
-	"github.com/retroenv/nesgoemu/pkg/bus"
-	"github.com/retroenv/nesgoemu/pkg/ppu/nametable"
+	"github.com/retroenv/nesgoemu/pkg/mapper/internal/mappertest"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 	"github.com/retroenv/retrogolib/assert"
 )
@@ -17,11 +16,9 @@ func TestMMC3FourScreenMirroring(t *testing.T) {
 		CHR:    make([]byte, 0x2000),
 		Mirror: cartridge.Mirror4,
 	}
-	nt := nametable.New(cart.Mirror)
-	m, err := New(&bus.Bus{
-		Cartridge: cart,
-		NameTable: nt,
-	})
+	system := mappertest.NewBus(cart)
+	nt := system.NameTable
+	m, err := New(system)
 	assert.NoError(t, err)
 	assert.Equal(t, cartridge.Mirror4, nt.MirrorMode())
 	for _, value := range []byte{0, 1} {
@@ -86,10 +83,7 @@ func TestMMC3RejectsUnsupportedLayouts(t *testing.T) {
 				CHR:    make([]byte, tt.chrSize),
 				NES2:   &cartridge.NES2Metadata{RAMSizes: tt.sizes},
 			}
-			m, err := New(&bus.Bus{
-				Cartridge: cart,
-				NameTable: nametable.New(cart.Mirror),
-			})
+			m, err := New(mappertest.NewBus(cart))
 			assert.Nil(t, m)
 			assert.Error(t, err)
 		})
@@ -104,10 +98,7 @@ func TestMMC3RejectsUnsupportedSubmappers(t *testing.T) {
 			CHR:    make([]byte, 0x2000),
 			NES2:   &cartridge.NES2Metadata{Submapper: submapper},
 		}
-		m, err := New(&bus.Bus{
-			Cartridge: cart,
-			NameTable: nametable.New(cart.Mirror),
-		})
+		m, err := New(mappertest.NewBus(cart))
 		assert.Nil(t, m)
 		assert.ErrorContains(t, err, "submapper")
 	}

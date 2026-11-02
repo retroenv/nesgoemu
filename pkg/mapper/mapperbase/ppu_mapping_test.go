@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/retroenv/nesgoemu/pkg/bus"
-	"github.com/retroenv/nesgoemu/pkg/ppu/nametable"
+	"github.com/retroenv/nesgoemu/pkg/mapper/internal/mappertest"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 	"github.com/retroenv/retrogolib/assert"
 )
@@ -46,13 +46,10 @@ func TestPPUMappingBanksAndSources(t *testing.T) {
 }
 
 func TestPPUMappingAbsentMemoryAndInvalidAddresses(t *testing.T) {
-	base := New(&bus.Bus{
-		Cartridge: &cartridge.Cartridge{
-			PRG:  make([]byte, 0x8000),
-			NES2: &cartridge.NES2Metadata{},
-		},
-		NameTable: nametable.New(cartridge.MirrorHorizontal),
-	})
+	base := New(mappertest.NewBus(&cartridge.Cartridge{
+		PRG:  make([]byte, 0x8000),
+		NES2: &cartridge.NES2Metadata{},
+	}))
 	for _, initialized := range []bool{false, true} {
 		if initialized {
 			assert.NoError(t, base.Initialize())
@@ -103,10 +100,7 @@ func TestPPUMappingDoesNotCallHooks(t *testing.T) {
 
 func newPPUMappingTestBase(t *testing.T, size int, ram bool) *Base {
 	t.Helper()
-	base := New(&bus.Bus{
-		Cartridge: &cartridge.Cartridge{PRG: make([]byte, 0x8000)},
-		NameTable: nametable.New(cartridge.MirrorHorizontal),
-	})
+	base := New(mappertest.NewBus(&cartridge.Cartridge{PRG: make([]byte, 0x8000)}))
 	if ram {
 		base.SetChrRAM(make([]byte, 0x8000))
 	} else {

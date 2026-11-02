@@ -5,8 +5,8 @@ import (
 
 	"github.com/retroenv/nesgoemu/pkg/bus"
 	"github.com/retroenv/nesgoemu/pkg/feature"
+	"github.com/retroenv/nesgoemu/pkg/mapper/internal/mappertest"
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
-	"github.com/retroenv/nesgoemu/pkg/ppu/nametable"
 	"github.com/retroenv/retrogolib/arch/cpu/cpu6502"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 	"github.com/retroenv/retrogolib/assert"
@@ -28,13 +28,10 @@ func TestMapperMMC1(t *testing.T) {
 	chr := make([]byte, 0x1000*3) // 4K banks
 	prg := make([]byte, 0x4000*3) // 16K banks
 
-	base := mapperbase.New(&bus.Bus{
-		Cartridge: &cartridge.Cartridge{
-			CHR: chr,
-			PRG: prg,
-		},
-		NameTable: nametable.New(cartridge.MirrorHorizontal),
-	})
+	base := mapperbase.New(mappertest.NewBus(&cartridge.Cartridge{
+		CHR: chr,
+		PRG: prg,
+	}))
 	m, err := New(base)
 	assert.NoError(t, err)
 
@@ -144,14 +141,12 @@ func newBankTestMapper(t *testing.T, cpu bus.CPU) bus.Mapper {
 		prg[bank*0x4000] = byte(bank)
 	}
 
-	base := mapperbase.New(&bus.Bus{
-		Cartridge: &cartridge.Cartridge{
-			CHR: make([]byte, 0x2000),
-			PRG: prg,
-		},
-		CPU:       cpu,
-		NameTable: nametable.New(cartridge.MirrorHorizontal),
+	system := mappertest.NewBus(&cartridge.Cartridge{
+		CHR: make([]byte, 0x2000),
+		PRG: prg,
 	})
+	system.CPU = cpu
+	base := mapperbase.New(system)
 	m, err := New(base)
 	assert.NoError(t, err)
 

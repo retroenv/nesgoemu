@@ -3,8 +3,7 @@ package mapper
 import (
 	"testing"
 
-	"github.com/retroenv/nesgoemu/pkg/bus"
-	"github.com/retroenv/nesgoemu/pkg/ppu/nametable"
+	"github.com/retroenv/nesgoemu/pkg/mapper/internal/mappertest"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 	"github.com/retroenv/retrogolib/assert"
 )
@@ -51,10 +50,7 @@ func BenchmarkConstructionRAM(b *testing.B) {
 			b.ReportAllocs()
 			b.ResetTimer()
 			for b.Loop() {
-				m, err := New(&bus.Bus{
-					Cartridge: cart,
-					NameTable: nametable.New(cart.Mirror),
-				})
+				m, err := New(mappertest.NewBus(cart))
 				assert.NoError(b, err)
 				assert.NotNil(b, m)
 			}

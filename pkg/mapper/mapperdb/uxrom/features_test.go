@@ -3,23 +3,19 @@ package uxrom
 import (
 	"testing"
 
-	"github.com/retroenv/nesgoemu/pkg/bus"
 	"github.com/retroenv/nesgoemu/pkg/feature"
+	"github.com/retroenv/nesgoemu/pkg/mapper/internal/mappertest"
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
-	"github.com/retroenv/nesgoemu/pkg/ppu/nametable"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 	"github.com/retroenv/retrogolib/assert"
 )
 
 func TestFeaturesPrgBankingMarkedOnWrite(t *testing.T) {
-	base := mapperbase.New(&bus.Bus{
-		Cartridge: &cartridge.Cartridge{
-			NES2: &cartridge.NES2Metadata{},
-			CHR:  make([]byte, 0x2000),
-			PRG:  make([]byte, 0xC000),
-		},
-		NameTable: nametable.New(cartridge.MirrorHorizontal),
-	})
+	base := mapperbase.New(mappertest.NewBus(&cartridge.Cartridge{
+		NES2: &cartridge.NES2Metadata{},
+		CHR:  make([]byte, 0x2000),
+		PRG:  make([]byte, 0xC000),
+	}))
 	m, err := NewOR(base)
 	assert.NoError(t, err)
 

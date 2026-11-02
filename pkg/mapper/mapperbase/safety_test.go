@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/retroenv/nesgoemu/pkg/bus"
-	"github.com/retroenv/nesgoemu/pkg/ppu/nametable"
+	"github.com/retroenv/nesgoemu/pkg/mapper/internal/mappertest"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 	"github.com/retroenv/retrogolib/assert"
 )
@@ -54,13 +54,10 @@ func TestStateDuringBankSwitches(t *testing.T) {
 }
 
 func TestCHRROMStaysReadOnlyWithRAMBuffer(t *testing.T) {
-	base := New(&bus.Bus{
-		Cartridge: &cartridge.Cartridge{
-			PRG: make([]byte, safetyTestPRGROMSize),
-			CHR: make([]byte, safetyTestCHRROMSize),
-		},
-		NameTable: nametable.New(cartridge.MirrorHorizontal),
-	})
+	base := New(mappertest.NewBus(&cartridge.Cartridge{
+		PRG: make([]byte, safetyTestPRGROMSize),
+		CHR: make([]byte, safetyTestCHRROMSize),
+	}))
 	base.SetChrRAM(make([]byte, safetyTestCHRRAMSize))
 	assert.NoError(t, base.Initialize())
 	var event bus.GraphicsEvent

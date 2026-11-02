@@ -3,10 +3,9 @@ package mmc3
 import (
 	"testing"
 
-	"github.com/retroenv/nesgoemu/pkg/bus"
 	"github.com/retroenv/nesgoemu/pkg/feature"
+	"github.com/retroenv/nesgoemu/pkg/mapper/internal/mappertest"
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
-	"github.com/retroenv/nesgoemu/pkg/ppu/nametable"
 	"github.com/retroenv/retrogolib/arch/cpu/cpu6502"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 	"github.com/retroenv/retrogolib/assert"
@@ -174,22 +173,22 @@ func TestWramAccess(t *testing.T) {
 
 	// The WRAM is disabled at power on: reads return open bus and writes
 	// are ignored.
-	m.Write(0x6000, 0x5A)
-	assert.Equal(t, byte(0), m.Read(0x6000))
+	m.Write(0x6000, 0xA5)
+	assert.Equal(t, mappertest.OpenBusValue, m.Read(0x6000))
 
 	// Bit 7 of $A001 enables the WRAM.
 	m.Write(0xA001, 0x80)
-	m.Write(0x6000, 0x5A)
-	assert.Equal(t, byte(0x5A), m.Read(0x6000))
+	m.Write(0x6000, 0xA5)
+	assert.Equal(t, byte(0xA5), m.Read(0x6000))
 
 	// Bit 6 of $A001 protects the WRAM from writes.
 	m.Write(0xA001, 0xC0)
 	m.Write(0x6000, 0x3C)
-	assert.Equal(t, byte(0x5A), m.Read(0x6000))
+	assert.Equal(t, byte(0xA5), m.Read(0x6000))
 
 	// A disabled WRAM returns open bus again.
 	m.Write(0xA001, 0x40)
-	assert.Equal(t, byte(0), m.Read(0x6000))
+	assert.Equal(t, mappertest.OpenBusValue, m.Read(0x6000))
 }
 
 func TestIRQCounterReloadAndFire(t *testing.T) {
@@ -333,14 +332,12 @@ func newTestMapper(t *testing.T) (*mapperMMC3, *irqCaptureCPU) {
 	}
 
 	cpu := &irqCaptureCPU{}
-	systemBus := &bus.Bus{
-		CPU: cpu,
-		Cartridge: &cartridge.Cartridge{
-			CHR: chr,
-			PRG: prg,
-		},
-		NameTable: nametable.New(cartridge.MirrorVertical),
-	}
+	systemBus := mappertest.NewBus(&cartridge.Cartridge{
+		CHR:    chr,
+		PRG:    prg,
+		Mirror: cartridge.MirrorVertical,
+	})
+	systemBus.CPU = cpu
 
 	base := mapperbase.New(systemBus)
 	base.SetPrgRAM(make([]byte, 0x2000))

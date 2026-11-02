@@ -3,17 +3,13 @@ package mapperbase
 import (
 	"testing"
 
-	"github.com/retroenv/nesgoemu/pkg/bus"
-	"github.com/retroenv/nesgoemu/pkg/ppu/nametable"
+	"github.com/retroenv/nesgoemu/pkg/mapper/internal/mappertest"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 	"github.com/retroenv/retrogolib/assert"
 )
 
 func TestPRGROMOffsetRejectsAbsentROM(t *testing.T) {
-	base := New(&bus.Bus{
-		Cartridge: &cartridge.Cartridge{},
-		NameTable: nametable.New(cartridge.MirrorHorizontal),
-	})
+	base := New(mappertest.NewBus(&cartridge.Cartridge{}))
 	_, ok := base.PRGROMOffset(0x8000)
 	assert.False(t, ok)
 	assert.Error(t, base.Initialize())
@@ -22,10 +18,7 @@ func TestPRGROMOffsetRejectsAbsentROM(t *testing.T) {
 }
 
 func TestPRGROMOffsetDoesNotCallReadHooks(t *testing.T) {
-	base := New(&bus.Bus{
-		Cartridge: &cartridge.Cartridge{PRG: make([]byte, 0x8000)},
-		NameTable: nametable.New(cartridge.MirrorHorizontal),
-	})
+	base := New(mappertest.NewBus(&cartridge.Cartridge{PRG: make([]byte, 0x8000)}))
 	assert.NoError(t, base.Initialize())
 	called := false
 	hook := base.AddReadHook(0x8000, 0x9fff, func(uint16) (byte, error) {

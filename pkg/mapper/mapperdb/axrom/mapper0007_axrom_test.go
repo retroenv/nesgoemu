@@ -3,9 +3,8 @@ package axrom
 import (
 	"testing"
 
-	"github.com/retroenv/nesgoemu/pkg/bus"
+	"github.com/retroenv/nesgoemu/pkg/mapper/internal/mappertest"
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
-	"github.com/retroenv/nesgoemu/pkg/ppu/nametable"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 	"github.com/retroenv/retrogolib/assert"
 )
@@ -13,13 +12,10 @@ import (
 func TestMapperAxROM(t *testing.T) {
 	prg := make([]byte, 0x8000*2)
 
-	base := mapperbase.New(&bus.Bus{
-		Cartridge: &cartridge.Cartridge{
-			CHR: make([]byte, 0x2000),
-			PRG: prg,
-		},
-		NameTable: nametable.New(cartridge.MirrorHorizontal),
-	})
+	base := mapperbase.New(mappertest.NewBus(&cartridge.Cartridge{
+		CHR: make([]byte, 0x2000),
+		PRG: prg,
+	}))
 	m, err := New(base)
 	assert.NoError(t, err)
 

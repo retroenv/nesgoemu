@@ -4,15 +4,14 @@ import (
 	"testing"
 
 	"github.com/retroenv/nesgoemu/pkg/bus"
-	"github.com/retroenv/nesgoemu/pkg/ppu/nametable"
+	"github.com/retroenv/nesgoemu/pkg/mapper/internal/mappertest"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 	"github.com/retroenv/retrogolib/assert"
 )
 
 func TestNameTableMemoryReturnsSystemNameTable(t *testing.T) {
-	nameTable := nametable.New(cartridge.MirrorHorizontal)
-	system := &bus.Bus{NameTable: nameTable}
-	assert.Equal(t, nameTable, New(system).NameTableMemory())
+	system := mappertest.NewBus(&cartridge.Cartridge{})
+	assert.Equal(t, system.NameTable, New(system).NameTableMemory())
 }
 
 func TestPrgRAMSize(t *testing.T) {
@@ -50,11 +49,11 @@ func TestPrgRAMSupports64KiB(t *testing.T) {
 func TestReadReturnsOpenBusValue(t *testing.T) {
 	t.Parallel()
 
-	base := New(&bus.Bus{OpenBus: openBusTestValue(0x5A)})
+	base := New(mappertest.NewBus(&cartridge.Cartridge{}))
 
 	// $4020 to $5FFF and $6000 to $7FFF without PRG RAM have no memory.
-	assert.Equal(t, byte(0x5A), base.Read(0x4020))
-	assert.Equal(t, byte(0x5A), base.Read(0x6000))
+	assert.Equal(t, mappertest.OpenBusValue, base.Read(0x4020))
+	assert.Equal(t, mappertest.OpenBusValue, base.Read(0x6000))
 }
 
 func TestReadWithoutChrMemoryReturnsAddressLowByte(t *testing.T) {
@@ -75,10 +74,7 @@ func TestReadDuringBankSwitches(t *testing.T) {
 	cart.CHR[0x2000] = 2
 	cart.PRG[0] = 3
 	cart.PRG[0x4000] = 4
-	base := New(&bus.Bus{
-		Cartridge: cart,
-		NameTable: nametable.New(cart.Mirror),
-	})
+	base := New(mappertest.NewBus(cart))
 	assert.NoError(t, base.Initialize())
 	done := make(chan struct{})
 	go func() {
@@ -107,10 +103,4 @@ func TestReadDuringBankSwitches(t *testing.T) {
 			assert.True(t, physical == 0 || physical == 0x4000)
 		}
 	}
-}
-
-type openBusTestValue byte
-
-func (v openBusTestValue) OpenBus() byte {
-	return byte(v)
 }

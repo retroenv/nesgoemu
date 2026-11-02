@@ -3,9 +3,8 @@ package cnrom
 import (
 	"testing"
 
-	"github.com/retroenv/nesgoemu/pkg/bus"
+	"github.com/retroenv/nesgoemu/pkg/mapper/internal/mappertest"
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
-	"github.com/retroenv/nesgoemu/pkg/ppu/nametable"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 	"github.com/retroenv/retrogolib/assert"
 )
@@ -13,13 +12,10 @@ import (
 func TestMapperCNROM(t *testing.T) {
 	chr := make([]byte, 0x6000)
 
-	base := mapperbase.New(&bus.Bus{
-		Cartridge: &cartridge.Cartridge{
-			CHR: chr,
-			PRG: make([]byte, 0x4000),
-		},
-		NameTable: nametable.New(cartridge.MirrorHorizontal),
-	})
+	base := mapperbase.New(mappertest.NewBus(&cartridge.Cartridge{
+		CHR: chr,
+		PRG: make([]byte, 0x4000),
+	}))
 	m, err := New(base)
 	assert.NoError(t, err)
 

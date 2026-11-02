@@ -5,7 +5,7 @@ import (
 
 	"github.com/retroenv/nesgoemu/pkg/bus"
 	"github.com/retroenv/nesgoemu/pkg/mapper"
-	"github.com/retroenv/nesgoemu/pkg/ppu/nametable"
+	"github.com/retroenv/nesgoemu/pkg/mapper/internal/mappertest"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 	"github.com/retroenv/retrogolib/assert"
 )
@@ -69,10 +69,7 @@ func TestQuattroRejectsUnsupportedBoards(t *testing.T) {
 		t.Run(kind, func(t *testing.T) {
 			cart := unsupportedCartridge(kind)
 			cart.Mapper = 232
-			m, err := mapper.New(&bus.Bus{
-				Cartridge: cart,
-				NameTable: nametable.New(cart.Mirror),
-			})
+			m, err := mapper.New(mappertest.NewBus(cart))
 			assert.Error(t, err)
 			assert.Nil(t, m)
 		})

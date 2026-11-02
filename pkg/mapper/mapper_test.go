@@ -4,12 +4,10 @@ import (
 	"testing"
 
 	"github.com/retroenv/nesgoemu/pkg/bus"
-	"github.com/retroenv/nesgoemu/pkg/ppu/nametable"
+	"github.com/retroenv/nesgoemu/pkg/mapper/internal/mappertest"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 	"github.com/retroenv/retrogolib/assert"
 )
-
-const openBusValue = 0x5A
 
 func TestNewProvidesPrgRAMForLegacyCartridge(t *testing.T) {
 	t.Parallel()
@@ -86,28 +84,18 @@ func TestNewWithoutPrgRAMReturnsOpenBus(t *testing.T) {
 
 	m.Write(0x6000, 0x11) // ignored, no memory is present
 
-	assert.Equal(t, byte(openBusValue), m.Read(0x6000))
-	assert.Equal(t, byte(openBusValue), m.Read(0x7FFF))
+	assert.Equal(t, mappertest.OpenBusValue, m.Read(0x6000))
+	assert.Equal(t, mappertest.OpenBusValue, m.Read(0x7FFF))
 }
 
 func newTestMapper(t *testing.T, cart *cartridge.Cartridge) bus.Mapper {
 	t.Helper()
 
-	system := &bus.Bus{
-		Cartridge: cart,
-		NameTable: nametable.New(cart.Mirror),
-		OpenBus:   openBusTestValue(openBusValue),
-	}
+	system := mappertest.NewBus(cart)
 	m, err := New(system)
 	assert.NoError(t, err)
 
 	return m
-}
-
-type openBusTestValue byte
-
-func (v openBusTestValue) OpenBus() byte {
-	return byte(v)
 }
 
 func mappingTestCartridge(id uint16, chrSize int) *cartridge.Cartridge {

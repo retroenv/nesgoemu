@@ -3,9 +3,8 @@ package nrom
 import (
 	"testing"
 
-	"github.com/retroenv/nesgoemu/pkg/bus"
+	"github.com/retroenv/nesgoemu/pkg/mapper/internal/mappertest"
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
-	"github.com/retroenv/nesgoemu/pkg/ppu/nametable"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 	"github.com/retroenv/retrogolib/assert"
 )
@@ -14,13 +13,10 @@ func TestMapperNROMPrg16k(t *testing.T) {
 	chr := make([]byte, 0x2000)
 	prg := make([]byte, 0x4000)
 
-	base := mapperbase.New(&bus.Bus{
-		Cartridge: &cartridge.Cartridge{
-			CHR: chr,
-			PRG: prg,
-		},
-		NameTable: nametable.New(cartridge.MirrorHorizontal),
-	})
+	base := mapperbase.New(mappertest.NewBus(&cartridge.Cartridge{
+		CHR: chr,
+		PRG: prg,
+	}))
 	m, err := New(base)
 	assert.NoError(t, err)
 
@@ -36,13 +32,10 @@ func TestMapperNROMPrg32k(t *testing.T) {
 	chr := make([]byte, 0x2000)
 	prg := make([]byte, 0x8000)
 
-	base := mapperbase.New(&bus.Bus{
-		Cartridge: &cartridge.Cartridge{
-			CHR: chr,
-			PRG: prg,
-		},
-		NameTable: nametable.New(cartridge.MirrorHorizontal),
-	})
+	base := mapperbase.New(mappertest.NewBus(&cartridge.Cartridge{
+		CHR: chr,
+		PRG: prg,
+	}))
 	m, err := New(base)
 	assert.NoError(t, err)
 

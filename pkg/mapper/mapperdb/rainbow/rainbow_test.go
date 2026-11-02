@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	"github.com/retroenv/nesgoemu/pkg/bus"
+	"github.com/retroenv/nesgoemu/pkg/mapper/internal/mappertest"
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
-	"github.com/retroenv/nesgoemu/pkg/ppu/nametable"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 	"github.com/retroenv/retrogolib/assert"
 )
@@ -24,13 +24,10 @@ func newTestMapperWithBus(t *testing.T, prgSize, chrSize int) (*Mapper, *bus.Bus
 	prg := make([]byte, prgSize)
 	chr := make([]byte, chrSize)
 
-	system := &bus.Bus{
-		Cartridge: &cartridge.Cartridge{
-			CHR: chr,
-			PRG: prg,
-		},
-		NameTable: nametable.New(cartridge.MirrorHorizontal),
-	}
+	system := mappertest.NewBus(&cartridge.Cartridge{
+		CHR: chr,
+		PRG: prg,
+	})
 	base := mapperbase.New(system)
 	m, err := New(base)
 	assert.NoError(t, err)
@@ -1403,14 +1400,11 @@ func TestScanlineIRQReadyToFireClearedOnNewScanline(t *testing.T) {
 func TestPRGRAMSizeFromHeader(t *testing.T) {
 	t.Helper()
 
-	base := mapperbase.New(&bus.Bus{
-		Cartridge: &cartridge.Cartridge{
-			PRG: make([]byte, 0x8000),
-			CHR: make([]byte, 0x2000),
-			RAM: 8, // 8 × 8 KB = 64 KB
-		},
-		NameTable: nametable.New(cartridge.MirrorHorizontal),
-	})
+	base := mapperbase.New(mappertest.NewBus(&cartridge.Cartridge{
+		PRG: make([]byte, 0x8000),
+		CHR: make([]byte, 0x2000),
+		RAM: 8, // 8 × 8 KB = 64 KB
+	}))
 	m, err := New(base)
 	assert.NoError(t, err)
 
@@ -1426,14 +1420,11 @@ func TestPRGRAMSizeDefaultsTo32K(t *testing.T) {
 // TestPRGRAMSizeAlignedTo32K verifies that a non-32K-aligned value (e.g. 5 × 8 KB = 40 KB)
 // is rounded up to the next 32 KB boundary (64 KB).
 func TestPRGRAMSizeAlignedTo32K(t *testing.T) {
-	base := mapperbase.New(&bus.Bus{
-		Cartridge: &cartridge.Cartridge{
-			PRG: make([]byte, 0x8000),
-			CHR: make([]byte, 0x2000),
-			RAM: 5, // 5 × 8 KB = 40 KB → rounds up to 64 KB
-		},
-		NameTable: nametable.New(cartridge.MirrorHorizontal),
-	})
+	base := mapperbase.New(mappertest.NewBus(&cartridge.Cartridge{
+		PRG: make([]byte, 0x8000),
+		CHR: make([]byte, 0x2000),
+		RAM: 5, // 5 × 8 KB = 40 KB → rounds up to 64 KB
+	}))
 	m, err := New(base)
 	assert.NoError(t, err)
 
@@ -1442,14 +1433,11 @@ func TestPRGRAMSizeAlignedTo32K(t *testing.T) {
 
 // TestPRGRAMSizeCappedAt512K verifies that cart.RAM values exceeding 512 KB are clamped.
 func TestPRGRAMSizeCappedAt512K(t *testing.T) {
-	base := mapperbase.New(&bus.Bus{
-		Cartridge: &cartridge.Cartridge{
-			PRG: make([]byte, 0x8000),
-			CHR: make([]byte, 0x2000),
-			RAM: 100, // 100 × 8 KB = 800 KB → clamped to 512 KB
-		},
-		NameTable: nametable.New(cartridge.MirrorHorizontal),
-	})
+	base := mapperbase.New(mappertest.NewBus(&cartridge.Cartridge{
+		PRG: make([]byte, 0x8000),
+		CHR: make([]byte, 0x2000),
+		RAM: 100, // 100 × 8 KB = 800 KB → clamped to 512 KB
+	}))
 	m, err := New(base)
 	assert.NoError(t, err)
 

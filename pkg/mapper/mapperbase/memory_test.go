@@ -3,8 +3,7 @@ package mapperbase
 import (
 	"testing"
 
-	"github.com/retroenv/nesgoemu/pkg/bus"
-	"github.com/retroenv/nesgoemu/pkg/ppu/nametable"
+	"github.com/retroenv/nesgoemu/pkg/mapper/internal/mappertest"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 	"github.com/retroenv/retrogolib/assert"
 )
@@ -18,12 +17,9 @@ const (
 )
 
 func TestInitializeAllocatesDefaultsOnce(t *testing.T) {
-	base := New(&bus.Bus{
-		Cartridge: &cartridge.Cartridge{
-			PRG: make([]byte, memoryTestPRGROMSize),
-		},
-		NameTable: nametable.New(cartridge.MirrorHorizontal),
-	})
+	base := New(mappertest.NewBus(&cartridge.Cartridge{
+		PRG: make([]byte, memoryTestPRGROMSize),
+	}))
 	prg, chr := base.MemorySizes()
 	assert.Equal(t, 0, prg)
 	assert.Equal(t, 0, chr)
@@ -40,12 +36,9 @@ func TestInitializeAllocatesDefaultsOnce(t *testing.T) {
 
 func TestInitializePreservesExplicitRAM(t *testing.T) {
 	for _, size := range []int{0, memoryTestExplicitRAMSize} {
-		base := New(&bus.Bus{
-			Cartridge: &cartridge.Cartridge{
-				PRG: make([]byte, memoryTestPRGROMSize),
-			},
-			NameTable: nametable.New(cartridge.MirrorHorizontal),
-		})
+		base := New(mappertest.NewBus(&cartridge.Cartridge{
+			PRG: make([]byte, memoryTestPRGROMSize),
+		}))
 		var prg, chr []byte
 		if size > 0 {
 			prg = make([]byte, size)
@@ -68,13 +61,10 @@ func TestInitializePreservesExplicitRAM(t *testing.T) {
 
 func TestInitializeRejectsInvalidBanksBeforeRAMAllocation(t *testing.T) {
 	for _, sizes := range [][2]int{{0, 0x2000}, {0x2000, 0}, {0x8001, 0}, {0x8000, 0x2001}} {
-		base := New(&bus.Bus{
-			Cartridge: &cartridge.Cartridge{
-				PRG: make([]byte, sizes[0]),
-				CHR: make([]byte, sizes[1]),
-			},
-			NameTable: nametable.New(cartridge.MirrorHorizontal),
-		})
+		base := New(mappertest.NewBus(&cartridge.Cartridge{
+			PRG: make([]byte, sizes[0]),
+			CHR: make([]byte, sizes[1]),
+		}))
 		assert.Error(t, base.Initialize())
 		prg, chr := base.MemorySizes()
 		assert.Equal(t, 0, prg)
@@ -84,22 +74,16 @@ func TestInitializeRejectsInvalidBanksBeforeRAMAllocation(t *testing.T) {
 
 func TestInitializeRejectsInvalidWindows(t *testing.T) {
 	for _, windows := range [][2]int{{0, 0x2000}, {0x3000, 0x2000}, {0x4000, 0}, {0x4000, 0x3000}} {
-		base := New(&bus.Bus{
-			Cartridge: &cartridge.Cartridge{
-				PRG: make([]byte, memoryTestPRGROMSize),
-			},
-			NameTable: nametable.New(cartridge.MirrorHorizontal),
-		})
+		base := New(mappertest.NewBus(&cartridge.Cartridge{
+			PRG: make([]byte, memoryTestPRGROMSize),
+		}))
 		base.SetPrgWindowSize(windows[0])
 		base.SetChrWindowSize(windows[1])
 		assert.Error(t, base.Initialize())
 	}
-	base := New(&bus.Bus{
-		Cartridge: &cartridge.Cartridge{
-			PRG: make([]byte, memoryTestPRGROMSize),
-		},
-		NameTable: nametable.New(cartridge.MirrorHorizontal),
-	})
+	base := New(mappertest.NewBus(&cartridge.Cartridge{
+		PRG: make([]byte, memoryTestPRGROMSize),
+	}))
 	base.SetNameTableCount(0)
 	assert.Error(t, base.Initialize())
 }

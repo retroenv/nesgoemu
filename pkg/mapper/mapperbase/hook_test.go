@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/retroenv/nesgoemu/pkg/bus"
-	"github.com/retroenv/nesgoemu/pkg/ppu/nametable"
+	"github.com/retroenv/nesgoemu/pkg/mapper/internal/mappertest"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 	"github.com/retroenv/retrogolib/assert"
 )
@@ -79,13 +79,10 @@ func newHookTestBase(t *testing.T) (*Base, []byte) {
 	t.Helper()
 
 	chr := make([]byte, 0x2000)
-	base := New(&bus.Bus{
-		Cartridge: &cartridge.Cartridge{
-			CHR: chr,
-			PRG: make([]byte, 0x4000),
-		},
-		NameTable: nametable.New(cartridge.MirrorHorizontal),
-	})
+	base := New(mappertest.NewBus(&cartridge.Cartridge{
+		CHR: chr,
+		PRG: make([]byte, 0x4000),
+	}))
 	assert.NoError(t, base.Initialize())
 
 	return base, chr

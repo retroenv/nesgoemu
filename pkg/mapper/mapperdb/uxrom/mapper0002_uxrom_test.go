@@ -3,9 +3,8 @@ package uxrom
 import (
 	"testing"
 
-	"github.com/retroenv/nesgoemu/pkg/bus"
+	"github.com/retroenv/nesgoemu/pkg/mapper/internal/mappertest"
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
-	"github.com/retroenv/nesgoemu/pkg/ppu/nametable"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 	"github.com/retroenv/retrogolib/assert"
 )
@@ -13,13 +12,10 @@ import (
 func TestMapperUxROMOr(t *testing.T) {
 	prg := make([]byte, 0xC000)
 
-	base := mapperbase.New(&bus.Bus{
-		Cartridge: &cartridge.Cartridge{
-			CHR: make([]byte, 0x2000),
-			PRG: prg,
-		},
-		NameTable: nametable.New(cartridge.MirrorHorizontal),
-	})
+	base := mapperbase.New(mappertest.NewBus(&cartridge.Cartridge{
+		CHR: make([]byte, 0x2000),
+		PRG: prg,
+	}))
 	m, err := NewOR(base)
 	assert.NoError(t, err)
 
@@ -36,13 +32,10 @@ func TestMapperUxROMOr(t *testing.T) {
 func TestMapperUxROMAnd(t *testing.T) {
 	prg := make([]byte, 0xC000)
 
-	base := mapperbase.New(&bus.Bus{
-		Cartridge: &cartridge.Cartridge{
-			CHR: make([]byte, 0x2000),
-			PRG: prg,
-		},
-		NameTable: nametable.New(cartridge.MirrorHorizontal),
-	})
+	base := mapperbase.New(mappertest.NewBus(&cartridge.Cartridge{
+		CHR: make([]byte, 0x2000),
+		PRG: prg,
+	}))
 	m, err := NewAND(base)
 	assert.NoError(t, err)
 
@@ -59,13 +52,10 @@ func TestMapperUxROMAnd(t *testing.T) {
 func TestMapperUN1ROM(t *testing.T) {
 	prg := make([]byte, 0xC000)
 
-	base := mapperbase.New(&bus.Bus{
-		Cartridge: &cartridge.Cartridge{
-			CHR: make([]byte, 0x2000),
-			PRG: prg,
-		},
-		NameTable: nametable.New(cartridge.MirrorHorizontal),
-	})
+	base := mapperbase.New(mappertest.NewBus(&cartridge.Cartridge{
+		CHR: make([]byte, 0x2000),
+		PRG: prg,
+	}))
 	m, err := NewUN1(base)
 	assert.NoError(t, err)
 

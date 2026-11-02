@@ -3,9 +3,8 @@ package rainbow
 import (
 	"testing"
 
-	"github.com/retroenv/nesgoemu/pkg/bus"
+	"github.com/retroenv/nesgoemu/pkg/mapper/internal/mappertest"
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
-	"github.com/retroenv/nesgoemu/pkg/ppu/nametable"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 	"github.com/retroenv/retrogolib/assert"
 )
@@ -17,10 +16,7 @@ func TestExplicitRAMSizes(t *testing.T) {
 			PRGVolatile: size,
 			CHRVolatile: size,
 		}}
-		system := &bus.Bus{
-			Cartridge: cart,
-			NameTable: nametable.New(cartridge.MirrorHorizontal),
-		}
+		system := mappertest.NewBus(cart)
 		instance, err := New(mapperbase.New(system))
 		assert.NoError(t, err)
 		m := instance.(*Mapper)

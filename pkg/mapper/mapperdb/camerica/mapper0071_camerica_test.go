@@ -6,7 +6,7 @@ import (
 
 	"github.com/retroenv/nesgoemu/pkg/bus"
 	"github.com/retroenv/nesgoemu/pkg/mapper"
-	"github.com/retroenv/nesgoemu/pkg/ppu/nametable"
+	"github.com/retroenv/nesgoemu/pkg/mapper/internal/mappertest"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 	"github.com/retroenv/retrogolib/assert"
 )
@@ -116,10 +116,7 @@ func TestCamericaRejectsUnsupportedBoards(t *testing.T) {
 	for _, kind := range slices.Concat(unsupportedCamericaBoards, []string{"Fire Hawk size"}) {
 		t.Run(kind, func(t *testing.T) {
 			cart := unsupportedCartridge(kind)
-			m, err := mapper.New(&bus.Bus{
-				Cartridge: cart,
-				NameTable: nametable.New(cart.Mirror),
-			})
+			m, err := mapper.New(mappertest.NewBus(cart))
 			assert.Error(t, err)
 			assert.Nil(t, m)
 		})
@@ -150,11 +147,7 @@ func testMetadata(submapper byte) *cartridge.NES2Metadata {
 
 func testMapper(t *testing.T, cart *cartridge.Cartridge) bus.Mapper {
 	t.Helper()
-	m, err := mapper.New(&bus.Bus{
-		Cartridge: cart,
-		NameTable: nametable.New(cart.Mirror),
-		OpenBus:   testOpenBus{},
-	})
+	m, err := mapper.New(mappertest.NewBus(cart))
 	assert.NoError(t, err)
 
 	return m
@@ -198,7 +191,3 @@ func unsupportedCartridge(kind string) *cartridge.Cartridge {
 
 	return cart
 }
-
-type testOpenBus struct{}
-
-func (testOpenBus) OpenBus() byte { return 0x5a }
