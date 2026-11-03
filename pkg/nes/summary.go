@@ -1,8 +1,10 @@
 package nes
 
 import (
+	"cmp"
 	"fmt"
 	"io"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -17,6 +19,8 @@ import (
 const summaryFieldFormat = "  %-11s %s"
 
 // FeatureGroup groups the feature inventory of one hardware component.
+// The features are sorted: the used features come first, and each part is in
+// alphabetical order of the feature names.
 type FeatureGroup struct {
 	Name     string
 	Features []feature.Usage
@@ -26,6 +30,12 @@ type FeatureGroup struct {
 type Summary struct {
 	MapperID   uint16
 	MapperName string
+
+	// Submapper is the NES 2.0 submapper number. HasSubmapper is false for an
+	// iNES 1 header, which has no submapper field.
+	Submapper    byte
+	HasSubmapper bool
+
 	PrgROMSize int
 	ChrROMSize int
 	PrgRAMSize int
@@ -55,6 +65,11 @@ func (sys *System) Summary() Summary {
 		GUI:        sys.guiInfo,
 		Audio:      sys.audioInfo,
 	}
+	if cart.NES2 != nil {
+		summary.Submapper = cart.NES2.Submapper
+		summary.HasSubmapper = true
+	}
+
 	if backer, ok := sys.Bus.Mapper.(bus.BatteryBacker); ok {
 		summary.Battery = backer.BatteryBacked()
 	}
@@ -70,14 +85,21 @@ func (sys *System) Summary() Summary {
 func (s Summary) String() string {
 	lines := []string{
 		"Run summary",
-		fmt.Sprintf(summaryFieldFormat, "Mapper:", strconv.Itoa(int(s.MapperID))+" "+s.MapperName),
+		fmt.Sprintf(summaryFieldFormat, "Mapper:", strconv.Itoa(int(s.MapperID))+" - "+s.MapperName),
+	}
+
+	if s.HasSubmapper {
+		lines = append(lines, fmt.Sprintf(summaryFieldFormat, "Submapper:", strconv.Itoa(int(s.Submapper))))
+	}
+
+	lines = append(lines,
 		fmt.Sprintf(summaryFieldFormat, "PRG ROM:", formatSize(s.PrgROMSize)),
 		fmt.Sprintf(summaryFieldFormat, "CHR ROM:", formatSize(s.ChrROMSize)),
 		fmt.Sprintf(summaryFieldFormat, "PRG RAM:", formatSize(s.PrgRAMSize)),
 		fmt.Sprintf(summaryFieldFormat, "CHR RAM:", formatSize(s.ChrRAMSize)),
 		fmt.Sprintf(summaryFieldFormat, "Mirroring:", mirrorName(s.MirrorMode)),
 		fmt.Sprintf(summaryFieldFormat, "Battery:", yesNo(s.Battery)),
-	}
+	)
 
 	if s.GUI != nil {
 		lines = append(lines, fmt.Sprintf(summaryFieldFormat, "GUI:", rendererText(s.GUI)))
@@ -97,12 +119,19 @@ func (s Summary) String() string {
 	return strings.Join(lines, "\n") + "\n"
 }
 
-// writeSummary writes the run summary to target. A nil target is ignored.
-func (sys *System) writeSummary(target io.Writer) error {
+// writeSummary writes the run summary to target. A nil target is ignored. The
+// summary has the feature lists only when features is true.
+func (sys *System) writeSummary(target io.Writer, features bool) error {
 	if target == nil {
 		return nil
 	}
-	if _, err := io.WriteString(target, sys.Summary().String()); err != nil {
+
+	summary := sys.Summary()
+	if !features {
+		summary.Groups = nil
+	}
+
+	if _, err := io.WriteString(target, summary.String()); err != nil {
 		return fmt.Errorf("writing run summary: %w", err)
 	}
 
@@ -136,9 +165,29 @@ func appendFeatureGroup(groups []FeatureGroup, name string, component any) []Fea
 		return groups
 	}
 
+	sortFeatures(features)
+
 	return append(groups, FeatureGroup{
 		Name:     name,
 		Features: features,
+	})
+}
+
+// sortFeatures puts the used features first. Each part is in alphabetical order
+// of the feature names, so a reader finds the used features at the top and a
+// feature by its name. The components declare their features in the order of
+// the identifier names, which differs from the order of the displayed names.
+func sortFeatures(features []feature.Usage) {
+	slices.SortStableFunc(features, func(a, b feature.Usage) int {
+		if a.Used != b.Used {
+			if a.Used {
+				return -1
+			}
+
+			return 1
+		}
+
+		return cmp.Compare(strings.ToLower(a.Name), strings.ToLower(b.Name))
 	})
 }
 

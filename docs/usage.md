@@ -27,9 +27,13 @@ usage: nesgoemu [options] <file to emulate>
   -d    start built-in webserver for debug mode
   -e int
         entrypoint to start the CPU (default -1)
+  -features
+        print the hardware features that the program used when the emulator stops
   -m    mute audio output
   -no-printf
         ignore program text output written to $401B and $401C
+  -no-summary
+        do not print the run summary when the emulator stops
   -s int
         stop execution at address (default -1)
   -t    print CPU tracing
@@ -65,17 +69,28 @@ nesgoemu -e 0x8000 -s 0x8100 game.nes
 
 ## Run Summary
 
-The emulator prints a summary when it stops. The summary shows the ROM details, the SDL library
-that the GUI and the audio output used, and the hardware features that the run used. A used feature
-has an `x` mark. An unused feature has no mark.
+The emulator prints a summary when it stops. The summary shows the ROM details and the SDL library
+that the GUI and the audio output used. Use the `-features` flag to add the hardware features that
+the run used. Use the `-no-summary` flag to print no summary.
+
+In the feature lists, a used feature has an `x` mark. An unused feature has no mark.
+
+The `Submapper` line shows the submapper number of a NES 2.0 header. It is absent for an iNES 1 header,
+which has no submapper field.
+
+In each feature list, the used features are first. The features in each part are in alphabetical
+order.
 
 The `GUI` and `Audio` lines show the renderer name and the SDL library version. They are absent in
 console mode. If SDL3 did not start and SDL2 started instead, the line ends with `(fallback, ...)`
 and the reason that SDL3 failed.
 
+Example with the `-features` flag:
+
 ```text
 Run summary
-  Mapper:     682 Rainbow
+  Mapper:     682 - Rainbow
+  Submapper:  0
   PRG ROM:    512 KB
   CHR ROM:    0 bytes
   PRG RAM:    32 KB

@@ -221,6 +221,7 @@ func (p *PPU) getStatus() byte {
 	// keeps the other bits.
 	// https://www.nesdev.org/wiki/Open_bus_behavior#PPU_open_bus
 	p.openBus.SetBits(0b1110_0000, p.status.Value())
+	p.markStatusFeatures(p.status.Value())
 
 	return p.openBus.Value()
 }

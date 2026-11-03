@@ -29,9 +29,11 @@ type optionFlags struct {
 	debugAddress string
 
 	entrypoint int
+	features   bool
 	noAudio    bool
 	noGui      bool
 	noPrintf   bool
+	noSummary  bool
 	stopAt     int
 	tracing    bool
 }
@@ -58,7 +60,9 @@ func readArguments() optionFlags {
 	flags.BoolVar(&options.debug, "d", false, "start built-in webserver for debug mode")
 	flags.StringVar(&options.debugAddress, "a", "127.0.0.1:8080", "listening address for the debug server to use")
 	flags.IntVar(&options.entrypoint, "e", -1, "entrypoint to start the CPU")
+	flags.BoolVar(&options.features, "features", false, "print the hardware features that the program used when the emulator stops")
 	flags.BoolVar(&options.noGui, "c", false, "console mode, disable GUI")
+	flags.BoolVar(&options.noSummary, "no-summary", false, "do not print the run summary when the emulator stops")
 	flags.BoolVar(&options.noPrintf, "no-printf", false, "ignore program text output written to $401B and $401C")
 	flags.BoolVar(&options.noAudio, "m", false, "mute audio output")
 	flags.IntVar(&options.stopAt, "s", -1, "stop execution at address")
@@ -105,7 +109,14 @@ func emulateFile(options optionFlags) error {
 	opts := []nes.Option{
 		nes.WithCartridge(cart),
 		nes.WithSavePath(options.input + ".sav"),
-		nes.WithSummaryTarget(os.Stdout),
+	}
+
+	if !options.noSummary {
+		opts = append(opts, nes.WithSummaryTarget(os.Stdout))
+	}
+
+	if options.features {
+		opts = append(opts, nes.WithSummaryFeatures())
 	}
 
 	if options.debug {

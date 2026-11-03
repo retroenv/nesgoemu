@@ -100,6 +100,7 @@ func (a *APU) AudioStats() output.Stats {
 func (a *APU) CompleteDMCTransfer(value byte, stallCycles uint16) {
 	request, _ := a.dmc.DMARequest()
 	a.dmc.CompleteDMA(value)
+	a.markDMCFetch()
 	a.updateIRQ()
 	if a.dmcObserver != nil {
 		a.dmcObserver(DMCFetch{

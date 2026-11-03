@@ -40,13 +40,16 @@ func TestFeaturesTrackChannelEnablesAndModes(t *testing.T) {
 
 	for _, id := range []feature.ID{
 		feature.Pulse1, feature.Triangle, feature.DMC, feature.PulseSweep,
-		feature.NoiseShortMode, feature.DMCLoop, feature.DMCIRQ, feature.FrameFiveStep,
+		feature.NoiseShortMode, feature.DMCLoop, feature.FrameFiveStep,
 	} {
 		assert.True(t, used.Contains(id), "feature %d must be used", id)
 	}
 
 	assert.False(t, used.Contains(feature.Pulse2))
 	assert.False(t, used.Contains(feature.Noise))
+	assert.False(t, used.Contains(feature.DMCIRQ), "the enable bit alone is not an interrupt")
+	assert.False(t, used.Contains(feature.DMCDirectLoad))
+	assert.False(t, used.Contains(feature.DMCSamples))
 
 	a.Write(register.APU_SND_CHN, 0)
 	assert.True(t, a.Features()[0].Used, "later writes must not erase usage")
@@ -54,4 +57,64 @@ func TestFeaturesTrackChannelEnablesAndModes(t *testing.T) {
 	usage := a.Features()
 	assert.True(t, usage[1].Used, "pulse 2 must be used")
 	assert.True(t, usage[3].Used, "noise must be used")
+}
+
+func featureUsed(a *APU, id feature.ID) bool {
+	for _, usage := range a.Features() {
+		if usage.ID == id {
+			return usage.Used
+		}
+	}
+
+	return false
+}
+
+func TestFeaturesTrackDMCDirectLoad(t *testing.T) {
+	a, _ := newTestAPU()
+
+	a.Write(register.APU_DMC_RAW, 0)
+	a.Write(register.APU_DMC_RAW, 0x80)
+	assert.False(t, featureUsed(a, feature.DMCDirectLoad), "a zero level must stay unused")
+
+	a.Write(register.APU_DMC_RAW, 0x40)
+	assert.True(t, featureUsed(a, feature.DMCDirectLoad))
+	assert.False(t, featureUsed(a, feature.DMCSamples), "a direct load is not sample playback")
+}
+
+func TestFeaturesTrackDMCSamplePlayback(t *testing.T) {
+	a, _ := newTestAPU()
+	a.Write(register.APU_DMC_LEN, 0x01) // 17 bytes
+	a.Write(register.APU_SND_CHN, 0x10)
+	assert.False(t, featureUsed(a, feature.DMCSamples), "enabling the channel does not read a sample")
+
+	a.Step(4)
+	a.CompleteDMCTransfer(0, 4)
+
+	assert.True(t, featureUsed(a, feature.DMCSamples))
+	assert.False(t, featureUsed(a, feature.DMCIRQ))
+	assert.False(t, featureUsed(a, feature.DMCDirectLoad))
+}
+
+func TestFeaturesTrackDMCIRQWhenFlagIsSet(t *testing.T) {
+	a, _ := newTestAPU()
+	a.Write(register.APU_DMC_FREQ, 0x80)
+	a.Write(register.APU_DMC_LEN, 0x00) // one byte
+	a.Write(register.APU_SND_CHN, 0x10)
+	assert.False(t, featureUsed(a, feature.DMCIRQ))
+
+	a.Step(4)
+	a.CompleteDMCTransfer(0, 4)
+
+	assert.True(t, featureUsed(a, feature.DMCIRQ))
+}
+
+func TestFeaturesDMCIRQNeedsEnableBit(t *testing.T) {
+	a, _ := newTestAPU()
+	a.Write(register.APU_DMC_LEN, 0x00) // one byte
+	a.Write(register.APU_SND_CHN, 0x10)
+	a.Step(4)
+	a.CompleteDMCTransfer(0, 4)
+
+	assert.True(t, featureUsed(a, feature.DMCSamples))
+	assert.False(t, featureUsed(a, feature.DMCIRQ))
 }

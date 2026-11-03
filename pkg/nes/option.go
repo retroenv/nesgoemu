@@ -28,7 +28,8 @@ type Options struct {
 	tracing       bool
 	tracingTarget io.Writer
 
-	summaryTarget io.Writer
+	summaryTarget   io.Writer
+	summaryFeatures bool
 
 	noPrintf     bool
 	printfTarget io.Writer
@@ -149,6 +150,11 @@ func WithSavePath(path string) Option {
 // WithSummaryTarget sets the target for the run summary. A nil target disables the summary.
 func WithSummaryTarget(target io.Writer) Option {
 	return func(opts *Options) { opts.summaryTarget = target }
+}
+
+// WithSummaryFeatures adds the hardware feature lists to the run summary.
+func WithSummaryFeatures() Option {
+	return func(opts *Options) { opts.summaryFeatures = true }
 }
 
 // WithPrintfTarget sets the target for text that the program writes to the

@@ -20,6 +20,8 @@ func (a *APU) declareFeatures() {
 	a.features.Declare(feature.NoiseShortMode)
 	a.features.Declare(feature.DMCLoop)
 	a.features.Declare(feature.DMCIRQ)
+	a.features.Declare(feature.DMCDirectLoad)
+	a.features.Declare(feature.DMCSamples)
 	a.features.Declare(feature.FrameFiveStep)
 }
 
@@ -48,13 +50,27 @@ func (a *APU) markFeatures(address uint16, value byte) {
 			a.features.Mark(feature.DMCLoop)
 		}
 
-		if value&0x80 != 0 {
-			a.features.Mark(feature.DMCIRQ)
+	case register.APU_DMC_RAW:
+		// A zero write is common at start-up and does not show PCM playback.
+		// This is an emulator choice.
+		if value&0x7f != 0 {
+			a.features.Mark(feature.DMCDirectLoad)
 		}
 
 	case register.APU_FRAME:
 		if value&0x80 != 0 {
 			a.features.Mark(feature.FrameFiveStep)
 		}
+	}
+}
+
+// markDMCFetch marks the DMC features that a sample DMA read shows. The read
+// shows sample playback. The interrupt flag shows that the last byte of a
+// sample ended with an enabled interrupt.
+func (a *APU) markDMCFetch() {
+	a.features.Mark(feature.DMCSamples)
+
+	if a.dmc.IRQ() {
+		a.features.Mark(feature.DMCIRQ)
 	}
 }

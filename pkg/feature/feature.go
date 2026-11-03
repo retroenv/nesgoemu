@@ -78,8 +78,19 @@ const (
 	Grayscale
 	ColorEmphasis
 
+	// PPU: mask register, left column.
+	BackgroundLeftHidden
+	SpriteLeftHidden
+
+	// PPU: status register.
+	Sprite0HitRead
+
+	// PPU: scrolling.
+	MidFrameScroll
+
 	// PPU: OAM.
 	OAMDMA
+	OAMDataWrites
 
 	// APU: channels and modes.
 	Pulse1
@@ -91,6 +102,8 @@ const (
 	NoiseShortMode
 	DMCLoop
 	DMCIRQ
+	DMCDirectLoad
+	DMCSamples
 	FrameFiveStep
 
 	count
@@ -99,6 +112,7 @@ const (
 // names is in alphabetical order of the identifiers.
 var names = [count]string{
 	AlternateBank:         "Alternate bank",
+	BackgroundLeftHidden:  "Background hidden in left 8 pixels",
 	BackgroundRendering:   "Background rendering",
 	BackgroundTableHigh:   "Background pattern table $1000",
 	BGExtendedMode:        "Background extended mode",
@@ -108,10 +122,12 @@ var names = [count]string{
 	ColorEmphasis:         "Color emphasis",
 	CPUCycleIRQ:           "CPU cycle IRQ",
 	DMC:                   "DMC",
+	DMCDirectLoad:         "DMC direct load $4011",
 	DMCIRQ:                "DMC IRQ",
 	DMCLoop:               "DMC loop",
+	DMCSamples:            "DMC sample playback",
 	ESPMessages:           "ESP/Wi-Fi messages",
-	ExpansionAudio:        "expansion audio",
+	ExpansionAudio:        "Expansion audio",
 	ExtendedAttributes:    "Extended attributes",
 	FlashProgramming:      "Flash programming",
 	FPGARAM:               "FPGA RAM",
@@ -122,6 +138,7 @@ var names = [count]string{
 	LowBankMapping:        "Low bank mapping",
 	MetatileAnimation:     "Metatile animation",
 	Metatiles:             "Metatile backgrounds",
+	MidFrameScroll:        "Mid-frame scroll/address writes",
 	Mirroring:             "Mirroring",
 	NameTableBanking:      "Nametable banking",
 	NameTableControl:      "Nametable bank/source control",
@@ -129,6 +146,7 @@ var names = [count]string{
 	NMI:                   "NMI",
 	Noise:                 "Noise",
 	NoiseShortMode:        "Noise short mode",
+	OAMDataWrites:         "OAM data port writes",
 	OAMDMA:                "OAM DMA",
 	OAMRoutines:           "Auto OAM routines",
 	PPUBusTiming:          "PPU bus timing",
@@ -145,6 +163,8 @@ var names = [count]string{
 	ShiftRegister:         "Shift register",
 	SingleScreenMirroring: "Single-screen mirroring",
 	SpriteExtendedMode:    "Sprite extended mode",
+	Sprite0HitRead:        "Sprite 0 hit polled",
+	SpriteLeftHidden:      "Sprites hidden in left 8 pixels",
 	SpriteRendering:       "Sprite rendering",
 	SpriteSize8x16:        "8x16 sprites",
 	SpriteTableHigh:       "Sprite pattern table $1000",

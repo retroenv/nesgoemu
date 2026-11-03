@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/retroenv/nesgoemu/pkg/feature"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 	"github.com/retroenv/retrogolib/arch/system/nes/register"
 	"github.com/retroenv/retrogolib/assert"
@@ -57,7 +58,8 @@ func TestSummaryReportsRomAndFeatures(t *testing.T) {
 	text := summary.String()
 
 	assert.Contains(t, text, "Run summary")
-	assert.Contains(t, text, "0 NROM")
+	assert.Contains(t, text, "Mapper:     0 - NROM\n")
+	assert.NotContains(t, text, "Submapper:", "an iNES 1 header has no submapper")
 	assert.Contains(t, text, "PRG ROM:")
 	assert.Contains(t, text, "vertical")
 	assert.Contains(t, text, "Mapper features")
@@ -68,6 +70,49 @@ func TestSummaryReportsRomAndFeatures(t *testing.T) {
 	assert.Contains(t, text, "[x] PRG RAM")
 	assert.Contains(t, text, "[x] 8x16 sprites")
 	assert.Contains(t, text, "[ ] NMI")
+}
+
+type fakeFeatureUser []feature.Usage
+
+func (f fakeFeatureUser) Features() []feature.Usage {
+	return f
+}
+
+func TestSummarySortsUsedFeaturesFirst(t *testing.T) {
+	user := fakeFeatureUser{
+		{ID: 1, Name: "Zeta", Used: false},
+		{ID: 2, Name: "beta", Used: true},
+		{ID: 3, Name: "Alpha", Used: false},
+		{ID: 4, Name: "Gamma", Used: true},
+		{ID: 5, Name: "alpha two", Used: true},
+	}
+
+	groups := appendFeatureGroup(nil, "Test", user)
+	assert.Len(t, groups, 1)
+
+	names := make([]string, 0, len(groups[0].Features))
+	for _, usage := range groups[0].Features {
+		names = append(names, usage.Name)
+	}
+
+	assert.Equal(t, []string{"alpha two", "beta", "Gamma", "Alpha", "Zeta"}, names)
+
+	text := Summary{Groups: groups}.String()
+	assert.Contains(t, text, "Test features\n")
+	assert.Contains(t, text, "  [x] alpha two\n  [x] beta\n  [x] Gamma\n  [ ] Alpha\n  [ ] Zeta\n")
+}
+
+func TestSummaryShowsNES2Submapper(t *testing.T) {
+	sys := newSummarySystem(t)
+	sys.Bus.Cartridge.NES2 = &cartridge.NES2Metadata{Submapper: 5}
+
+	summary := sys.Summary()
+	assert.True(t, summary.HasSubmapper)
+	assert.Equal(t, byte(5), summary.Submapper)
+	assert.Contains(t, summary.String(), "Mapper:     0 - NROM\n  Submapper:  5\n")
+
+	sys.Bus.Cartridge.NES2 = &cartridge.NES2Metadata{}
+	assert.Contains(t, sys.Summary().String(), "Submapper:  0\n", "submapper 0 is the default board")
 }
 
 func TestSummaryTargetIsDisabledByDefault(t *testing.T) {
@@ -84,6 +129,19 @@ func TestStartWritesSummaryWhenEnabled(t *testing.T) {
 		WithSavePath(""),
 		WithStopAt(0x8000),
 		WithSummaryTarget(&out),
+	)
+	assert.NoError(t, err)
+	assert.Contains(t, out.String(), "Run summary")
+	assert.NotContains(t, out.String(), "features", "the feature lists need the features option")
+
+	out.Reset()
+	err = Start(
+		WithCartridge(newSummaryCartridge(t)),
+		WithDisabledGUI(),
+		WithSavePath(""),
+		WithStopAt(0x8000),
+		WithSummaryTarget(&out),
+		WithSummaryFeatures(),
 	)
 	assert.NoError(t, err)
 	assert.Contains(t, out.String(), "Run summary")

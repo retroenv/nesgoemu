@@ -71,8 +71,11 @@ func (p *PPU) Write(address uint16, value uint8) {
 
 	case register.OAM_DATA:
 		p.sprites.Write(value)
+		p.features.Mark(feature.OAMDataWrites)
 
 	case register.PPU_SCROLL:
+		p.markScrollWrite()
+
 		if !p.addressing.Latch() {
 			p.fineX = uint16(value) & 0x07
 		}
@@ -80,6 +83,7 @@ func (p *PPU) Write(address uint16, value uint8) {
 		p.addressing.SetScroll(value)
 
 	case register.PPU_ADDR:
+		p.markScrollWrite()
 		p.addressing.SetAddress(value)
 
 	case register.PPU_DATA:
@@ -131,6 +135,17 @@ func (p *PPU) markMaskFeatures(value uint8) {
 
 	if value&mask.MASK_SPR != 0 {
 		p.features.Mark(feature.SpriteRendering)
+	}
+
+	// A clear left-column bit hides that layer in the leftmost 8 pixels. The
+	// hidden layer counts only when the layer itself is visible.
+	// https://www.nesdev.org/wiki/PPU_registers#PPUMASK
+	if value&mask.MASK_BG != 0 && value&mask.MASK_BG_CLIP == 0 {
+		p.features.Mark(feature.BackgroundLeftHidden)
+	}
+
+	if value&mask.MASK_SPR != 0 && value&mask.MASK_SPR_CLIP == 0 {
+		p.features.Mark(feature.SpriteLeftHidden)
 	}
 
 	if value&mask.MASK_MONO != 0 {
