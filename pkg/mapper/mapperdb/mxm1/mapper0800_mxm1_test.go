@@ -1,4 +1,4 @@
-package mxm
+package mxm1
 
 import (
 	"encoding/binary"
@@ -147,7 +147,7 @@ func TestRejectsOtherSubmapper(t *testing.T) {
 	mapper, err := New(base)
 	assert.Nil(t, mapper)
 	assert.Error(t, err)
-	assert.Equal(t, "MXM submapper 1 is not supported", err.Error())
+	assert.Equal(t, "MXM-1 submapper 1 is not supported", err.Error())
 }
 
 func selectCPU(m *Mapper, flags byte, bank uint16) {

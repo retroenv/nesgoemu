@@ -60,6 +60,7 @@ const (
 	VectorRedirection
 
 	// Mapper: timing and system.
+	CRCCheck
 	ESPMessages
 	ExpansionAudio
 	PPUBusTiming
@@ -121,6 +122,7 @@ var names = [count]string{
 	CHRSourceSelect:       "CHR source select",
 	ColorEmphasis:         "Color emphasis",
 	CPUCycleIRQ:           "CPU cycle IRQ",
+	CRCCheck:              "CRC check",
 	DMC:                   "DMC",
 	DMCDirectLoad:         "DMC direct load $4011",
 	DMCIRQ:                "DMC IRQ",

@@ -54,8 +54,9 @@ links to its NESdev documentation.
 <table>
   <tbody>
     <tr>
+      <td>220 MXM-0 (House of Truth, N8 PRO)</td>
       <td><a href="https://www.nesdev.org/wiki/NES_2.0_Mapper_682">682 Rainbow</a></td>
-      <td>800 MXM</td>
+      <td>800 MXM-1 (Former Dawn Demo v3.2)</td>
     </tr>
   </tbody>
 </table>

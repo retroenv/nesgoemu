@@ -1,9 +1,9 @@
-package mxm
+package mxm1
 
 // Register names describe mapper 800 in the demo package. The readback and
 // write layouts overlap but are not symmetric, so their ranges have separate
 // names. These addresses do not apply to the older mapper-220 minimapper.
-const name = "MXM"
+const name = "MXM-1"
 
 const (
 	// "Identity" is a descriptive name. Reads of $5000-$5005 return these six

@@ -1,4 +1,4 @@
-package mxm
+package mxm1
 
 import "github.com/retroenv/nesgoemu/pkg/bus"
 

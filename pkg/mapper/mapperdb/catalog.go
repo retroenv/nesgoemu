@@ -14,7 +14,8 @@ import (
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperdb/gxrom"
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperdb/mmc1"
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperdb/mmc3"
-	"github.com/retroenv/nesgoemu/pkg/mapper/mapperdb/mxm"
+	"github.com/retroenv/nesgoemu/pkg/mapper/mapperdb/mxm0"
+	"github.com/retroenv/nesgoemu/pkg/mapper/mapperdb/mxm1"
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperdb/nina003"
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperdb/nrom"
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperdb/rainbow"
@@ -59,7 +60,8 @@ var constructors = map[uint16]constructor{
 	94:  uxrom.NewUN1,
 	111: gtrom.New,
 	180: uxrom.NewAND,
+	220: mxm0.New,
 	232: camerica.NewQuattro,
 	682: rainbow.New,
-	800: mxm.New,
+	800: mxm1.New,
 }

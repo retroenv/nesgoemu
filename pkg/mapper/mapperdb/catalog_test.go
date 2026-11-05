@@ -62,9 +62,9 @@ func TestNewRejectsUnsupportedMapper(t *testing.T) {
 		},
 		{
 			name:     "NES2 nonzero submapper",
-			mapper:   220,
+			mapper:   221,
 			metadata: &cartridge.NES2Metadata{Submapper: 1},
-			message:  "mapper 220 is not supported (NES 2.0 submapper 1)",
+			message:  "mapper 221 is not supported (NES 2.0 submapper 1)",
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {

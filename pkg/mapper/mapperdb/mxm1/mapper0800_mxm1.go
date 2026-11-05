@@ -1,10 +1,11 @@
-// Package mxm implements mapper 800, submapper 0, as the Former Dawn demo uses
-// it. Register reads and writes are not symmetric. A state machine follows the
-// PPU fetches. The package does not implement expansion audio.
+// Package mxm1 implements mapper 800, submapper 0, as the Former Dawn Demo v3.2
+// uses it. Register reads and writes are not symmetric. A state machine follows
+// the PPU fetches. The package does not implement expansion audio.
 //
-// The older House of Truth minimapper (220, submapper 1) uses a different
-// register protocol and graphics packing. Its flashcart FPGA configurations
-// are evidence for that board. They are not a specification for this mapper.
+// The older MXM-0 board (220, submapper 1, the House of Truth minimapper) uses
+// a different register protocol and graphics packing. Its flashcart FPGA
+// configurations are evidence for that board. They are not a specification for
+// this mapper.
 //
 // The CPU banks PRG ROM and WorkRam. It uploads graphics descriptors and
 // predecoded tiles into WorkRam. On the PPU side, the mapper finds the normal
@@ -16,7 +17,7 @@
 // This mapper has no public test ROM and no public hardware test result. The
 // tests check the register behavior that the code describes. They do not prove
 // hardware timing.
-package mxm
+package mxm1
 
 import (
 	"errors"
@@ -149,10 +150,10 @@ func New(base *mapperbase.Base) (bus.Mapper, error) {
 		return nil, fmt.Errorf("checking RAM sizes: %w", err)
 	}
 	if cart.NES2 != nil && cart.NES2.Submapper != 0 {
-		return nil, fmt.Errorf("MXM submapper %d is not supported", cart.NES2.Submapper)
+		return nil, fmt.Errorf("MXM-1 submapper %d is not supported", cart.NES2.Submapper)
 	}
 	if len(cart.PRG) < prgBankSize || len(cart.PRG)%prgBankSize != 0 {
-		return nil, errors.New("MXM requires PRG ROM in 8 KiB banks")
+		return nil, errors.New("MXM-1 requires PRG ROM in 8 KiB banks")
 	}
 
 	ramSize := mapperbase.PrgRAMSize(cart)
