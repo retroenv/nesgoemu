@@ -78,20 +78,20 @@ type registers struct {
 	irqEnabled                     bool
 	irqTarget, irqOffset, scanline byte
 	irqPending, previousPending    bool
-	irqPhase, inhibit              byte
+	irqPhase, readInhibit          byte
 
 	descriptorEnabled               bool
 	attributeMode, descriptorSelect byte
 	descriptorRAM, patternRAM       [ntWindowCount]bool
 	descriptorBanks                 [ntWindowCount]uint16
-	manualScroll, vertical          byte
+	manualScroll, verticalPosition  byte
 
 	ntEnabled        bool
 	ntMode, ntSelect byte
 	ntRAM            [ntWindowCount]bool
 	ntBanks          [ntWindowCount]uint16
 
-	wide, spriteMode, second, spriteSecond bool
+	wideBanks, spriteMode, secondPlane, spriteSecondPlane bool
 
 	writeBank uint16
 
@@ -113,17 +113,17 @@ type registers struct {
 	scrollDirty  bool
 
 	lastAddress         uint16
-	repeated            byte
+	repeatCount         byte
 	frameStart, inFrame bool
 	nameReads           uint32
 	previousNameReads   byte
 
-	metatilePhase                              byte
+	metatileFetchesLeft                        byte
 	metatileLow, metatileHigh, metatilePalette byte
 
-	descriptorPhase      byte
-	tileOffset           uint16
-	tileTable, tileFineY byte
+	descriptorFetchesLeft byte
+	tileOffset            uint16
+	tileTable, tileFineY  byte
 }
 
 // Mapper supplies the CPU windows, PPU fetch substitutions, and scanline IRQ
@@ -243,7 +243,7 @@ func (m *Mapper) Read(address uint16) byte {
 		// scanline detector. Debugger peeks must not cause this side effect.
 		m.inFrame = false
 		m.lastAddress = 0
-		m.repeated = 0
+		m.repeatCount = 0
 		m.scanline = 0
 		m.irqPending = false
 		m.SetMapperIRQ(false)
@@ -319,8 +319,8 @@ func (m *Mapper) ClockCPU(cycles uint64) {
 
 		m.previousPending = m.irqPending
 
-		if m.inhibit != 0 {
-			m.inhibit--
+		if m.readInhibit != 0 {
+			m.readInhibit--
 		}
 	}
 }

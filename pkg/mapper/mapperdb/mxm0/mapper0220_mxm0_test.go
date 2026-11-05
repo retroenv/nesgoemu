@@ -72,25 +72,25 @@ func TestCheckMarksFeature(t *testing.T) {
 	assert.True(t, usedFeature(m, feature.CRCCheck))
 }
 
-func TestPowerOnColor(t *testing.T) {
+func TestPowerOnDimMode(t *testing.T) {
 	m := newMapper(t, syntheticCHR())
-	assert.Equal(t, byte(alternateColorValue), m.Read(paletteFirst+alternateColorIndex))
+	assert.Equal(t, byte(dimEntry1Color), m.Read(paletteRegFirst+dimEntryIndex))
 }
 
 func TestRegisterDecoding(t *testing.T) {
 	m := newMapper(t, syntheticCHR())
-	assert.Equal(t, mappertest.OpenBusValue, m.Read(paletteFirst-1))
-	assert.Equal(t, mappertest.OpenBusValue, m.Read(paletteLast+1))
+	assert.Equal(t, mappertest.OpenBusValue, m.Read(paletteRegFirst-1))
+	assert.Equal(t, mappertest.OpenBusValue, m.Read(paletteRegLast+1))
 
 	// Only bit 0 of a write matters, and only these three addresses decode.
 	m.Write(0x6003, 0)
 	m.Write(0x6004, 0)
 	m.Write(0x6007, 0)
-	assert.True(t, m.alternateColor)
-	m.Write(regField, 0xFE)
-	assert.False(t, m.field)
-	m.Write(regField, 0x01)
-	assert.True(t, m.field)
+	assert.True(t, m.dimMode)
+	m.Write(regPhase, 0xFE)
+	assert.Equal(t, 0, m.phase)
+	m.Write(regPhase, 0x01)
+	assert.Equal(t, 1, m.phase)
 }
 
 func TestInspectionHasNoEffects(t *testing.T) {

@@ -218,7 +218,8 @@ const (
 	tileRowShift          = 5
 	fineYMask             = tileHeight - 1
 	tileColumnMask        = tilesPerRow - 1
-	paletteMask           = 0x03
+	paletteNumberMask     = 0x03
+	packedRowMask         = 0x03 // Row in a packed attribute byte. Each byte holds four rows.
 
 	// The PPU selects one of four two-bit fields from an attribute fetch.
 	// Multiplication by binary 01010101 repeats a palette number in all fields:

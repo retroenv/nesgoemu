@@ -47,8 +47,8 @@ func (m *Mapper) InspectMemory(address uint16) (byte, bool) {
 // modes depend on the bus history and can generate bytes. WorkRam is not a
 // GraphicsMemory source kind. In these cases the function reports false.
 func (m *Mapper) PPUReadMapping(address uint16) (bus.GraphicsMapping, bool) {
-	if address >= nameTableStart || m.inhibit != 0 || m.descriptorEnabled ||
-		m.metatileEnabled || m.remapEnabled || (m.spriteMode && m.spriteSecond) {
+	if address >= nameTableStart || m.readInhibit != 0 || m.descriptorEnabled ||
+		m.metatileEnabled || m.remapEnabled || (m.spriteMode && m.spriteSecondPlane) {
 
 		return bus.GraphicsMapping{}, false
 	}

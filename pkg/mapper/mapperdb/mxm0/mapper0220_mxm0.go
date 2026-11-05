@@ -15,12 +15,20 @@
 // Bits 1-0 of that byte select the pattern bank for the next pattern fetches,
 // and PPU address bit 12 has no effect. Bits 7-6 or bits 5-4 are the palette
 // number, as $6000 selects. The game changes $6000 on each frame to mix colors.
+// Thus the bit of $6000 is the blend phase. The phase also selects the palette
+// table. The decompiled Verilog of the bittrace project calls this bit "field".
+// The original names are not known.
+//
+// The game has two brightness modes. In dim mode, the NMI handler sets all three
+// color emphasis bits of PPUMASK and writes 1 to $6002. Then palette entry 1 of
+// phase 0 is $1C, not $11. The game starts in dim mode. The mapper also starts
+// with $1C, because it stores the bit inverted and has no reset for it.
 //
 // Registers. The mapper uses bit 0 of the written value and full address decoding:
 //
-//	$6000  W  palette field
+//	$6000  W  blend phase
 //	$6001  W  1: start the ROM check
-//	$6002  W  color selection of palette entry 1 in field 0
+//	$6002  W  1: dim mode, entry 1 of phase 0 is $1C. 0: entry 1 is $11
 //	$6010-$601F  R  palette bytes
 package mxm0
 
@@ -40,23 +48,23 @@ const (
 	prgSize = 0x8000
 	chrSize = 0x6000
 
-	regField = 0x6000
-	regCheck = 0x6001
-	regColor = 0x6002
+	regPhase   = 0x6000
+	regCheck   = 0x6001
+	regDimMode = 0x6002
 
-	paletteFirst = 0x6010
-	paletteLast  = 0x601F
-	paletteMask  = 0x0F
+	paletteRegFirst  = 0x6010
+	paletteRegLast   = 0x601F
+	paletteIndexMask = 0x0F
 
-	alternateColorIndex = 1
-	alternateColorValue = 0x1C
+	dimEntryIndex  = 1
+	dimEntry1Color = 0x1C
 
 	patternTableEnd = 0x2000
 	paletteRAMStart = 0x3F00
 	// Hardware decodes an attribute fetch from PPU A9-A6 only. PPU A13 selects
 	// the nametable space.
-	attributeMask    = 0x03C0
-	nameTableAddress = 0x03FF
+	attributeMask = 0x03C0
+	nameLatchMask = 0x03FF
 
 	patternOffsetMask = 0x0FFF
 	patternBankShift  = 12
@@ -65,19 +73,19 @@ const (
 	fineYShift        = 10
 	fineYMask         = 0x07
 
-	// fieldShift0 and fieldShift1 are the positions of the palette number in
+	// phase0Shift and phase1Shift are the positions of the palette number in
 	// an attribute byte. attributeCopies repeats the number in all four
 	// quadrants of the byte for the PPU.
-	fieldShift0     = 6
-	fieldShift1     = 4
-	paletteNumMask  = 0x03
-	attributeCopies = 0x55
+	phase0Shift       = 6
+	phase1Shift       = 4
+	paletteNumberMask = 0x03
+	attributeCopies   = 0x55
 
 	// fetchesPerLine is the count of PPU reads on a scanline with rendering on.
 	fetchesPerLine = 170
 )
 
-// paletteTable holds the palette bytes for fields 0 and 1.
+// paletteTable holds the palette bytes for phases 0 and 1.
 var paletteTable = [2][16]byte{
 	{0x0F, 0x11, 0x2C, 0x3A, 0x0F, 0x18, 0x28, 0x39, 0x0F, 0x16, 0x28, 0x37, 0x0F, 0x00, 0x26, 0x37},
 	{0x0F, 0x11, 0x2C, 0x3B, 0x0F, 0x19, 0x29, 0x38, 0x0F, 0x17, 0x27, 0x39, 0x0F, 0x17, 0x10, 0x39},
@@ -99,12 +107,12 @@ type Mapper struct {
 
 	chr []byte
 
-	alternateColor bool
-	field          bool
+	dimMode bool
+	phase   int // 0 or 1
 
 	fetchCount  int
 	fineY       uint16
-	latchedName uint16
+	nameLatch   uint16
 	patternBank uint16
 }
 
@@ -123,9 +131,9 @@ func New(base *mapperbase.Base) (bus.Mapper, error) {
 	}
 
 	m := &Mapper{
-		Base:           base,
-		chr:            cart.CHR,
-		alternateColor: true,
+		Base:    base,
+		chr:     cart.CHR,
+		dimMode: true,
 	}
 	m.SetName(name)
 	m.SetPrgRAM(nil)
@@ -151,7 +159,7 @@ func (m *Mapper) Read(address uint16) byte {
 	switch {
 	case address < patternTableEnd:
 		return m.readPattern(address)
-	case address >= paletteFirst && address <= paletteLast:
+	case address >= paletteRegFirst && address <= paletteRegLast:
 		return m.paletteByte(address)
 	}
 
@@ -163,16 +171,16 @@ func (m *Mapper) Write(address uint16, value byte) {
 	set := value&1 != 0
 
 	switch address {
-	case regField:
-		m.field = set
+	case regPhase:
+		m.phase = int(value & 1)
 
 	case regCheck:
 		if set {
 			m.MarkFeature(feature.CRCCheck)
 		}
 
-	case regColor:
-		m.alternateColor = set
+	case regDimMode:
+		m.dimMode = set
 	}
 }
 
@@ -207,7 +215,7 @@ func (m *Mapper) InspectMemory(address uint16) (byte, bool) {
 		return 0, false
 	}
 
-	return m.attributeValue(m.attributeByte()), true
+	return m.paletteAttribute(m.rowAttribute()), true
 }
 
 // PPUReadMapping reports the physical byte of a pattern fetch.
@@ -247,7 +255,7 @@ func (m *Mapper) patternOffset(address uint16) int {
 // byte uses the new fine Y on the last fetch of a scanline.
 func (m *Mapper) readNameTable(address uint16) (byte, bool) {
 	if !isAttribute(address) {
-		m.latchedName = address & nameTableAddress
+		m.nameLatch = address & nameLatchMask
 		m.countFetch()
 
 		return 0, false
@@ -256,10 +264,10 @@ func (m *Mapper) readNameTable(address uint16) (byte, bool) {
 	m.MarkFeature(feature.ExtendedAttributes)
 	m.MarkFeature(feature.RowAttributes)
 
-	m.patternBank = uint16(m.attributeByte() & bankMask)
+	m.patternBank = uint16(m.rowAttribute() & bankMask)
 	m.countFetch()
 
-	return m.attributeValue(m.attributeByte()), true
+	return m.paletteAttribute(m.rowAttribute()), true
 }
 
 // writeNameTable discards attribute writes. The logic disables console memory for
@@ -270,20 +278,20 @@ func (*Mapper) writeNameTable(address uint16, _ byte) bool {
 }
 
 func (m *Mapper) attributeOffset() int {
-	return int(attributeBase | m.fineY<<fineYShift | m.latchedName)
+	return int(attributeBase | m.fineY<<fineYShift | m.nameLatch)
 }
 
-func (m *Mapper) attributeByte() byte {
+func (m *Mapper) rowAttribute() byte {
 	return m.chr[m.attributeOffset()]
 }
 
-func (m *Mapper) attributeValue(value byte) byte {
-	shift := fieldShift0
-	if m.field {
-		shift = fieldShift1
+func (m *Mapper) paletteAttribute(value byte) byte {
+	shift := phase0Shift
+	if m.phase == 1 {
+		shift = phase1Shift
 	}
 
-	return (value >> shift & paletteNumMask) * attributeCopies
+	return (value >> shift & paletteNumberMask) * attributeCopies
 }
 
 func (m *Mapper) countFetch() {
@@ -296,17 +304,12 @@ func (m *Mapper) countFetch() {
 }
 
 func (m *Mapper) paletteByte(address uint16) byte {
-	index := address & paletteMask
-	if !m.field && m.alternateColor && index == alternateColorIndex {
-		return alternateColorValue
+	index := address & paletteIndexMask
+	if m.phase == 0 && m.dimMode && index == dimEntryIndex {
+		return dimEntry1Color
 	}
 
-	field := 0
-	if m.field {
-		field = 1
-	}
-
-	return paletteTable[field][index]
+	return paletteTable[m.phase][index]
 }
 
 func isAttribute(address uint16) bool {

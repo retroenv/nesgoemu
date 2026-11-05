@@ -39,12 +39,12 @@ func (m *Mapper) observeFetch(address uint16) bool {
 		// Advance once, when the count reaches the checkpoint. Do not advance
 		// on the attribute and pattern reads that follow, while the name count
 		// does not change.
-		m.vertical++
+		m.verticalPosition++
 	}
 
 	if m.manualScroll == 0 && m.scrollDirty {
 		m.MarkFeature(feature.PPURegisterCapture)
-		m.vertical = m.ppuRegisters[ppuScrollIndex]
+		m.verticalPosition = m.ppuRegisters[ppuScrollIndex]
 		m.scrollDirty = false
 	}
 
@@ -58,12 +58,12 @@ func (m *Mapper) observeFetch(address uint16) bool {
 // this sequence. The detector does not use a PPU scanline number.
 func (m *Mapper) trackRepeated(address uint16) {
 	if address < patternTableEnd || address >= nameTableFetchEnd || address != m.lastAddress {
-		m.repeated = 0
+		m.repeatCount = 0
 		return
 	}
 
-	m.repeated++
-	if m.repeated <= 1 {
+	m.repeatCount++
+	if m.repeatCount <= 1 {
 		return
 	}
 
@@ -92,7 +92,7 @@ func (m *Mapper) readVRAM(address uint16) byte {
 
 	name := m.observeFetch(address)
 
-	y := m.vertical
+	y := m.verticalPosition
 	mapped := address
 	if m.remapEnabled {
 		// Remap coarse Y in the bus address. Keep fine Y separate for
@@ -102,7 +102,7 @@ func (m *Mapper) readVRAM(address uint16) byte {
 		mapped = address&verticalRemapKeepMask | uint16(y>>3)<<tileRowShift
 	}
 
-	if m.inhibit != 0 {
+	if m.readInhibit != 0 {
 		return 0
 	}
 
@@ -116,7 +116,7 @@ func (m *Mapper) readVRAM(address uint16) byte {
 	if name || !m.spriteMode {
 		return m.mappedVRAM(mapped)
 	}
-	if !m.spriteSecond {
+	if !m.spriteSecondPlane {
 		return m.mappedVRAM(address)
 	}
 
@@ -135,9 +135,9 @@ func (m *Mapper) readBackground(address, mapped uint16, y byte, name bool) (byte
 			m.fetchMetatile(mapped, y&fineYMask)
 			return 0, true
 		}
-		if m.metatilePhase != 0 {
-			m.metatilePhase--
-			return [postNameFetchCount]byte{m.metatileHigh, m.metatileLow, m.metatilePalette}[m.metatilePhase], true
+		if m.metatileFetchesLeft != 0 {
+			m.metatileFetchesLeft--
+			return [postNameFetchCount]byte{m.metatileHigh, m.metatileLow, m.metatilePalette}[m.metatileFetchesLeft], true
 		}
 	}
 
@@ -153,7 +153,7 @@ func (m *Mapper) readDescriptor(address, mapped uint16, y byte, name bool) (byte
 		// Capture the nametable, tile offset, and fine Y once. Later PPU
 		// pattern addresses do not contain enough information to find them
 		// again.
-		m.descriptorPhase = postNameFetchCount
+		m.descriptorFetchesLeft = postNameFetchCount
 		m.tileTable = byte(mapped/ntBankSize) & ntSelectMask
 		m.tileOffset = mapped & ntOffsetMask
 		m.tileFineY = y & fineYMask
@@ -165,12 +165,12 @@ func (m *Mapper) readDescriptor(address, mapped uint16, y byte, name bool) (byte
 		return m.mappedVRAM(mapped), true
 	}
 
-	if m.descriptorPhase == 0 {
+	if m.descriptorFetchesLeft == 0 {
 		return 0, false
 	}
 
-	m.descriptorPhase--
-	if m.descriptorPhase == 2 && m.attributeMode != attributeModePatternOnly {
+	m.descriptorFetchesLeft--
+	if m.descriptorFetchesLeft == 2 && m.attributeMode != attributeModePatternOnly {
 		return m.fetchAttribute(y), true
 	}
 
@@ -204,8 +204,8 @@ func (m *Mapper) fetchAttribute(y byte) byte {
 
 		value := m.descriptorByte(base)
 		palette = value >> 6
-		if m.wide && m.second {
-			palette = value >> 4 & paletteMask
+		if m.wideBanks && m.secondPlane {
+			palette = value >> 4 & paletteNumberMask
 		}
 
 	case attributeModePackedRows:
@@ -213,7 +213,7 @@ func (m *Mapper) fetchAttribute(y byte) byte {
 		// in each byte. Select the byte with Y/4. Then extract the palette,
 		// from the high bits to the low bits.
 		value := m.descriptorByte(base + descriptorBankSize + int((y&fineYMask)>>2))
-		palette = value >> uint(6-2*(y&paletteMask)) & paletteMask
+		palette = value >> uint(6-2*(y&packedRowMask)) & paletteNumberMask
 	}
 
 	// Put the chosen palette in every quadrant of the attribute byte. Then
@@ -233,9 +233,9 @@ func (m *Mapper) fetchPattern(address uint16) byte {
 	// row offset in that bank. Wide mode doubles the bank stride. The
 	// second-plane selector then selects the lower or upper 4 KiB half.
 	offset := int(descriptor&descriptorBankMask) * patternPageSize
-	if m.wide {
+	if m.wideBanks {
 		offset *= 2
-		if m.second {
+		if m.secondPlane {
 			offset += patternPageSize
 		}
 	}
@@ -243,7 +243,7 @@ func (m *Mapper) fetchPattern(address uint16) byte {
 	return readWrapped(m.patternMemory(m.patternRAM[m.tileTable]), offset+int(address&patternPageMask), 0)
 }
 
-func (m *Mapper) fetchMetatile(address uint16, fine byte) {
+func (m *Mapper) fetchMetatile(address uint16, fineY byte) {
 	selector := m.metatileTables[address/ntBankSize&ntSelectMask]
 	base := metatileFallbackTable
 	if int(selector) < len(metatileTableBases) {
@@ -253,7 +253,7 @@ func (m *Mapper) fetchMetatile(address uint16, fine byte) {
 	// Each 32-column tile row contains eight fine-Y rows of big-endian IDs.
 	// A table selector after the nine known tables selects a fixed fallback
 	// table. The selector does not wrap.
-	cell := descriptorSize * ((int(address&ntOffsetMask)>>tileRowShift)*tileHeight*tilesPerRow + int(fine)*tilesPerRow + int(address&tileColumnMask))
+	cell := descriptorSize * ((int(address&ntOffsetMask)>>tileRowShift)*tileHeight*tilesPerRow + int(fineY)*tilesPerRow + int(address&tileColumnMask))
 	id := uint16(m.ramByte(base+cell))<<8 | uint16(m.ramByte(base+cell+1))
 	if id&metatileAnimationMask == metatileAnimationMask {
 		// Resolve exactly one animation indirection. The replacement is a
@@ -274,15 +274,15 @@ func (m *Mapper) fetchMetatile(address uint16, fine byte) {
 		shift = 2
 	}
 
-	if m.wide && m.second {
+	if m.wideBanks && m.secondPlane {
 		data += 2
 		shift -= 2
 	}
 
 	m.metatileLow = m.ramByte(data)
 	m.metatileHigh = m.ramByte(data + 1)
-	m.metatilePalette = (packed >> shift & paletteMask) * paletteRepeat
-	m.metatilePhase = postNameFetchCount
+	m.metatilePalette = (packed >> shift & paletteNumberMask) * paletteRepeat
+	m.metatileFetchesLeft = postNameFetchCount
 }
 
 func (m *Mapper) ramByte(offset int) byte {

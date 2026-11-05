@@ -450,12 +450,12 @@ func TestPPUWriteTapAndReset(t *testing.T) {
 	m.ObservePPURegisterWrite(0x2005, 17)
 	assert.False(t, featureUsed(m, feature.PPURegisterCapture))
 	_ = m.Read(0)
-	assert.Equal(t, byte(17), m.vertical)
+	assert.Equal(t, byte(17), m.verticalPosition)
 	assert.True(t, featureUsed(m, feature.PPURegisterCapture))
 
 	m.ObservePPURegisterWrite(0x200d, 99)
 	_ = m.Read(0)
-	assert.Equal(t, byte(17), m.vertical)
+	assert.Equal(t, byte(17), m.verticalPosition)
 
 	selectCPU(m, 0x81, 3)
 	m.Write(0x8000, 0x42)

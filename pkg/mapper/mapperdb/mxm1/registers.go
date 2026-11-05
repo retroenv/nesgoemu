@@ -143,7 +143,7 @@ func (m *Mapper) writeDescriptorRegisters(address uint16, value byte) {
 		m.manualScroll = value
 
 	case regVerticalPosition:
-		m.vertical = value
+		m.verticalPosition = value
 	}
 }
 
@@ -185,7 +185,7 @@ func (m *Mapper) writePlaneRegisters(address uint16, value byte) {
 	case regPlaneMode:
 		// Background mode makes a descriptor bank two 4 KiB halves wide.
 		// Sprite mode makes fallback reads use the original PPU address.
-		m.wide = value&planeBackgroundBit != 0
+		m.wideBanks = value&planeBackgroundBit != 0
 		m.spriteMode = value&planeSpriteBit != 0
 		m.markGraphicsModes()
 
@@ -193,11 +193,11 @@ func (m *Mapper) writePlaneRegisters(address uint16, value byte) {
 		// The background bit selects the other half and palette pair. The
 		// sprite bit adds 4 KiB to fallback pattern reads. The bits are
 		// independent.
-		m.second = value&planeBackgroundBit != 0
-		m.spriteSecond = value&planeSpriteBit != 0
+		m.secondPlane = value&planeBackgroundBit != 0
+		m.spriteSecondPlane = value&planeSpriteBit != 0
 
 	case regReadInhibit:
-		m.inhibit = value
+		m.readInhibit = value
 
 	case regWriteBankHigh, regWriteBankLow:
 		setBankByte(&m.writeBank, address == regWriteBankHigh, value)
@@ -276,7 +276,7 @@ func (m *Mapper) markGraphicsModes() {
 
 	if m.descriptorEnabled || m.metatileEnabled {
 		m.MarkFeature(feature.BGExtendedMode)
-		if m.wide {
+		if m.wideBanks {
 			m.MarkFeature(feature.GraphicsSets)
 		}
 	}
@@ -415,16 +415,16 @@ func (m *Mapper) streamValue(cursor byte) byte {
 		return byte(m.descriptorBanks[0])
 
 	case stateWide:
-		return boolByte(m.wide)
+		return boolByte(m.wideBanks)
 
 	case stateSpriteMode:
 		return boolByte(m.spriteMode)
 
 	case stateSecondPlane:
-		return boolByte(m.second)
+		return boolByte(m.secondPlane)
 
 	case stateSpritePlane:
-		return boolByte(m.spriteSecond) * planeSpriteBit
+		return boolByte(m.spriteSecondPlane) * planeSpriteBit
 
 	default:
 		return stateUnavailable
