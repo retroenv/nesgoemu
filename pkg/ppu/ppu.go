@@ -33,30 +33,33 @@ type PPU struct {
 	// https://www.nesdev.org/wiki/Open_bus_behavior#PPU_open_bus
 	openBus *openbus.Register
 
-	addressing  *addressing.Addressing
-	control     *control.Control
-	mask        *mask.Mask
-	memory      *memory.Memory
-	nmi         *nmi.Nmi
-	palette     *palette.Palette
-	renderState *renderstate.RenderState
-	screen      *screen.Screen
-	sprites     *sprites.Sprites
-	status      *status.Status
-	tiles       *tiles.Tiles
+	addressing     *addressing.Addressing
+	control        *control.Control
+	displayPalette *DisplayPalette // RGB output conversion, not palette RAM; nil selects the default
+	mask           *mask.Mask
+	memory         *memory.Memory
+	nmi            *nmi.Nmi
+	palette        *palette.Palette
+	renderState    *renderstate.RenderState
+	screen         *screen.Screen
+	sprites        *sprites.Sprites
+	status         *status.Status
+	tiles          *tiles.Tiles
 
 	registerObserver bus.PPURegisterObserver // optional mapper hook for register writes
 	ticker           bus.PPUTicker           // optional mapper hook for each PPU cycle
 
-	writeObserver     func(WriteEvent)
 	vramWriteObserver func(uint16)
-	probe             *frameProbe // optional frame capture
+	writeObserver     func(WriteEvent)
+
+	probe *frameProbe // optional frame capture
 }
 
 // New returns a new PPU.
 func New(systemBus *bus.Bus) *PPU {
 	p := &PPU{
-		bus:      systemBus,
+		bus: systemBus,
+
 		features: feature.NewSet(),
 	}
 	p.declareFeatures()

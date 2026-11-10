@@ -11,6 +11,7 @@ import (
 	"os"
 
 	"github.com/retroenv/nesgoemu/pkg/nes"
+	"github.com/retroenv/nesgoemu/pkg/ppu"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 	_ "github.com/retroenv/retrogolib/audio/sdl2"
 	_ "github.com/retroenv/retrogolib/audio/sdl3"
@@ -30,6 +31,7 @@ type optionFlags struct {
 	NoGui        bool   `flag:"c" usage:"console mode, disable GUI"`
 	NoPrintf     bool   `flag:"no-printf" usage:"ignore program text output written to $401B and $401C"`
 	NoAudio      bool   `flag:"m" usage:"mute audio output"`
+	Palette      string `flag:"palette" usage:"RGB .pal file (192 or 1536 bytes)"`
 	StopAt       int    `flag:"s" usage:"stop execution at address" default:"-1"`
 	Tracing      bool   `flag:"t" usage:"print CPU tracing"`
 	WAV          string `flag:"wav" usage:"write deterministic audio to a new WAV file"`
@@ -98,7 +100,10 @@ func emulateFile(options optionFlags, input string) error {
 		return recordWAV(context.Background(), cart, options)
 	}
 
-	opts := emulatorOptions(options, cart, input)
+	opts, err := emulatorOptions(options, cart, input)
+	if err != nil {
+		return err
+	}
 
 	if err := nes.Start(opts...); err != nil {
 		return fmt.Errorf("starting emulator: %w", err)
@@ -107,7 +112,7 @@ func emulateFile(options optionFlags, input string) error {
 	return nil
 }
 
-func emulatorOptions(options optionFlags, cart *cartridge.Cartridge, input string) []nes.Option {
+func emulatorOptions(options optionFlags, cart *cartridge.Cartridge, input string) ([]nes.Option, error) {
 	opts := []nes.Option{
 		nes.WithCartridge(cart),
 		nes.WithSavePath(input + ".sav"),
@@ -119,6 +124,14 @@ func emulatorOptions(options optionFlags, cart *cartridge.Cartridge, input strin
 
 	if options.Features {
 		opts = append(opts, nes.WithSummaryFeatures())
+	}
+
+	if options.Palette != "" {
+		palette, err := readDisplayPalette(options.Palette)
+		if err != nil {
+			return nil, err
+		}
+		opts = append(opts, nes.WithDisplayPalette(palette))
 	}
 
 	if options.Debug {
@@ -149,7 +162,7 @@ func emulatorOptions(options optionFlags, cart *cartridge.Cartridge, input strin
 		opts = append(opts, nes.WithDisabledPrintf())
 	}
 
-	return opts
+	return opts, nil
 }
 
 func readCartridge(path string) (*cartridge.Cartridge, error) {
@@ -189,4 +202,18 @@ func recordWAV(ctx context.Context, cart *cartridge.Cartridge, options optionFla
 	}
 
 	return nil
+}
+
+// readDisplayPalette reads and parses an RGB .pal file.
+func readDisplayPalette(path string) (ppu.DisplayPalette, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return ppu.DisplayPalette{}, fmt.Errorf("reading display palette: %w", err)
+	}
+
+	palette, err := ppu.ParseDisplayPalette(data)
+	if err != nil {
+		return ppu.DisplayPalette{}, fmt.Errorf("display palette: %w", err)
+	}
+	return palette, nil
 }

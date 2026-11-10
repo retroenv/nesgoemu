@@ -51,6 +51,7 @@ type FrameCapture struct {
 	// Partial is true when observation started inside the period. Pixels
 	// from before that point are unknown and have index 0.
 	Partial bool
+
 	// Indices holds the Width*Height system palette indexes of the picture,
 	// row by row. A pixel that the PPU drew has the index that the emulator
 	// shows. A pixel that the PPU did not draw, because background and
@@ -60,9 +61,13 @@ type FrameCapture struct {
 	// Emphasis has PPUMASK bits 7:5 for each pixel, also during forced blank.
 	// Indices keeps the six-bit palette values.
 	Emphasis []byte
+	// Palette is the display palette for this capture. Nil selects the default.
+	Palette *DisplayPalette
+
 	// RenderedPixels counts, per scanline, the pixels that the PPU drew
 	// with background or sprite rendering enabled.
 	RenderedPixels [Height]uint16
+
 	// MaskStart is the PPUMASK value at the start of the period.
 	MaskStart byte
 	// MaskChanges lists, in time order, the writes and resets that changed
@@ -86,6 +91,10 @@ func (c *FrameCapture) Clone() FrameCapture {
 	clone.Indices = slices.Clone(c.Indices)
 	clone.Emphasis = slices.Clone(c.Emphasis)
 	clone.MaskChanges = slices.Clone(c.MaskChanges)
+	if c.Palette != nil {
+		palette := *c.Palette
+		clone.Palette = &palette
+	}
 
 	return clone
 }
@@ -94,13 +103,18 @@ func (c *FrameCapture) Clone() FrameCapture {
 // its display color, including emphasis. Forced-blank pixels show the backdrop.
 func (c *FrameCapture) RGBA() *image.RGBA {
 	img := image.NewRGBA(image.Rect(0, 0, Width, Height))
+	palette := c.Palette
+	if palette == nil {
+		palette = &defaultPalette
+	}
+
 	for index, paletteIndex := range c.Indices {
 		var emphasis byte
 		if index < len(c.Emphasis) {
 			emphasis = c.Emphasis[index]
 		}
 
-		color := defaultPalette.rgb(paletteIndex, emphasis)
+		color := palette.rgb(paletteIndex, emphasis)
 		offset := index * 4
 		img.Pix[offset] = color.R
 		img.Pix[offset+1] = color.G
@@ -169,6 +183,7 @@ func (p *PPU) ObserveFrames(observer func(*FrameCapture)) {
 	}
 
 	p.probe = newFrameProbe(observer, p.mask.Value())
+	p.probe.capture.Palette = p.displayPalette
 }
 
 // probeMaskChange records a PPUMASK change for the frame observer.
@@ -208,9 +223,11 @@ func newFrameProbe(observer func(*FrameCapture), maskValue byte) *frameProbe {
 	return &frameProbe{
 		observer: observer,
 		capture: FrameCapture{
-			Partial:   true,
-			Indices:   make([]byte, Width*Height),
-			Emphasis:  make([]byte, Width*Height),
+			Partial: true,
+
+			Indices:  make([]byte, Width*Height),
+			Emphasis: make([]byte, Width*Height),
+
 			MaskStart: maskValue,
 		},
 	}

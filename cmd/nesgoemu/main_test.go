@@ -37,10 +37,18 @@ func TestEmulatorFlags(t *testing.T) {
 	flags := cli.NewFlagSet("nesgoemu")
 	flags.AddSection("Options", &options)
 	flags.AddPositional(&positional)
-	_, err := flags.Parse([]string{"-features", "-no-summary", "game.nes"})
+	_, err := flags.Parse([]string{"-features", "-no-summary", "-palette", "colors.pal", "game.nes"})
 	assert.NoError(t, err)
 	assert.True(t, options.Features)
 	assert.True(t, options.NoSummary)
+	assert.Equal(t, "colors.pal", options.Palette)
 	assert.Equal(t, "game.nes", positional.File)
 	assert.Equal(t, -1, options.Entrypoint)
+}
+
+func TestEmulatorOptionsRejectsMissingPalette(t *testing.T) {
+	_, err := emulatorOptions(optionFlags{
+		Palette: filepath.Join(t.TempDir(), "missing.pal"),
+	}, cartridge.New(), "game.nes")
+	assert.ErrorIs(t, err, os.ErrNotExist)
 }

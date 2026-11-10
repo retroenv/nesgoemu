@@ -1,8 +1,10 @@
 package ppu
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"fmt"
+	"image/color"
 	"testing"
 
 	"github.com/retroenv/retrogolib/arch/system/nes/register"
@@ -78,6 +80,12 @@ func TestRasterEmphasisCaptureAndScreen(t *testing.T) {
 		assert.Equal(t, byte(5), frame.Emphasis[100*Width+128])
 		assert.Equal(t, byte(0x20), frame.Indices[100*Width+128])
 		assert.Equal(t, p.Image().Pix, frame.RGBA().Pix)
+
+		// A capture keeps its palette when the PPU palette changes.
+		kept := frame.Clone()
+		before := kept.RGBA().RGBAAt(0, 200)
+		p.SetDisplayPalette(DisplayPalette{})
+		assert.Equal(t, before, kept.RGBA().RGBAAt(0, 200))
 	}
 }
 
@@ -88,4 +96,82 @@ func TestEmphasisDoesNotChangePaletteRead(t *testing.T) {
 	p.Write(register.PPU_ADDR, 0x3F)
 	p.Write(register.PPU_ADDR, 0)
 	assert.Equal(t, byte(0x21), p.Read(register.PPU_DATA)&0x3F)
+}
+
+func TestDefaultDisplayPaletteIsACopy(t *testing.T) {
+	palette := DefaultDisplayPalette()
+	original := palette[0]
+	palette[0] = color.RGBA{}
+	assert.Equal(t, original, DefaultDisplayPalette()[0])
+}
+
+func TestParseDisplayPalette(t *testing.T) {
+	for _, size := range []int{0, 191, 193, paletteBytes - 1, paletteBytes + 1} {
+		_, err := ParseDisplayPalette(make([]byte, size))
+		assert.Error(t, err)
+	}
+
+	base, err := ParseDisplayPalette(bytes.Repeat([]byte{200, 160, 120}, baseColorCount))
+	assert.NoError(t, err)
+	assert.Equal(t, color.RGBA{
+		R: 200,
+		G: 160,
+		B: 120,
+		A: 255,
+	}, base.rgb(0, 0))
+	assert.Equal(t, color.RGBA{
+		R: 200,
+		G: 120,
+		B: 90,
+		A: 255,
+	}, base.rgb(0, 1))
+	assert.Equal(t, color.RGBA{
+		R: 112,
+		G: 90,
+		B: 67,
+		A: 255,
+	}, base.rgb(0, 7))
+
+	data := make([]byte, paletteBytes)
+	for i := range data {
+		data[i] = byte(i)
+	}
+	full, err := ParseDisplayPalette(data)
+	assert.NoError(t, err)
+	for emphasis := range byte(emphasisCount) {
+		for index := range byte(baseColorCount) {
+			offset := (int(emphasis)*baseColorCount + int(index)) * rgbChannels
+			entry := full.rgb(index, emphasis)
+			assert.Equal(t, data[offset:offset+rgbChannels], []byte{entry.R, entry.G, entry.B})
+		}
+	}
+}
+
+func TestSetDisplayPaletteChangesScreen(t *testing.T) {
+	p := newOpenBusTestPPU()
+	writePaletteEntry(p, 0, 0x21)
+	p.Write(register.PPU_MASK, 0)
+	captures := collectFrames(p)
+
+	var custom DisplayPalette
+	for i := range custom {
+		custom[i] = color.RGBA{
+			R: 1,
+			G: 2,
+			B: 3,
+			A: 255,
+		}
+	}
+	p.SetDisplayPalette(custom)
+	stepToCapture(p, captures)
+	stepToCapture(p, captures)
+
+	want := color.RGBA{
+		R: 1,
+		G: 2,
+		B: 3,
+		A: 255,
+	}
+	assert.Equal(t, want, p.Image().RGBAAt(0, 100))
+	assert.Equal(t, want, (*captures)[1].RGBA().RGBAAt(0, 100))
 }

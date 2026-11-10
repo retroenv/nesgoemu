@@ -179,7 +179,7 @@ func (p *PPU) renderPixel() {
 	colorIndex = p.maskPaletteColor(colorIndex)
 	emphasis := p.emphasis()
 	y := p.renderState.ScanLine()
-	p.screen.SetPixel(x, y, defaultPalette.rgb(colorIndex, emphasis))
+	p.screen.SetPixel(x, y, p.displayColor(colorIndex, emphasis))
 	p.probePixel(x, y, colorIndex, emphasis)
 }
 
@@ -200,6 +200,6 @@ func (p *PPU) renderBackdrop(cycle, scanLine int, rendering bool) {
 	x := cycle - 1
 	colorIndex := p.maskPaletteColor(p.palette.Read(address))
 	emphasis := p.emphasis()
-	p.screen.SetPixel(x, scanLine, defaultPalette.rgb(colorIndex, emphasis))
+	p.screen.SetPixel(x, scanLine, p.displayColor(colorIndex, emphasis))
 	p.probeBackdrop(x, scanLine, colorIndex, emphasis)
 }

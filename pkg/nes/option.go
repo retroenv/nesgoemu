@@ -4,23 +4,25 @@ import (
 	"io"
 	"os"
 
+	"github.com/retroenv/nesgoemu/pkg/ppu"
 	"github.com/retroenv/retrogolib/arch/cpu/cpu6502"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 )
 
 // Options contains options for the nesgoemu system.
 type Options struct {
+	cartridge *cartridge.Cartridge
+	savePath  string
+
 	entrypoint int
-	savePath   string
 	stopAt     int
 
 	debug        bool
 	debugAddress string
 
-	noAudio bool
-	noGui   bool
-
-	cartridge *cartridge.Cartridge
+	displayPalette *ppu.DisplayPalette
+	noAudio        bool
+	noGui          bool
 
 	cpuPreExecutionHook func(*cpu6502.CPU, *cpu6502.Instruction, ...any)
 	cpuOptions          []cpu6502.Option
@@ -166,4 +168,9 @@ func WithPrintfTarget(target io.Writer) Option {
 // WithDisabledPrintf ignores writes to the printf address $401B.
 func WithDisabledPrintf() Option {
 	return func(opts *Options) { opts.noPrintf = true }
+}
+
+// WithDisplayPalette sets the RGB display palette. It does not change palette RAM.
+func WithDisplayPalette(palette ppu.DisplayPalette) Option {
+	return func(opts *Options) { opts.displayPalette = &palette }
 }
