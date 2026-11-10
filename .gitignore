@@ -17,6 +17,6 @@
 *.nes
 !internal/testroms/apu/**/*.nes
 coverage.txt
-nesgoemu
+/nesgoemu
 dist/
 *.sav

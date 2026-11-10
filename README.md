@@ -70,7 +70,7 @@ Download a binary for Linux, macOS, or Windows from
 source with Go 1.25 or newer:
 
 ```bash
-go install github.com/retroenv/nesgoemu@latest
+go install github.com/retroenv/nesgoemu/cmd/nesgoemu@latest
 ```
 
 GUI mode requires SDL3 or SDL2 runtime libraries. It uses SDL3 first and SDL2 if SDL3 does not start. See the [GUI setup guide](docs/gui.md)

@@ -114,7 +114,7 @@ The ROM reports its result in PRG RAM at $6000, a result of zero means passed.
 Run the fixture through the command-line binary:
 
 ```bash
-go run . -c -t -e 0xc000 -s 0x0001 internal/testroms/nestest/nestest.nes > trace.log
+go run ./cmd/nesgoemu -c -t -e 0xc000 -s 0x0001 internal/testroms/nestest/nestest.nes > trace.log
 ```
 
 ## Debugging Tools
@@ -122,7 +122,7 @@ go run . -c -t -e 0xc000 -s 0x0001 internal/testroms/nestest/nestest.nes > trace
 ### Web Debugger
 
 ```bash
-go run . -d test_rom.nes
+go run ./cmd/nesgoemu -d test_rom.nes
 curl http://127.0.0.1:8080/cpu
 curl http://127.0.0.1:8080/mapper
 ```
@@ -130,16 +130,16 @@ curl http://127.0.0.1:8080/mapper
 ### CPU Tracing
 
 ```bash
-go run . -t test_rom.nes
-go run . -c -t test_rom.nes > trace.log
+go run ./cmd/nesgoemu -t test_rom.nes
+go run ./cmd/nesgoemu -c -t test_rom.nes > trace.log
 ```
 
 ### Development Flags
 
 ```bash
-go run . -c test_rom.nes
-go run . -e 0x8000 test_rom.nes
-go run . -s 0x8100 test_rom.nes
+go run ./cmd/nesgoemu -c test_rom.nes
+go run ./cmd/nesgoemu -e 0x8000 test_rom.nes
+go run ./cmd/nesgoemu -s 0x8100 test_rom.nes
 ```
 
 See [usage.md](usage.md) and [advanced-usage.md](advanced-usage.md) for the full command-line reference.

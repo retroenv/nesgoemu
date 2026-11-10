@@ -23,7 +23,7 @@ test-coverage-web: test-coverage ## run unit tests and show test coverage in bro
 	go tool cover -html=coverage.txt
 
 install: ## install all binaries
-	go install -buildvcs=false .
+	go install -buildvcs=false ./cmd/nesgoemu
 
 install-linters: ## install all used linters
 	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@${GOLANGCI_VERSION}

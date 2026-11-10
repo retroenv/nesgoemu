@@ -7,7 +7,7 @@ before:
 builds:
   - id: nesgoemu
     binary: nesgoemu
-    dir: .
+    main: ./cmd/nesgoemu
     env:
       - CGO_ENABLED=0
     targets:

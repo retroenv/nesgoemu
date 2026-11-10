@@ -1,6 +1,6 @@
 # Architecture
 
-`main.go` loads the ROM, configures options, and starts `pkg/nes`.
+`cmd/nesgoemu/main.go` loads the ROM, configures options, and starts `pkg/nes`.
 
 ```text
 ROM file -> cartridge loader -> NES system -> bus -> CPU/PPU/APU/controllers -> GUI or console output

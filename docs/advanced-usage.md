@@ -149,13 +149,13 @@ time nesgoemu -c -s 0x9000 game.nes
 Build the local command:
 
 ```bash
-go build .
+go build ./cmd/nesgoemu
 ```
 
 Build a smaller release-style binary:
 
 ```bash
-go build -ldflags="-s -w" .
+go build -ldflags="-s -w" ./cmd/nesgoemu
 ```
 
 Project Make targets are documented in [development.md](development.md).
