@@ -39,6 +39,15 @@ func (sys *System) WriteWAV(ctx context.Context, destination io.Writer, frames u
 	return nil
 }
 
+// DiscardQueuedAudio removes the samples that earlier emulation queued. A
+// recording that starts after the call contains only new audio. Call it with
+// emulation and playback stopped.
+func (sys *System) DiscardQueuedAudio() {
+	var buffer [2048]byte
+	for sys.apu.DrainSamples(buffer[:]) > 0 {
+	}
+}
+
 func (sys *System) writePCM(ctx context.Context, destination io.Writer, frames uint64) error {
 	var buffer [2048]byte
 	for frames > 0 {

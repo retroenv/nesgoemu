@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"image"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -36,6 +37,10 @@ type System struct {
 
 	audioReady atomic.Bool    // Playback starts after the initial sample buffer is ready.
 	audioInfo  *renderer.Info // Renderer of the started audio output, nil without audio.
+
+	hookMu  sync.Mutex              // Guards the modification of the hook set.
+	hooks   atomic.Pointer[hookSet] // Runtime hooks, nil when none are installed.
+	hookSeq uint64                  // Allocates runtime hook identifiers.
 }
 
 // StepResult reports the time advanced by one system step.
@@ -67,8 +72,11 @@ func NewSystem(opts *Options) (*System, error) {
 	sys := &System{
 		opts:    opts,
 		storage: diskBatteryStorage{files: osBatteryFiles{}},
-		memory:  systemMemory,
-		Bus:     systemBus,
+
+		memory: systemMemory,
+
+		Bus: systemBus,
+
 		dimensions: gui.Dimensions{
 			ScaleFactor: 2.0,
 			Height:      screen.Height,
@@ -306,7 +314,13 @@ func (sys *System) setupGUI(backend gui.Backend) (func() (bool, error), func(), 
 // clockCPUCycle selects a bus owner, clocks the devices, and completes a DMA
 // transfer. A false return value lets the CPU complete its own bus access.
 func (sys *System) clockCPUCycle(cycle cpu6502.BusCycle) bool {
-	return clockDeviceCycle(sys.Bus, sys.apu, &sys.dma, sys.memory, sys.CPU.Cycles(), cycle)
+	taken := clockDeviceCycle(sys.Bus, sys.apu, &sys.dma, sys.memory, sys.CPU.Cycles(), cycle)
+	if !taken {
+		// A read that DMA takes is repeated by the CPU. Observe only the access that completes.
+		sys.observeBusCycle(cycle)
+	}
+
+	return taken
 }
 
 func (sys *System) initializeCPU(mem *cpu6502.Memory) error {
@@ -314,13 +328,11 @@ func (sys *System) initializeCPU(mem *cpu6502.Memory) error {
 	cpuOpts := []cpu6502.Option{
 		cpu6502.WithVariant(cpu6502.VariantNES6502),
 		cpu6502.WithCycleHook(sys.clockCPUCycle),
+		cpu6502.WithPreExecutionHook(sys.runPreExecutionHooks),
+		cpu6502.WithStackEventHook(sys.runStackHooks),
 	}
 	if opts.tracing {
 		cpuOpts = append(cpuOpts, cpu6502.WithTracing())
-	}
-
-	if opts.tracing || opts.cpuPreExecutionHook != nil {
-		cpuOpts = append(cpuOpts, cpu6502.WithPreExecutionHook(opts.runCPUPreExecutionHooks))
 	}
 
 	cpuOpts = append(cpuOpts, opts.cpuOptions...)
