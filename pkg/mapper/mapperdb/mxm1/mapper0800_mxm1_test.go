@@ -9,6 +9,8 @@ import (
 	"github.com/retroenv/nesgoemu/pkg/feature"
 	"github.com/retroenv/nesgoemu/pkg/mapper/internal/mappertest"
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
+	"github.com/retroenv/retrogolib/arch/cpu/cpu6502"
+	"github.com/retroenv/retrogolib/arch/system/nes"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 	"github.com/retroenv/retrogolib/assert"
 )
@@ -510,6 +512,31 @@ func TestSpriteSlotDummyAttributeFetch(t *testing.T) {
 
 func TestPhysicalMappingInspection(t *testing.T) {
 	m, _ := newTestMapper(t)
+
+	selectCPU(m, bankSourceRAM|1, 7)
+	m.Write(nes.CodeBaseAddress+1, 0x42)
+	value, ok := m.InspectCPU(nes.CodeBaseAddress + 1)
+	assert.True(t, ok)
+	assert.Equal(t, byte(0x42), value)
+
+	selectCPU(m, prgGraphicsLatch, 1)
+	m.readLatch = 0x71
+	value, ok = m.InspectCPU(cpuWindowBase)
+	assert.True(t, ok)
+	assert.Equal(t, byte(0), value)
+	assert.Equal(t, byte(0x71), m.readLatch)
+
+	m.inFrame = true
+	m.scanline = 42
+	m.irqPending = true
+	_, ok = m.InspectCPU(cpu6502.NMIAddress)
+	assert.True(t, ok)
+	assert.True(t, m.inFrame)
+	assert.True(t, m.irqPending)
+	assert.Equal(t, byte(42), m.scanline)
+
+	_, ok = m.InspectCPU(0x5fff)
+	assert.False(t, ok)
 
 	m.Write(regCHRSelect, 0)
 	m.Write(regCHRBankLow, 7)

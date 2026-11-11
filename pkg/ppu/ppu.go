@@ -16,9 +16,17 @@ import (
 	"github.com/retroenv/nesgoemu/pkg/ppu/sprites"
 	"github.com/retroenv/nesgoemu/pkg/ppu/status"
 	"github.com/retroenv/nesgoemu/pkg/ppu/tiles"
+	"github.com/retroenv/retrogolib/arch/system/nes/register"
 )
 
 const FPS = 60
+
+// The PPU uses a 14-bit address space. Nametables follow the pattern tables.
+// https://www.nesdev.org/wiki/PPU_memory_map
+const (
+	addressMask     = 0x3FFF
+	patternTableEnd = 0x2000
+)
 
 // PPU represents the Picture Processing Unit.
 type PPU struct {
@@ -93,15 +101,15 @@ func (p *PPU) OAM() [256]byte {
 // address returns the mirrored physical nametable memory and ignores the mapper
 // hooks. Palette addresses return the palette entry.
 func (p *PPU) InspectMemory(address uint16) (byte, bool) {
-	address &= 0x3FFF
-	if address < 0x3F00 {
+	address &= addressMask
+	if address < register.PALETTE_START {
 		if inspector, ok := p.bus.Mapper.(bus.PPUMemoryInspector); ok {
 			return inspector.InspectMemory(address)
 		}
 	}
 
 	switch {
-	case address < 0x2000:
+	case address < patternTableEnd:
 		inspector, ok := p.bus.Mapper.(bus.MemoryInspector)
 		if !ok {
 			return 0, false
@@ -109,7 +117,7 @@ func (p *PPU) InspectMemory(address uint16) (byte, bool) {
 
 		return inspector.InspectCHR(address), true
 
-	case address < 0x3F00:
+	case address < register.PALETTE_START:
 		inspector, ok := p.bus.NameTable.(bus.NameTableInspector)
 		if !ok {
 			return 0, false
@@ -166,13 +174,13 @@ func (p *PPU) reset() {
 
 func (p *PPU) readData() byte {
 	address := p.addressing.Address()
-	address &= 0x3FFF // valid addresses are $0000-$3FFF; higher addresses will be mirrored down
+	address &= addressMask
 
 	// when reading data, the contents of an internal read buffer is returned and the buffer
 	// gets updated with the newly read data
 	data := p.dataReadBuffer
 
-	if address >= 0x3F00 {
+	if address >= register.PALETTE_START {
 		// Palette data reads are unbuffered, $3F00-$3FFF are Palette RAM indexes and mirrors of it.
 		// A palette read refreshes bits 5-0 of the decay register with the data and keeps the other bits.
 		// https://www.nesdev.org/wiki/Open_bus_behavior#PPU_open_bus

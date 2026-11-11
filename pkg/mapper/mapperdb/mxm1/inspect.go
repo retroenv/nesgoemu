@@ -2,6 +2,30 @@ package mxm1
 
 import "github.com/retroenv/nesgoemu/pkg/bus"
 
+// InspectCPU reads the effective cartridge mapping. It does not latch graphics
+// data, acknowledge interrupts, or reset the frame detector at the vectors.
+func (m *Mapper) InspectCPU(address uint16) (byte, bool) {
+	if address < cpuWindowBase {
+		return 0, false
+	}
+
+	slot := int(address-cpuWindowBase) / prgBankSize
+	if m.prgFlags[slot]&prgGraphicsLatch != 0 {
+		return 0, true
+	}
+
+	w := m.cpuWindows[slot]
+	if slot == alternateSlot && m.altEnabled {
+		w.data = m.prgROM
+		w.offset = int(m.altBank) * prgBankSize
+		if m.altRAM {
+			w.data = m.ram
+		}
+	}
+
+	return readWrapped(w.data, w.offset+int(address&prgOffsetMask), m.OpenBus()), true
+}
+
 // InspectPRGRAM reads physical RAM. It does not change the mapper state.
 func (m *Mapper) InspectPRGRAM(offset int) (byte, bool) {
 	if offset < 0 || offset >= len(m.ram) {

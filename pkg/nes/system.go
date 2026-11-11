@@ -119,9 +119,13 @@ func (sys *System) InspectRAM(address uint16) (byte, bool) {
 	return sys.memory.InspectRAM(address)
 }
 
-// InspectPPU returns a byte of PPU address space without bus effects. It
-// reports false when the board cannot supply it.
+// InspectPPU returns a byte of PPU address space without bus effects. A PPU
+// that can peek reads pattern table bytes from CHR-ROM through the mapper
+// mapping. It reports false when the board cannot supply the byte.
 func (sys *System) InspectPPU(address uint16) (byte, bool) {
+	if peeker, ok := sys.Bus.PPU.(ppuPeeker); ok {
+		return peeker.PeekVRAM(address)
+	}
 	inspector, ok := sys.Bus.PPU.(bus.PPUMemoryInspector)
 	if !ok {
 		return 0, false
@@ -329,6 +333,10 @@ func (sys *System) initializeCPU(mem *cpu6502.Memory) error {
 	sys.Bus.CPU = sys.CPU
 
 	return nil
+}
+
+type ppuPeeker interface {
+	PeekVRAM(uint16) (byte, bool)
 }
 
 func initializeMemory(systemBus *bus.Bus) (*memory.Memory, *cpu6502.Memory, error) {

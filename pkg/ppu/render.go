@@ -2,6 +2,8 @@ package ppu
 
 import (
 	"image"
+
+	"github.com/retroenv/retrogolib/arch/system/nes/register"
 )
 
 // Image returns the rendered image to display.
@@ -192,8 +194,8 @@ func (p *PPU) renderBackdrop(cycle, scanLine int, rendering bool) {
 
 	// During forced blank, a palette address in v selects the output color.
 	// https://www.nesdev.org/wiki/PPU_rendering#Rendering_disabled
-	address := p.addressing.Address() & 0x3FFF
-	if address < 0x3F00 {
+	address := p.addressing.Address() & addressMask
+	if address < register.PALETTE_START {
 		address = 0
 	}
 
