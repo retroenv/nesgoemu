@@ -6,6 +6,9 @@ import (
 	"github.com/retroenv/retrogolib/arch/cpu/cpu6502"
 )
 
+// patternPlaneOffset is the byte offset of the high tile plane.
+const patternPlaneOffset = 8
+
 type addressing interface {
 	Address() uint16
 	FineY() uint16
@@ -22,6 +25,8 @@ type Tiles struct {
 	lowByte                byte
 	highByte               byte
 	data                   uint64
+
+	patternReadObserver bus.PPUPatternReadObserver
 }
 
 // New returns a new tiles manager.
@@ -53,12 +58,26 @@ func (t *Tiles) FetchCycle(cycle int) {
 
 	case 5:
 		address := t.tileAddress()
+		if t.patternReadObserver != nil {
+			t.patternReadObserver(address)
+		}
+
 		t.lowByte = t.memory.Read(address)
 
 	case 7:
-		address := t.tileAddress()
-		t.highByte = t.memory.Read(address + 8)
+		address := t.tileAddress() + patternPlaneOffset
+		if t.patternReadObserver != nil {
+			t.patternReadObserver(address)
+		}
+
+		t.highByte = t.memory.Read(address)
 	}
+}
+
+// ObservePatternReads sets a callback that runs before each pattern read.
+// A nil callback disables observation.
+func (t *Tiles) ObservePatternReads(observer bus.PPUPatternReadObserver) {
+	t.patternReadObserver = observer
 }
 
 // SetBackgroundPatternTable sets the temp register nametable from the passed PPU control byte.

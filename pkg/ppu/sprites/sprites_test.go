@@ -147,3 +147,30 @@ func (m *spriteExtTestMapper) Read(uint16) byte {
 	m.readIndices = append(m.readIndices, m.indices[len(m.indices)-1])
 	return 0
 }
+
+func TestPatternReadObserverKeepsSpriteContext(t *testing.T) {
+	state := &testRenderState{
+		cycle: 261,
+	}
+	mapper := &spriteExtTestMapper{}
+	s := New(nil, mapper, nil, state, &testStatus{})
+	s.visibleSpriteCount = 1
+	s.visibleSprites[0] = 5
+	s.sprites[5] = Sprite{
+		y:     0,
+		index: 2,
+	}
+	var observed []uint16
+	s.ObservePatternReads(func(address uint16) {
+		observed = append(observed, address)
+		assert.Equal(t, 5, mapper.indices[len(mapper.indices)-1])
+		assert.Empty(t, mapper.readIndices)
+	})
+	s.Render()
+	assert.Equal(t, []uint16{0x20}, observed)
+	assert.Equal(t, []int{5}, mapper.readIndices)
+	s.ObservePatternReads(nil)
+	state.cycle = 263
+	s.Render()
+	assert.Len(t, observed, 1)
+}

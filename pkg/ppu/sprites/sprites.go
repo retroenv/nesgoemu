@@ -11,6 +11,7 @@ const (
 	maxSprites         = 64 // maximum amount of sprites
 	maxSpritesOnScreen = 8  // maximum amount of sprites on screen
 	oamMemorySize      = 256
+	patternPlaneOffset = 8 // offset of the high tile plane
 	spriteStructSize   = 4 // size of sprite structure
 )
 
@@ -41,6 +42,8 @@ type Sprites struct {
 	visibleSpriteCount int                     // number of sprites on the screen
 	patterns           [maxSpritesOnScreen]uint32
 	fetchLow           byte
+
+	patternReadObserver bus.PPUPatternReadObserver
 }
 
 // New returns a new sprites manager.
@@ -69,6 +72,12 @@ func (s *Sprites) SetSpriteSize(size int) {
 // SetSpritePatternTable sets the address of the sprite pattern table.
 func (s *Sprites) SetSpritePatternTable(table uint16) {
 	s.spritePatternTable = table * 0x1000
+}
+
+// ObservePatternReads sets a callback that runs before each pattern read,
+// with the mapper sprite context active. A nil callback disables observation.
+func (s *Sprites) ObservePatternReads(observer bus.PPUPatternReadObserver) {
+	s.patternReadObserver = observer
 }
 
 // Data returns a copy of primary OAM.
@@ -178,10 +187,18 @@ func (s *Sprites) Render() {
 	}
 
 	address := s.spritePatternAddress(sprite, row)
+	if phase == 6 {
+		address += patternPlaneOffset
+	}
+
+	if s.patternReadObserver != nil {
+		s.patternReadObserver(address)
+	}
+
 	if phase == 4 {
 		s.fetchLow = s.mapper.Read(address)
 	} else {
-		high := s.mapper.Read(address + 8)
+		high := s.mapper.Read(address)
 		if slot < s.visibleSpriteCount {
 			s.patterns[slot] = spritePattern(sprite, s.fetchLow, high)
 		}

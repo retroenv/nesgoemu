@@ -29,6 +29,9 @@ type GraphicsMapping struct {
 	Offset int
 }
 
+// PPUPatternReadObserver receives the address before a pattern-table read.
+type PPUPatternReadObserver func(address uint16)
+
 // PPUMappingInspector reports pattern-table mappings at $0000-$1FFF.
 // Read mappings use the current graphics context. Write mappings report RAM
 // or flash targets. Unmapped addresses and generated read data return false.

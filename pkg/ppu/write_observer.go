@@ -1,5 +1,8 @@
 package ppu
 
+// VRAMWriteObserver receives the address of a write through PPUDATA.
+type VRAMWriteObserver func(address uint16)
+
 // WriteEvent records a PPU register write before the register changes.
 // Frame, Scanline, and Dot report the current PPU state when the callback runs.
 // The system clocks the PPU before each CPU bus access.
@@ -25,7 +28,7 @@ func (p *PPU) ObserveWrites(observer func(WriteEvent)) {
 // The callback receives the PPU address before the write and address increment.
 // It runs on the emulation goroutine and must not change system state.
 // This observer is independent of ObserveWrites. A nil observer disables it.
-func (p *PPU) ObserveVRAMWrites(observer func(uint16)) {
+func (p *PPU) ObserveVRAMWrites(observer VRAMWriteObserver) {
 	p.vramWriteObserver = observer
 }
 

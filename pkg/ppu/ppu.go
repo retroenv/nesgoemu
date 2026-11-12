@@ -57,7 +57,8 @@ type PPU struct {
 	registerObserver bus.PPURegisterObserver // optional mapper hook for register writes
 	ticker           bus.PPUTicker           // optional mapper hook for each PPU cycle
 
-	vramWriteObserver func(uint16)
+	chrReadObserver   func(CHRRead)
+	vramWriteObserver VRAMWriteObserver
 	writeObserver     func(WriteEvent)
 
 	probe *frameProbe // optional frame capture
@@ -175,6 +176,7 @@ func (p *PPU) reset() {
 func (p *PPU) readData() byte {
 	address := p.addressing.Address()
 	address &= addressMask
+	p.observeCHRRead(address, false)
 
 	// when reading data, the contents of an internal read buffer is returned and the buffer
 	// gets updated with the newly read data

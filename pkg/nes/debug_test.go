@@ -6,6 +6,7 @@ import (
 
 	"github.com/retroenv/nesgoemu/pkg/controller"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
+	"github.com/retroenv/retrogolib/arch/system/nes/codedatalog"
 	"github.com/retroenv/retrogolib/assert"
 )
 
@@ -191,6 +192,78 @@ func TestStepTracedFillsRing(t *testing.T) {
 	assert.Len(t, lines, 1)
 	assert.Contains(t, lines[0], "LDA #$2A")
 	assert.Contains(t, lines[0], "A9 2A")
+}
+
+func TestCDLRecorderMarksCode(t *testing.T) {
+	cart := cartridge.New()
+	copy(cart.PRG, []byte{0xa9, 0x2a, 0xea, 0x4c, 0x00, 0x80})
+	sys, err := NewSystem(NewOptions(WithCartridge(cart)))
+	assert.NoError(t, err)
+	sys.PC = 0x8000
+
+	recorder := sys.NewCDLRecorder()
+	recorder.Start()
+	_, err = sys.StepSystem()
+	recorder.Stop()
+	assert.NoError(t, err)
+
+	prg := recorder.PRG()
+	assert.True(t, prg[0]&codedatalog.Code != 0)
+	assert.True(t, prg[1]&codedatalog.Code != 0)
+
+	coverage := recorder.Coverage()
+	assert.NotEmpty(t, coverage)
+	assert.Equal(t, 2, coverage[0].Code)
+}
+
+func TestCDLRecorderIgnoresWritesAndMarksMirroredPPUDataReads(t *testing.T) {
+	cart := cartridge.New()
+	program := []byte{
+		0xa9, 0x00, // LDA #$00
+		0x8d, 0x06, 0x20, // STA $2006
+		0xa9, 0x10, // LDA #$10
+		0x8d, 0x06, 0x20, // STA $2006
+		0xad, 0x0f, 0x20, // LDA $200F, a mirror of $2007
+		0x8d, 0x00, 0x90, // STA $9000, a write into the PRG range
+		0xea, // NOP
+	}
+	copy(cart.PRG, program)
+	sys, err := NewSystem(NewOptions(WithCartridge(cart)))
+	assert.NoError(t, err)
+	sys.PC = 0x8000
+
+	recorder := sys.NewCDLRecorder()
+	recorder.Start()
+	for range 7 {
+		_, err = sys.StepSystem()
+		assert.NoError(t, err)
+	}
+	recorder.Stop()
+
+	assert.Equal(t, codedatalog.PrgFlag(0), recorder.PRG()[0x1000])
+	assert.True(t, len(recorder.CHR()) > 0x10)
+	assert.Equal(t, codedatalog.ReadProgrammatically, recorder.CHR()[0x10])
+}
+
+func TestCDLRecorderSeparatesIndexedDataFromFetchedCode(t *testing.T) {
+	cart := cartridge.New()
+	// LDA $9000,X is an indexed read; the next NOP is fetched as code.
+	copy(cart.PRG, []byte{0xbd, 0x00, 0x90, 0xea})
+	sys, err := NewSystem(NewOptions(WithCartridge(cart)))
+	assert.NoError(t, err)
+	sys.PC = 0x8000
+
+	recorder := sys.NewCDLRecorder()
+	recorder.Start()
+	for range 2 {
+		_, err = sys.StepSystem()
+		assert.NoError(t, err)
+	}
+	recorder.Stop()
+
+	prg := recorder.PRG()
+	assert.Equal(t, codedatalog.Code, prg[3])
+	assert.Equal(t, codedatalog.Data, prg[0x1000])
 }
 
 func TestTraceRingLinesSinceSurvivesWrap(t *testing.T) {
@@ -379,4 +452,26 @@ func TestDisassembleClampsCount(t *testing.T) {
 	assert.Empty(t, sys.Disassemble(0x10, -1))
 	assert.Empty(t, sys.Disassemble(0x10, 0))
 	assert.True(t, len(sys.Disassemble(0x8000, 1<<30)) <= maxDisassembleCount)
+}
+
+func TestCDLRecorderMarksJSRTargetAcrossPageBoundary(t *testing.T) {
+	cart := cartridge.New()
+	copy(cart.PRG[0xfe:], []byte{0x20, 0x00, 0x82})
+	cart.PRG[0x200] = 0xea
+	sys, err := NewSystem(NewOptions(WithCartridge(cart)))
+	assert.NoError(t, err)
+	sys.PC = 0x80fe
+
+	recorder := sys.NewCDLRecorder()
+	recorder.Start()
+	for range 2 {
+		_, err = sys.StepSystem()
+		assert.NoError(t, err)
+	}
+	recorder.Stop()
+
+	prg := recorder.PRG()
+	assert.True(t, prg[0x200]&codedatalog.SubEntryPoint != 0)
+	assert.True(t, prg[0x200]&codedatalog.Code != 0)
+	assert.True(t, prg[0x00]&codedatalog.SubEntryPoint == 0)
 }
