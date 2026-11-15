@@ -1,6 +1,7 @@
 package nes
 
 import (
+	"bytes"
 	"io"
 	"os"
 
@@ -12,8 +13,9 @@ import (
 
 // Options contains options for the nesgoemu system.
 type Options struct {
-	cartridge *cartridge.Cartridge
-	savePath  string
+	cartridge   *cartridge.Cartridge
+	batteryData []byte
+	savePath    string
 
 	entrypoint int
 	stopAt     int
@@ -156,6 +158,12 @@ func WithDisabledAudio() func(*Options) {
 // WithSavePath selects the cartridge save file. An empty path disables file saves.
 func WithSavePath(path string) Option {
 	return func(opts *Options) { opts.savePath = path }
+}
+
+// WithBatteryData loads initial cartridge save data from memory.
+// A non-nil value takes precedence over the save file.
+func WithBatteryData(data []byte) Option {
+	return func(opts *Options) { opts.batteryData = bytes.Clone(data) }
 }
 
 // WithSummaryTarget sets the target for the run summary. A nil target disables the summary.

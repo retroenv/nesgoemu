@@ -1,6 +1,7 @@
 package nes
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -28,7 +29,16 @@ func (sys *System) SaveBattery() error {
 func (sys *System) loadBattery() error {
 	mapper, ok := sys.Bus.Mapper.(bus.BatteryMapper)
 	backer, reportsBacking := sys.Bus.Mapper.(bus.BatteryBacker)
-	if !ok || (reportsBacking && !backer.BatteryBacked()) || sys.opts.savePath == "" {
+	if !ok || (reportsBacking && !backer.BatteryBacked()) {
+		return nil
+	}
+	if sys.opts.batteryData != nil {
+		if err := mapper.LoadBattery(bytes.NewReader(sys.opts.batteryData)); err != nil {
+			return fmt.Errorf("loading initial battery data: %w", err)
+		}
+		return nil
+	}
+	if sys.opts.savePath == "" {
 		return nil
 	}
 	if err := sys.storage.Load(sys.opts.savePath, mapper.LoadBattery); err != nil {

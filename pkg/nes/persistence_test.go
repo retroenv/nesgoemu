@@ -38,6 +38,33 @@ func TestBatteryRoundTrip(t *testing.T) {
 	assert.Equal(t, byte(0xAB), mapper.value)
 }
 
+func TestInitialBatteryDataPrecedesFileAndDoesNotChangeSaves(t *testing.T) {
+	mapper := &testBatteryMapper{}
+	files := &memoryBatteryFiles{data: map[string][]byte{"test.sav": {0x22}}}
+	seed := []byte{0x11}
+	opts := NewOptions(WithSavePath("test.sav"), WithBatteryData(seed))
+	seed[0] = 0x33
+	sys := &System{
+		Bus:     &bus.Bus{Mapper: mapper},
+		opts:    opts,
+		storage: diskBatteryStorage{files: files},
+	}
+	assert.NoError(t, sys.loadBattery())
+	assert.Equal(t, byte(0x11), mapper.value)
+	assert.Equal(t, 0, files.calls)
+	mapper.value = 0x44
+	assert.NoError(t, sys.SaveBattery())
+	assert.Equal(t, []byte{0x44}, files.data["test.sav"])
+}
+
+func TestInvalidInitialBatteryDataReturnsError(t *testing.T) {
+	sys := &System{
+		Bus:  &bus.Bus{Mapper: &testBatteryMapper{}},
+		opts: NewOptions(WithBatteryData([]byte{})),
+	}
+	assert.Error(t, sys.loadBattery())
+}
+
 func TestBatterySaveKeepsOldDataOnError(t *testing.T) {
 	const path = "test.sav"
 	files := &memoryBatteryFiles{data: map[string][]byte{path: {0xAB}}}
