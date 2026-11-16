@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/retroenv/nesgoemu/internal/mcpserver"
 	"github.com/retroenv/nesgoemu/pkg/nes"
 	"github.com/retroenv/nesgoemu/pkg/ppu"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
@@ -50,6 +51,15 @@ var (
 )
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "mcp" {
+		if err := mcpserver.Main(os.Args[2:], buildinfo.Version(version, commit, date)); err != nil {
+			fmt.Fprintf(os.Stderr, "mcp server failed: %v\n", err)
+			os.Exit(1)
+		}
+
+		return
+	}
+
 	options, input := readArguments()
 
 	if err := emulateFile(options, input); err != nil {
