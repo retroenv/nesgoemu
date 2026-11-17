@@ -111,7 +111,9 @@ func TestObserveFramesRecordsRealRun(t *testing.T) {
 func TestObserveFramesPictureMatchesEmulatorImage(t *testing.T) {
 	sys := newToggleSystem(t)
 	var record FrameRecord
-	sys.ObserveFrames(func(r *FrameRecord) { record = r.Clone() })
+	sys.ObserveFrames(func(r *FrameRecord) {
+		record = r.Clone()
+	})
 	stepFrames(t, sys, 4)
 
 	img := record.RGBA()
@@ -154,7 +156,9 @@ func TestObserveFramesDoNotChangeEmulation(t *testing.T) {
 		sys := newToggleSystem(t)
 		var frames int
 		if observe {
-			sys.ObserveFrames(func(*FrameRecord) { frames++ })
+			sys.ObserveFrames(func(*FrameRecord) {
+				frames++
+			})
 		}
 
 		stepFrames(t, sys, 8)
@@ -204,7 +208,9 @@ func TestObserveFramesRunKeepsResults(t *testing.T) {
 func TestObserveFramesDisable(t *testing.T) {
 	sys := newToggleSystem(t)
 	calls := 0
-	sys.ObserveFrames(func(*FrameRecord) { calls++ })
+	sys.ObserveFrames(func(*FrameRecord) {
+		calls++
+	})
 	stepFrames(t, sys, 3)
 	seen := calls
 	assert.True(t, seen > 0)
@@ -218,7 +224,9 @@ func TestObserveFramesNativeCountsCallerAccesses(t *testing.T) {
 	n, err := NewNative(NativeOptions{CHR: make([]byte, 8192)})
 	assert.NoError(t, err)
 	var records []FrameRecord
-	assert.True(t, n.ObserveFrames(func(r *FrameRecord) { records = append(records, r.Clone()) }))
+	assert.True(t, n.ObserveFrames(func(r *FrameRecord) {
+		records = append(records, r.Clone())
+	}))
 
 	n.Write(0x2001, 0x1e)
 	n.Write(0x2007, 0)

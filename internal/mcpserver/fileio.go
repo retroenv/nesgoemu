@@ -62,7 +62,9 @@ func readRegularFile(ctx context.Context, path string, limit int64) ([]byte, err
 		return nil, fmt.Errorf(openingFileFormat, err)
 	}
 	defer func() { _ = file.Close() }()
-	stop := context.AfterFunc(ctx, func() { _ = file.Close() })
+	stop := context.AfterFunc(ctx, func() {
+		_ = file.Close()
+	})
 	defer stop()
 
 	data, err := io.ReadAll(io.LimitReader(file, limit+1))

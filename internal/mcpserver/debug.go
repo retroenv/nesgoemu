@@ -612,7 +612,9 @@ func ramDiff(before, after map[uint16]byte) []memorySearchEntry {
 		})
 	}
 
-	sort.Slice(changed, func(i, j int) bool { return changed[i].Address < changed[j].Address })
+	sort.Slice(changed, func(i, j int) bool {
+		return changed[i].Address < changed[j].Address
+	})
 
 	return changed
 }

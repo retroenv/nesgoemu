@@ -36,7 +36,9 @@ func BenchmarkStepSystem(b *testing.B) {
 func BenchmarkStepSystemWithBusObserver(b *testing.B) {
 	sys := benchmarkSystem(b)
 	var cycles int
-	remove := sys.AddBusCycleObserver(func(cycle cpu6502.BusCycle) { cycles++ })
+	remove := sys.AddBusCycleObserver(func(cycle cpu6502.BusCycle) {
+		cycles++
+	})
 	defer remove()
 
 	for b.Loop() {

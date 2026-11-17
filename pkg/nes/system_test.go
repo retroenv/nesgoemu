@@ -145,8 +145,12 @@ func TestCPUInstructionWriteReportsCurrentPPUPosition(t *testing.T) {
 
 	var cpuWrites []memory.WriteEvent
 	var ppuWrites []ppu.WriteEvent
-	sys.ObserveCPUWrites(func(write memory.WriteEvent) { cpuWrites = append(cpuWrites, write) })
-	sys.Bus.PPU.(*ppu.PPU).ObserveWrites(func(write ppu.WriteEvent) { ppuWrites = append(ppuWrites, write) })
+	sys.ObserveCPUWrites(func(write memory.WriteEvent) {
+		cpuWrites = append(cpuWrites, write)
+	})
+	sys.Bus.PPU.(*ppu.PPU).ObserveWrites(func(write ppu.WriteEvent) {
+		ppuWrites = append(ppuWrites, write)
+	})
 	sys.Bus.PPU.Write(register.PPU_CTRL, 0)
 
 	_, err = sys.StepSystem()

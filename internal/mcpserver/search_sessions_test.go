@@ -114,34 +114,63 @@ func TestMemorySearchRejectsInvalidHandlesAndFieldsBeforeRun(t *testing.T) {
 		machineIDKey: created.MachineID,
 	})
 	before := machine.cpuState()
-	for _, arguments := range []map[string]any{
-		{actionKey: searchFilter, fieldOp: searchChanged, framesKey: 1},
-		{actionKey: searchFilter, fieldOp: searchChanged, framesKey: 1, searchIDKey: "missing"},
-		{actionKey: searchFilter, fieldOp: searchValue, searchIDKey: started.SearchID},
-		{actionKey: searchFilter, fieldOp: searchValue, fieldValue: 256, framesKey: 1, searchIDKey: started.SearchID},
-		{actionKey: searchFilter, fieldOp: searchChanged, fieldValue: 1, searchIDKey: started.SearchID},
+	for _, arguments := range invalidMemorySearchRequests(started.SearchID) {
+		arguments[machineIDKey] = created.MachineID
+		callError(t, client, memorySearchToolName, arguments)
+		assert.Equal(t, before, machine.cpuState())
+	}
+}
+
+// invalidMemorySearchRequests returns memory search calls that must fail and keep the machine state.
+func invalidMemorySearchRequests(searchID string) []map[string]any {
+	return []map[string]any{
+		{
+			actionKey: searchFilter,
+			fieldOp:   searchChanged,
+			framesKey: 1,
+		},
+		{
+			actionKey:   searchFilter,
+			fieldOp:     searchChanged,
+			framesKey:   1,
+			searchIDKey: "missing",
+		},
+		{
+			actionKey:   searchFilter,
+			fieldOp:     searchValue,
+			searchIDKey: searchID,
+		},
+		{
+			actionKey:   searchFilter,
+			fieldOp:     searchValue,
+			fieldValue:  256,
+			framesKey:   1,
+			searchIDKey: searchID,
+		},
+		{
+			actionKey:   searchFilter,
+			fieldOp:     searchChanged,
+			fieldValue:  1,
+			searchIDKey: searchID,
+		},
 		{
 			actionKey:   searchList,
 			framesKey:   1,
-			searchIDKey: started.SearchID,
+			searchIDKey: searchID,
 		},
 		{
 			actionKey:   searchStart,
-			searchIDKey: started.SearchID,
+			searchIDKey: searchID,
 		},
 		{
 			actionKey:   searchRelease,
 			framesKey:   1,
-			searchIDKey: started.SearchID,
+			searchIDKey: searchID,
 		},
 		{
 			actionKey:   searchList,
 			searchIDKey: nil,
 		},
-	} {
-		arguments[machineIDKey] = created.MachineID
-		callError(t, client, memorySearchToolName, arguments)
-		assert.Equal(t, before, machine.cpuState())
 	}
 }
 
@@ -191,7 +220,10 @@ func TestMemorySearchHandlesStayWithMachineAndTimeline(t *testing.T) {
 
 func TestInactiveSearchKeepsMachineState(t *testing.T) {
 	server, client, rom := counterServer(t)
-	created := callTool[createMachineResult](t, client, createMachineToolName, map[string]any{romKey: rom, entrypointKey: 0x8000})
+	created := callTool[createMachineResult](t, client, createMachineToolName, map[string]any{
+		romKey:        rom,
+		entrypointKey: 0x8000,
+	})
 	machine, err := server.registry.get(created.MachineID)
 	assert.NoError(t, err)
 	before := machine.cpuState()

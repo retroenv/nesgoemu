@@ -61,7 +61,9 @@ func TestCHRROMStaysReadOnlyWithRAMBuffer(t *testing.T) {
 	base.SetChrRAM(make([]byte, safetyTestCHRRAMSize))
 	assert.NoError(t, base.Initialize())
 	var event bus.GraphicsEvent
-	base.ObserveGraphics(func(value bus.GraphicsEvent) { event = value })
+	base.ObserveGraphics(func(value bus.GraphicsEvent) {
+		event = value
+	})
 	base.SetChrWindow(0, 1)
 
 	// The selected bank uses ROM even when a separate RAM buffer exists.

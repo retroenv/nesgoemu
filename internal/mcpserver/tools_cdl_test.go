@@ -12,19 +12,33 @@ import (
 
 func TestCDLReadMatchesExport(t *testing.T) {
 	_, client, rom := counterServer(t)
-	created := callTool[createMachineResult](t, client, createMachineToolName, map[string]any{romKey: rom, entrypointKey: 0x8000})
+	created := callTool[createMachineResult](t, client, createMachineToolName, map[string]any{
+		romKey:        rom,
+		entrypointKey: 0x8000,
+	})
 	id := created.MachineID
-	callTool[cdlState](t, client, cdlSetEnabledToolName, map[string]any{machineIDKey: id, enabledKey: true})
+	callTool[cdlState](t, client, cdlSetEnabledToolName, map[string]any{
+		machineIDKey: id,
+		enabledKey:   true,
+	})
 	callTool[stepResultOut](t, client, stepToolName, map[string]any{
-		modeKey: modeInstructions, machineIDKey: id, instructionsKey: 2})
+		modeKey:         modeInstructions,
+		machineIDKey:    id,
+		instructionsKey: 2,
+	})
 	before := snapshotMachine(t, client, id)
 	path := filepath.Join(filepath.Dir(rom), "flags.cdl")
-	callTool[cdlExportResult](t, client, cdlExportToolName, map[string]any{machineIDKey: id, pathKey: path})
+	callTool[cdlExportResult](t, client, cdlExportToolName, map[string]any{
+		machineIDKey: id,
+		pathKey:      path,
+	})
 	exported, err := os.ReadFile(path)
 	assert.NoError(t, err)
 	for _, space := range []string{spacePRG, spaceCHR} {
 		result := callTool[cdlReadResult](t, client, cdlReadToolName, map[string]any{
-			machineIDKey: id, spaceKey: space, lengthKey: 16,
+			machineIDKey: id,
+			spaceKey:     space,
+			lengthKey:    16,
 		})
 		assert.Len(t, result.Entries, 16)
 		base := 0
@@ -46,17 +60,27 @@ func TestCDLReadMatchesExport(t *testing.T) {
 
 func TestCDLReadBounds(t *testing.T) {
 	_, client, rom := counterServer(t)
-	created := callTool[createMachineResult](t, client, createMachineToolName, map[string]any{romKey: rom, entrypointKey: 0x8000})
+	created := callTool[createMachineResult](t, client, createMachineToolName, map[string]any{
+		romKey:        rom,
+		entrypointKey: 0x8000,
+	})
 	for _, bounds := range [][2]int{{-1, 1}, {0, 0}, {0, -1}, {0, 4097}, {created.ROM.PRGSize, 1}} {
 		assert.NotEmpty(t, callError(t, client, cdlReadToolName, map[string]any{
-			machineIDKey: created.MachineID, spaceKey: spacePRG, offsetKey: bounds[0], lengthKey: bounds[1],
+			machineIDKey: created.MachineID,
+			spaceKey:     spacePRG,
+			offsetKey:    bounds[0],
+			lengthKey:    bounds[1],
 		}))
 	}
 	assert.Contains(t, callError(t, client, cdlReadToolName, map[string]any{
-		machineIDKey: created.MachineID, spaceKey: spaceRAM,
+		machineIDKey: created.MachineID,
+		spaceKey:     spaceRAM,
 	}), "use prg or chr")
 	result := callTool[cdlReadResult](t, client, cdlReadToolName, map[string]any{
-		machineIDKey: created.MachineID, spaceKey: spacePRG, offsetKey: created.ROM.PRGSize - 1, lengthKey: 1,
+		machineIDKey: created.MachineID,
+		spaceKey:     spacePRG,
+		offsetKey:    created.ROM.PRGSize - 1,
+		lengthKey:    1,
 	})
 	assert.Equal(t, created.ROM.PRGSize-1, result.Entries[0].Offset)
 	assert.Equal(t, byte(0), result.Entries[0].Raw)

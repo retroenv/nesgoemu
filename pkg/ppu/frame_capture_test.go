@@ -29,7 +29,9 @@ func stepToCapture(p *PPU, captures *[]FrameCapture) {
 
 func collectFrames(p *PPU) *[]FrameCapture {
 	var captures []FrameCapture
-	p.ObserveFrames(func(c *FrameCapture) { captures = append(captures, c.Clone()) })
+	p.ObserveFrames(func(c *FrameCapture) {
+		captures = append(captures, c.Clone())
+	})
 	return &captures
 }
 
@@ -194,7 +196,9 @@ func TestObserveFramesCloneAndDisable(t *testing.T) {
 	assert.NotNil(t, cloned.RGBA())
 
 	calls := 0
-	p.ObserveFrames(func(*FrameCapture) { calls++ })
+	p.ObserveFrames(func(*FrameCapture) {
+		calls++
+	})
 	p.ObserveFrames(nil)
 	p.Step(2 * dotsPerFrame)
 	assert.Equal(t, 0, calls)

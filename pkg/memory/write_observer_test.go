@@ -24,7 +24,9 @@ func TestWriteObserver(t *testing.T) {
 		Value:   0x5a,
 	}, event)
 	replaced := 0
-	memory.ObserveWrites(func(WriteEvent) { replaced++ })
+	memory.ObserveWrites(func(WriteEvent) {
+		replaced++
+	})
 	memory.Write(0x123, 0x33)
 	assert.Equal(t, 1, called)
 	assert.Equal(t, 1, replaced)

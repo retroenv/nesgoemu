@@ -44,7 +44,9 @@ func TestGraphicsIdentifiesCHRMemorySource(t *testing.T) {
 	base.SetChrRAM(make([]byte, 0x4000))
 	assert.NoError(t, base.Initialize())
 	var event bus.GraphicsEvent
-	base.ObserveGraphics(func(value bus.GraphicsEvent) { event = value })
+	base.ObserveGraphics(func(value bus.GraphicsEvent) {
+		event = value
+	})
 	base.SetChrWindow(0, 1)
 	assert.Equal(t, bus.GraphicsPage{
 		Memory: bus.GraphicsCHRRAM,

@@ -58,7 +58,9 @@ func TestNewDisplayPalette(t *testing.T) {
 	}
 
 	for _, size := range []int{0, 192, paletteBytes - 1, paletteBytes + 1} {
-		assert.Panics(t, func() { newDisplayPalette(string(make([]byte, size))) })
+		assert.Panics(t, func() {
+			newDisplayPalette(string(make([]byte, size)))
+		})
 	}
 }
 

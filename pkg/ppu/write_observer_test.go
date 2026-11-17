@@ -25,7 +25,9 @@ func TestObserveWritesReportsPPUAddressBeforeIncrement(t *testing.T) {
 	p.Step(3)
 
 	var events []WriteEvent
-	p.ObserveWrites(func(event WriteEvent) { events = append(events, event) })
+	p.ObserveWrites(func(event WriteEvent) {
+		events = append(events, event)
+	})
 	p.Write(register.PPU_ADDR, 0x20)
 	p.Write(register.PPU_ADDR, 0x10)
 	p.Write(register.PPU_DATA, 0x2a)
@@ -40,7 +42,9 @@ func TestObserveWritesReportsPPUAddressBeforeIncrement(t *testing.T) {
 	assert.Equal(t, uint16(0x2011), p.addressing.Address())
 
 	replaced := 0
-	p.ObserveWrites(func(WriteEvent) { replaced++ })
+	p.ObserveWrites(func(WriteEvent) {
+		replaced++
+	})
 	p.Write(register.PPU_DATA, 0x2b)
 	assert.Len(t, events, 3)
 	assert.Equal(t, 1, replaced)
@@ -52,9 +56,13 @@ func TestObserveWritesReportsPPUAddressBeforeIncrement(t *testing.T) {
 func TestObserveVRAMWritesIsIndependent(t *testing.T) {
 	p := newOpenBusTestPPU()
 	var addresses []uint16
-	p.ObserveVRAMWrites(func(address uint16) { addresses = append(addresses, address) })
+	p.ObserveVRAMWrites(func(address uint16) {
+		addresses = append(addresses, address)
+	})
 	var events int
-	p.ObserveWrites(func(WriteEvent) { events++ })
+	p.ObserveWrites(func(WriteEvent) {
+		events++
+	})
 	p.Write(register.PPU_CTRL, 4)
 	p.Write(register.PPU_ADDR, 0x20)
 	p.Write(register.PPU_ADDR, 0x10)

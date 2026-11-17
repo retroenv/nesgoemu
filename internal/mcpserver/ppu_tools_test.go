@@ -23,7 +23,9 @@ func TestNametableRenderMatchesScreenshotOnCHRROM(t *testing.T) {
 	assert.NoError(t, err)
 
 	result, err := client.CallTool(t.Context(), nametablesToolName, map[string]any{
-		machineIDKey: id, "render": true, "table": 0,
+		machineIDKey: id,
+		"render":     true,
+		"table":      0,
 	})
 	assert.NoError(t, err)
 	assert.False(t, result.IsError)
@@ -42,7 +44,10 @@ func TestReadMemoryPPUShowsMappedCHRROM(t *testing.T) {
 	client, id := pictureMachine(t, "")
 
 	pattern := callTool[readMemoryResult](t, client, readMemoryToolName, map[string]any{
-		machineIDKey: id, spaceKey: spacePPU, addressKey: 0x10, lengthKey: 4,
+		machineIDKey: id,
+		spaceKey:     spacePPU,
+		addressKey:   0x10,
+		lengthKey:    4,
 	})
 	assert.Equal(t, 4, pattern.Available)
 	assert.Equal(t, []int{0xFF, 0xFF, 0xFF, 0xFF}, pattern.Bytes)
@@ -77,9 +82,14 @@ func TestPaletteToolUsesTheMachineDisplayPalette(t *testing.T) {
 	rom := filepath.Join(dir, "picture.nes")
 	writePictureROM(t, rom)
 	created := callTool[createMachineResult](t, client, createMachineToolName, map[string]any{
-		romKey: rom, entrypointKey: 0x8000, paletteKey: path,
+		romKey:        rom,
+		entrypointKey: 0x8000,
+		paletteKey:    path,
 	})
-	callTool[runFramesOut](t, client, runFramesToolName, map[string]any{machineIDKey: created.MachineID, framesKey: 3})
+	callTool[runFramesOut](t, client, runFramesToolName, map[string]any{
+		machineIDKey: created.MachineID,
+		framesKey:    3,
+	})
 
 	palette := inspectSection[paletteResult](t, client, sectionPalette, created.MachineID)
 	for _, entry := range palette.Entries[:4] {
@@ -122,13 +132,19 @@ func TestCreateRejectsInvalidPalette(t *testing.T) {
 	path := filepath.Join(filepath.Dir(rom), "invalid.pal")
 	for _, size := range []int{0, 1, 1537} {
 		assert.NoError(t, os.WriteFile(path, make([]byte, size), 0o600))
-		result, err := client.CallTool(t.Context(), createMachineToolName, map[string]any{romKey: rom, paletteKey: path})
+		result, err := client.CallTool(t.Context(), createMachineToolName, map[string]any{
+			romKey:     rom,
+			paletteKey: path,
+		})
 		assert.NoError(t, err)
 		assert.True(t, result.IsError)
 	}
 	outside := filepath.Join(t.TempDir(), "outside.pal")
 	assert.NoError(t, os.WriteFile(outside, make([]byte, 192), 0o600))
-	result, err := client.CallTool(t.Context(), createMachineToolName, map[string]any{romKey: rom, paletteKey: outside})
+	result, err := client.CallTool(t.Context(), createMachineToolName, map[string]any{
+		romKey:     rom,
+		paletteKey: outside,
+	})
 	assert.NoError(t, err)
 	assert.True(t, result.IsError)
 }
@@ -190,11 +206,17 @@ func pictureMachine(t *testing.T, palettePath string) (*mcptest.Client, string) 
 	client := mcptest.New(t.Context(), server.mcp)
 	t.Cleanup(client.Close)
 
-	args := map[string]any{romKey: romPath, entrypointKey: 0x8000}
+	args := map[string]any{
+		romKey:        romPath,
+		entrypointKey: 0x8000,
+	}
 	if palettePath != "" {
 		args[paletteKey] = palettePath
 	}
 	created := callTool[createMachineResult](t, client, createMachineToolName, args)
-	callTool[runFramesOut](t, client, runFramesToolName, map[string]any{machineIDKey: created.MachineID, framesKey: 3})
+	callTool[runFramesOut](t, client, runFramesToolName, map[string]any{
+		machineIDKey: created.MachineID,
+		framesKey:    3,
+	})
 	return client, created.MachineID
 }

@@ -75,13 +75,16 @@ func TestDisassembleTool(t *testing.T) {
 
 	var created createMachineResult
 	err := client.CallToolInto(t.Context(), createMachineToolName, map[string]any{
-		romKey: romPath, entrypointKey: 0x8000,
+		romKey:        romPath,
+		entrypointKey: 0x8000,
 	}, &created)
 	assert.NoError(t, err)
 
 	var decoded disassembleResult
 	err = client.CallToolInto(t.Context(), disassembleToolName, map[string]any{
-		machineIDKey: created.MachineID, addressKey: 0x8000, "count": 2,
+		machineIDKey: created.MachineID,
+		addressKey:   0x8000,
+		"count":      2,
 	}, &decoded)
 	assert.NoError(t, err)
 	assert.Len(t, decoded.Instructions, 2)
@@ -94,13 +97,17 @@ func TestBreakpointAndRunUntil(t *testing.T) {
 
 	var created createMachineResult
 	err := client.CallToolInto(t.Context(), createMachineToolName, map[string]any{
-		romKey: romPath, entrypointKey: 0x8000,
+		romKey:        romPath,
+		entrypointKey: 0x8000,
 	}, &created)
 	assert.NoError(t, err)
 
 	var breakpoint addBreakpointResult
 	err = client.CallToolInto(t.Context(), addBreakpointToolName, map[string]any{
-		machineIDKey: created.MachineID, kindKey: execKind, addressKey: 0x8000, "once": true,
+		machineIDKey: created.MachineID,
+		kindKey:      execKind,
+		addressKey:   0x8000,
+		"once":       true,
 	}, &breakpoint)
 	assert.NoError(t, err)
 
@@ -124,7 +131,8 @@ func TestCheckpointRestoreDeterministic(t *testing.T) {
 
 	var created createMachineResult
 	err := client.CallToolInto(t.Context(), createMachineToolName, map[string]any{
-		romKey: romPath, entrypointKey: 0x8000,
+		romKey:        romPath,
+		entrypointKey: 0x8000,
 	}, &created)
 	assert.NoError(t, err)
 	id := created.MachineID
@@ -141,7 +149,8 @@ func TestCheckpointRestoreDeterministic(t *testing.T) {
 	// Restore to the checkpoint and run three frames again.
 	var restored restoreResult
 	err = client.CallToolInto(t.Context(), restoreToolName, map[string]any{
-		machineIDKey: id, checkpointIDKey: checkpoint.CheckpointID,
+		machineIDKey:    id,
+		checkpointIDKey: checkpoint.CheckpointID,
 	}, &restored)
 	assert.NoError(t, err)
 
@@ -154,7 +163,8 @@ func TestForkMachineMatchesReplay(t *testing.T) {
 
 	var created createMachineResult
 	err := client.CallToolInto(t.Context(), createMachineToolName, map[string]any{
-		romKey: romPath, entrypointKey: 0x8000,
+		romKey:        romPath,
+		entrypointKey: 0x8000,
 	}, &created)
 	assert.NoError(t, err)
 
@@ -164,7 +174,8 @@ func TestForkMachineMatchesReplay(t *testing.T) {
 	frame := uint64(3)
 	var fork createMachineResult
 	err = client.CallToolInto(t.Context(), forkMachineToolName, map[string]any{
-		machineIDKey: created.MachineID, frameKey: frame,
+		machineIDKey: created.MachineID,
+		frameKey:     frame,
 	}, &fork)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, fork.MachineID)
@@ -179,20 +190,26 @@ func TestMemorySearchFindsCounter(t *testing.T) {
 
 	var created createMachineResult
 	err := client.CallToolInto(t.Context(), createMachineToolName, map[string]any{
-		romKey: romPath, entrypointKey: 0x8000,
+		romKey:        romPath,
+		entrypointKey: 0x8000,
 	}, &created)
 	assert.NoError(t, err)
 	id := created.MachineID
 
 	var start memorySearchResult
 	err = client.CallToolInto(t.Context(), memorySearchToolName, map[string]any{
-		machineIDKey: id, actionKey: searchStart,
+		machineIDKey: id,
+		actionKey:    searchStart,
 	}, &start)
 	assert.NoError(t, err)
 
 	var filter memorySearchResult
 	err = client.CallToolInto(t.Context(), memorySearchToolName, map[string]any{
-		machineIDKey: id, actionKey: searchFilter, fieldOp: searchChanged, framesKey: 2, searchIDKey: start.SearchID,
+		machineIDKey: id,
+		actionKey:    searchFilter,
+		fieldOp:      searchChanged,
+		framesKey:    2,
+		searchIDKey:  start.SearchID,
 	}, &filter)
 	assert.NoError(t, err)
 	assert.True(t, filter.Candidates >= 1 && filter.Candidates < start.Candidates)
@@ -203,19 +220,26 @@ func TestCDLCoverageAndExport(t *testing.T) {
 
 	var created createMachineResult
 	err := client.CallToolInto(t.Context(), createMachineToolName, map[string]any{
-		romKey: romPath, entrypointKey: 0x8000,
+		romKey:        romPath,
+		entrypointKey: 0x8000,
 	}, &created)
 	assert.NoError(t, err)
 	id := created.MachineID
 
 	var started cdlState
-	err = client.CallToolInto(t.Context(), cdlSetEnabledToolName, map[string]any{machineIDKey: id, enabledKey: true}, &started)
+	err = client.CallToolInto(t.Context(), cdlSetEnabledToolName, map[string]any{
+		machineIDKey: id,
+		enabledKey:   true,
+	}, &started)
 	assert.NoError(t, err)
 
 	assert.NoError(t, runFramesTool(t, client, id, 1))
 
 	var stopped cdlState
-	err = client.CallToolInto(t.Context(), cdlSetEnabledToolName, map[string]any{machineIDKey: id, enabledKey: false}, &stopped)
+	err = client.CallToolInto(t.Context(), cdlSetEnabledToolName, map[string]any{
+		machineIDKey: id,
+		enabledKey:   false,
+	}, &stopped)
 	assert.NoError(t, err)
 
 	var coverage struct {
@@ -238,7 +262,8 @@ func TestCDLCoverageAndExport(t *testing.T) {
 	cdlPath := filepathJoin(server.roots.first(), "out.cdl")
 	var exported cdlExportResult
 	err = client.CallToolInto(t.Context(), cdlExportToolName, map[string]any{
-		machineIDKey: id, pathKey: cdlPath,
+		machineIDKey: id,
+		pathKey:      cdlPath,
 	}, &exported)
 	assert.NoError(t, err)
 	assert.Equal(t, cdlPath, exported.Path)
@@ -249,7 +274,8 @@ func TestPPUTools(t *testing.T) {
 
 	var created createMachineResult
 	err := client.CallToolInto(t.Context(), createMachineToolName, map[string]any{
-		romKey: romPath, entrypointKey: 0x8000,
+		romKey:        romPath,
+		entrypointKey: 0x8000,
 	}, &created)
 	assert.NoError(t, err)
 	id := created.MachineID
@@ -277,7 +303,8 @@ func TestTraceRingTool(t *testing.T) {
 
 	var created createMachineResult
 	err := client.CallToolInto(t.Context(), createMachineToolName, map[string]any{
-		romKey: romPath, entrypointKey: 0x8000,
+		romKey:        romPath,
+		entrypointKey: 0x8000,
 	}, &created)
 	assert.NoError(t, err)
 	id := created.MachineID
@@ -288,8 +315,9 @@ func TestTraceRingTool(t *testing.T) {
 
 	var stepped stepResultOut
 	err = client.CallToolInto(t.Context(), stepToolName, map[string]any{
-		modeKey:      modeInstructions,
-		machineIDKey: id, instructionsKey: 2,
+		modeKey:         modeInstructions,
+		machineIDKey:    id,
+		instructionsKey: 2,
 	}, &stepped)
 	assert.NoError(t, err)
 
@@ -306,7 +334,8 @@ func runFramesTool(t *testing.T, client *mcptest.Client, machineID string, frame
 
 	var out runFramesOut
 	if err := client.CallToolInto(t.Context(), runFramesToolName, map[string]any{
-		machineIDKey: machineID, framesKey: frames,
+		machineIDKey: machineID,
+		framesKey:    frames,
 	}, &out); err != nil {
 		return fmt.Errorf("running frames: %w", err)
 	}
@@ -319,7 +348,10 @@ func readCounter(t *testing.T, client *mcptest.Client, machineID string) int {
 
 	var memory readMemoryResult
 	err := client.CallToolInto(t.Context(), readMemoryToolName, map[string]any{
-		machineIDKey: machineID, spaceKey: spaceRAM, addressKey: 0x10, lengthKey: 1,
+		machineIDKey: machineID,
+		spaceKey:     spaceRAM,
+		addressKey:   0x10,
+		lengthKey:    1,
 	}, &memory)
 	assert.NoError(t, err)
 	return memory.Bytes[0]
@@ -352,7 +384,8 @@ func TestNestestTraceThroughMCP(t *testing.T) {
 
 	var created createMachineResult
 	err := client.CallToolInto(t.Context(), createMachineToolName, map[string]any{
-		romKey: filepath.Join(dir, "nestest.nes"), entrypointKey: 0xC000,
+		romKey:        filepath.Join(dir, "nestest.nes"),
+		entrypointKey: 0xC000,
 	}, &created)
 	assert.NoError(t, err)
 
@@ -364,20 +397,25 @@ func TestNestestTraceThroughMCP(t *testing.T) {
 
 	var breakpoint addBreakpointResult
 	err = client.CallToolInto(t.Context(), addBreakpointToolName, map[string]any{
-		machineIDKey: created.MachineID, kindKey: execKind, "address": 0x0001,
+		machineIDKey: created.MachineID,
+		kindKey:      execKind,
+		"address":    0x0001,
 	}, &breakpoint)
 	assert.NoError(t, err)
 
 	var run runUntilResult
 	err = client.CallToolInto(t.Context(), runUntilToolName, map[string]any{
-		machineIDKey: created.MachineID, instructionsKey: 100000,
+		machineIDKey:    created.MachineID,
+		instructionsKey: 100000,
 	}, &run)
 	assert.NoError(t, err)
 	assert.Equal(t, string("breakpoint"), run.Reason)
 
 	var trace getTraceResult
 	err = client.CallToolInto(t.Context(), getTraceToolName, map[string]any{
-		machineIDKey: created.MachineID, limitKey: maxPage, offsetKey: 0,
+		machineIDKey: created.MachineID,
+		limitKey:     maxPage,
+		offsetKey:    0,
 	}, &trace)
 	assert.NoError(t, err)
 

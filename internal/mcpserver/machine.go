@@ -381,7 +381,9 @@ func loadSystem(ctx context.Context, logger *log.Logger, romPath, expectedHash s
 		return nil, romSummary{}, fmt.Errorf("opening ROM %q: %w", romPath, err)
 	}
 	defer func() { _ = file.Close() }()
-	stop := context.AfterFunc(ctx, func() { _ = file.Close() })
+	stop := context.AfterFunc(ctx, func() {
+		_ = file.Close()
+	})
 	defer stop()
 
 	hash := sha256.New()

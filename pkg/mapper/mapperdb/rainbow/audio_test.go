@@ -96,7 +96,9 @@ func TestAudioDisableResetsChannelPhase(t *testing.T) {
 func TestAudioRegisterObserverUsesMapperCycles(t *testing.T) {
 	m := newTestMapper(t, 0x8000, 0x2000)
 	var writes []ExpansionAudioWrite
-	m.ObserveExpansionAudioWrites(func(write ExpansionAudioWrite) { writes = append(writes, write) })
+	m.ObserveExpansionAudioWrites(func(write ExpansionAudioWrite) {
+		writes = append(writes, write)
+	})
 	m.ClockCPU(12)
 	m.Write(regAudioSawRate, 0x7F)
 

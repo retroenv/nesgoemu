@@ -24,7 +24,9 @@ func TestStepOverSkipsDeeperReturnToTheSameAddress(t *testing.T) {
 	before := inspectSection[cpuStateResult](t, client, sectionCPU, id)
 
 	run := callTool[stepResultOut](t, client, stepToolName, map[string]any{
-		modeKey: modeOver, machineIDKey: id})
+		modeKey:      modeOver,
+		machineIDKey: id,
+	})
 
 	// The inner calls return to $801B on deeper stack levels first. The step
 	// ends only when the stack pointer is back at its level before the call.
@@ -52,10 +54,14 @@ func TestStepOverStopsAtUserBreakpoint(t *testing.T) {
 	client, id := recursionMachine(t)
 
 	breakpoint := callTool[addBreakpointResult](t, client, addBreakpointToolName, map[string]any{
-		machineIDKey: id, kindKey: execKind, addressKey: recursionFunction,
+		machineIDKey: id,
+		kindKey:      execKind,
+		addressKey:   recursionFunction,
 	})
 	run := callTool[stepResultOut](t, client, stepToolName, map[string]any{
-		modeKey: modeOver, machineIDKey: id})
+		modeKey:      modeOver,
+		machineIDKey: id,
+	})
 
 	assert.Equal(t, "breakpoint", run.Reason)
 	assert.Equal(t, breakpoint.ID, run.BreakpointID)
@@ -75,7 +81,9 @@ func TestStepOutReturnsToTheCaller(t *testing.T) {
 	assert.Equal(t, 0, stack.Frames[0].CallerOffset)
 
 	run := callTool[stepResultOut](t, client, stepToolName, map[string]any{
-		modeKey: modeOut, machineIDKey: id})
+		modeKey:      modeOut,
+		machineIDKey: id,
+	})
 
 	assert.Equal(t, "returned", run.Reason)
 	assert.Equal(t, Address(recursionAfterCall), run.After.PC)
@@ -96,24 +104,28 @@ func TestSoftResetClearsCallStack(t *testing.T) {
 func TestRunUntilTraceTailSurvivesFullRing(t *testing.T) {
 	_, client, romPath := counterServer(t)
 	created := callTool[createMachineResult](t, client, createMachineToolName, map[string]any{
-		romKey: romPath, entrypointKey: 0x8000,
+		romKey:        romPath,
+		entrypointKey: 0x8000,
 	})
 	id := created.MachineID
 
 	started := callTool[traceState](t, client, traceStartToolName, map[string]any{machineIDKey: id})
 	assert.True(t, started.Enabled)
 	callTool[runUntilResult](t, client, runUntilToolName, map[string]any{
-		machineIDKey: id, instructionsKey: started.Capacity + 100,
+		machineIDKey:    id,
+		instructionsKey: started.Capacity + 100,
 	})
 	full := callTool[traceState](t, client, traceStopToolName, map[string]any{machineIDKey: id})
 	assert.Equal(t, full.Capacity, full.Lines)
 
 	callTool[traceState](t, client, traceStartToolName, map[string]any{machineIDKey: id})
 	callTool[runUntilResult](t, client, runUntilToolName, map[string]any{
-		machineIDKey: id, instructionsKey: started.Capacity + 100,
+		machineIDKey:    id,
+		instructionsKey: started.Capacity + 100,
 	})
 	run := callTool[runUntilResult](t, client, runUntilToolName, map[string]any{
-		machineIDKey: id, instructionsKey: 5,
+		machineIDKey:    id,
+		instructionsKey: 5,
 	})
 
 	assert.Len(t, run.Trace, 5)
@@ -122,11 +134,13 @@ func TestRunUntilTraceTailSurvivesFullRing(t *testing.T) {
 func TestRunUntilTraceTailIsEmptyWhileTracingIsOff(t *testing.T) {
 	_, client, romPath := counterServer(t)
 	created := callTool[createMachineResult](t, client, createMachineToolName, map[string]any{
-		romKey: romPath, entrypointKey: 0x8000,
+		romKey:        romPath,
+		entrypointKey: 0x8000,
 	})
 
 	run := callTool[runUntilResult](t, client, runUntilToolName, map[string]any{
-		machineIDKey: created.MachineID, instructionsKey: 5,
+		machineIDKey:    created.MachineID,
+		instructionsKey: 5,
 	})
 
 	assert.Empty(t, run.Trace)
@@ -135,12 +149,15 @@ func TestRunUntilTraceTailIsEmptyWhileTracingIsOff(t *testing.T) {
 func TestRunUntilReportsInstructionOfMemoryBreakpoint(t *testing.T) {
 	_, client, romPath := counterServer(t)
 	created := callTool[createMachineResult](t, client, createMachineToolName, map[string]any{
-		romKey: romPath, entrypointKey: 0x8000,
+		romKey:        romPath,
+		entrypointKey: 0x8000,
 	})
 	id := created.MachineID
 
 	callTool[addBreakpointResult](t, client, addBreakpointToolName, map[string]any{
-		machineIDKey: id, kindKey: "write", addressKey: 0x10,
+		machineIDKey: id,
+		kindKey:      "write",
+		addressKey:   0x10,
 	})
 	run := callTool[runUntilResult](t, client, runUntilToolName, map[string]any{machineIDKey: id})
 
@@ -157,14 +174,24 @@ func TestRunUntilReportsInstructionOfMemoryBreakpoint(t *testing.T) {
 func TestHardResetReattachesRecorders(t *testing.T) {
 	_, client, romPath := counterServer(t)
 	created := callTool[createMachineResult](t, client, createMachineToolName, map[string]any{
-		romKey: romPath, entrypointKey: 0x8000,
+		romKey:        romPath,
+		entrypointKey: 0x8000,
 	})
 	id := created.MachineID
 
-	callTool[resetResult](t, client, resetToolName, map[string]any{machineIDKey: id, hardKey: true})
-	callTool[cdlState](t, client, cdlSetEnabledToolName, map[string]any{machineIDKey: id, enabledKey: true})
+	callTool[resetResult](t, client, resetToolName, map[string]any{
+		machineIDKey: id,
+		hardKey:      true,
+	})
+	callTool[cdlState](t, client, cdlSetEnabledToolName, map[string]any{
+		machineIDKey: id,
+		enabledKey:   true,
+	})
 	callTool[stepResultOut](t, client, stepToolName, map[string]any{
-		modeKey: modeInstructions, machineIDKey: id, instructionsKey: 4})
+		modeKey:         modeInstructions,
+		machineIDKey:    id,
+		instructionsKey: 4,
+	})
 
 	coverage := callTool[coverageResult](t, client, coverageToolName, map[string]any{machineIDKey: id})
 	assert.NotEmpty(t, coverage.Segments)
@@ -174,11 +201,14 @@ func TestHardResetReattachesRecorders(t *testing.T) {
 func TestFindAccessorsSeparatesReadsWritesAndValues(t *testing.T) {
 	_, client, romPath := counterServer(t)
 	created := callTool[createMachineResult](t, client, createMachineToolName, map[string]any{
-		romKey: romPath, entrypointKey: 0x8000,
+		romKey:        romPath,
+		entrypointKey: 0x8000,
 	})
 
 	found := callTool[findAccessorsResult](t, client, findAccessorsToolName, map[string]any{
-		machineIDKey: created.MachineID, addressKey: 0x10, framesKey: 1,
+		machineIDKey: created.MachineID,
+		addressKey:   0x10,
+		framesKey:    1,
 	})
 
 	// INC $10 reads the byte, then writes the old and the new value.
@@ -228,20 +258,27 @@ func TestCallStackDropsFrameOfPulledReturnAddress(t *testing.T) {
 	defer client.Close()
 
 	created := callTool[createMachineResult](t, client, createMachineToolName, map[string]any{
-		romKey: romPath, entrypointKey: recursionCaller,
+		romKey:        romPath,
+		entrypointKey: recursionCaller,
 	})
 	id := created.MachineID
 
 	// JSR, JSR, PLA, PLA, and JMP. Only the frame of the first call is left.
 	callTool[stepResultOut](t, client, stepToolName, map[string]any{
-		modeKey: modeInstructions, machineIDKey: id, instructionsKey: 5})
+		modeKey:         modeInstructions,
+		machineIDKey:    id,
+		instructionsKey: 5,
+	})
 	stack := callTool[callStackResult](t, client, callStackToolName, map[string]any{machineIDKey: id})
 	assert.Len(t, stack.Frames, 1)
 	assert.Equal(t, Address(recursionAfterCall), stack.Frames[0].ReturnAddress)
 
 	// The RTS at $8030 returns to the first caller and ends its frame.
 	stepped := callTool[stepResultOut](t, client, stepToolName, map[string]any{
-		modeKey: modeInstructions, machineIDKey: id, instructionsKey: 1})
+		modeKey:         modeInstructions,
+		machineIDKey:    id,
+		instructionsKey: 1,
+	})
 	assert.Equal(t, Address(recursionAfterCall), stepped.After.PC)
 	stack = callTool[callStackResult](t, client, callStackToolName, map[string]any{machineIDKey: id})
 	assert.Empty(t, stack.Frames)
@@ -250,12 +287,16 @@ func TestCallStackDropsFrameOfPulledReturnAddress(t *testing.T) {
 func TestWatchWritesLimitStopsTheRun(t *testing.T) {
 	_, client, romPath := counterServer(t)
 	created := callTool[createMachineResult](t, client, createMachineToolName, map[string]any{
-		romKey: romPath, entrypointKey: 0x8000,
+		romKey:        romPath,
+		entrypointKey: 0x8000,
 	})
 	id := created.MachineID
 
 	limited := callTool[watchWritesResult](t, client, watchWritesToolName, map[string]any{
-		machineIDKey: id, addressKey: 0x10, framesKey: 1000, limitKey: 5,
+		machineIDKey: id,
+		addressKey:   0x10,
+		framesKey:    1000,
+		limitKey:     5,
 	})
 	assert.Len(t, limited.Writes, 5)
 	assert.True(t, limited.Truncated)
@@ -263,7 +304,10 @@ func TestWatchWritesLimitStopsTheRun(t *testing.T) {
 	assert.True(t, limited.Run.CompletedFrames < 1000)
 
 	complete := callTool[watchWritesResult](t, client, watchWritesToolName, map[string]any{
-		machineIDKey: id, addressKey: 0x10, framesKey: 1, limitKey: 10000,
+		machineIDKey: id,
+		addressKey:   0x10,
+		framesKey:    1,
+		limitKey:     10000,
 	})
 	assert.NotEmpty(t, complete.Writes)
 	assert.False(t, complete.Truncated)
@@ -271,44 +315,70 @@ func TestWatchWritesLimitStopsTheRun(t *testing.T) {
 	assert.Equal(t, uint64(1), complete.Run.CompletedFrames)
 
 	assert.Contains(t, callError(t, client, watchWritesToolName, map[string]any{
-		machineIDKey: id, addressKey: 0x10, framesKey: 1, limitKey: 0,
+		machineIDKey: id,
+		addressKey:   0x10,
+		framesKey:    1,
+		limitKey:     0,
 	}), "outside 1 to")
 	assert.Contains(t, callError(t, client, watchWritesToolName, map[string]any{
-		machineIDKey: id, addressKey: 0x20, "end": 0x10, framesKey: 1,
+		machineIDKey: id,
+		addressKey:   0x20,
+		"end":        0x10,
+		framesKey:    1,
 	}), "below start")
 	assert.Contains(t, callError(t, client, findAccessorsToolName, map[string]any{
-		machineIDKey: id, addressKey: 0x20, "end": 0x10, framesKey: 1,
+		machineIDKey: id,
+		addressKey:   0x20,
+		"end":        0x10,
+		framesKey:    1,
 	}), "below start")
 }
 
 func TestAnalysisRunsReportTimeouts(t *testing.T) {
 	_, client, romPath := counterServer(t)
 	created := callTool[createMachineResult](t, client, createMachineToolName, map[string]any{
-		romKey: romPath, entrypointKey: 0x8000,
+		romKey:        romPath,
+		entrypointKey: 0x8000,
 	})
 	id := created.MachineID
 
 	// The byte counter can return to its initial value before the deadline.
 	diff := callTool[ramDiffResult](t, client, ramDiffToolName, map[string]any{
-		machineIDKey: id, framesKey: 100_000_000, timeoutKey: shortTimeout,
+		machineIDKey: id,
+		framesKey:    100_000_000,
+		timeoutKey:   shortTimeout,
 	})
 	assert.True(t, diff.Run.TimedOut)
 	assert.Equal(t, "timeout", diff.Run.Reason)
 
 	found := callTool[findAccessorsResult](t, client, findAccessorsToolName, map[string]any{
-		machineIDKey: id, addressKey: 0x10, framesKey: 100_000_000, timeoutKey: shortTimeout,
+		machineIDKey: id,
+		addressKey:   0x10,
+		framesKey:    100_000_000,
+		timeoutKey:   shortTimeout,
 	})
 	assert.True(t, found.Run.TimedOut)
 
 	watched := callTool[watchWritesResult](t, client, watchWritesToolName, map[string]any{
-		machineIDKey: id, addressKey: 0x2000, framesKey: 100_000_000, timeoutKey: shortTimeout,
+		machineIDKey: id,
+		addressKey:   0x2000,
+		framesKey:    100_000_000,
+		timeoutKey:   shortTimeout,
 	})
 	assert.True(t, watched.Run.TimedOut)
 	assert.Equal(t, "timeout", watched.Run.Reason)
 
-	started := callTool[memorySearchResult](t, client, memorySearchToolName, map[string]any{machineIDKey: id, actionKey: searchStart})
+	started := callTool[memorySearchResult](t, client, memorySearchToolName, map[string]any{
+		machineIDKey: id,
+		actionKey:    searchStart,
+	})
 	search := callTool[memorySearchResult](t, client, memorySearchToolName, map[string]any{
-		machineIDKey: id, searchIDKey: started.SearchID, actionKey: searchFilter, fieldOp: searchChanged, framesKey: 100_000_000, timeoutKey: shortTimeout,
+		machineIDKey: id,
+		searchIDKey:  started.SearchID,
+		actionKey:    searchFilter,
+		fieldOp:      searchChanged,
+		framesKey:    100_000_000,
+		timeoutKey:   shortTimeout,
 	})
 	assert.NotNil(t, search.Run)
 	assert.True(t, search.Run.TimedOut)
@@ -328,7 +398,9 @@ func TestRunContinuesPastTheBreakpointItStoppedAt(t *testing.T) {
 		t.Run(tool, func(t *testing.T) {
 			client, id := recursionMachine(t)
 			callTool[addBreakpointResult](t, client, addBreakpointToolName, map[string]any{
-				machineIDKey: id, kindKey: execKind, addressKey: recursionInnerCall,
+				machineIDKey: id,
+				kindKey:      execKind,
+				addressKey:   recursionInnerCall,
 			})
 			args := map[string]any{machineIDKey: id}
 			if tool == runUntilToolName {
@@ -363,16 +435,21 @@ func TestCallStackSurvivesRestoreAndFork(t *testing.T) {
 	assert.Equal(t, want, forked)
 
 	callTool[stepResultOut](t, client, stepToolName, map[string]any{
-		modeKey: modeOver, machineIDKey: id})
+		modeKey:      modeOver,
+		machineIDKey: id,
+	})
 	callTool[restoreResult](t, client, restoreToolName, map[string]any{
-		machineIDKey: id, checkpointIDKey: checkpoint.CheckpointID,
+		machineIDKey:    id,
+		checkpointIDKey: checkpoint.CheckpointID,
 	})
 	restored := callTool[callStackResult](t, client, callStackToolName, map[string]any{machineIDKey: id})
 	assert.Equal(t, want, restored)
 
 	// Step mode out operates on the restored machine.
 	run := callTool[stepResultOut](t, client, stepToolName, map[string]any{
-		modeKey: modeOut, machineIDKey: id})
+		modeKey:      modeOut,
+		machineIDKey: id,
+	})
 	assert.Equal(t, "returned", run.Reason)
 }
 
@@ -490,11 +567,13 @@ func recursionMachine(t *testing.T) (*mcptest.Client, string) {
 	t.Cleanup(client.Close)
 
 	created := callTool[createMachineResult](t, client, createMachineToolName, map[string]any{
-		romKey: romPath, entrypointKey: recursionCaller,
+		romKey:        romPath,
+		entrypointKey: recursionCaller,
 	})
 	stepped := callTool[stepResultOut](t, client, stepToolName, map[string]any{
-		modeKey:      modeInstructions,
-		machineIDKey: created.MachineID, instructionsKey: 5,
+		modeKey:         modeInstructions,
+		machineIDKey:    created.MachineID,
+		instructionsKey: 5,
 	})
 	assert.Equal(t, Address(recursionInnerCall), stepped.After.PC)
 	return client, created.MachineID

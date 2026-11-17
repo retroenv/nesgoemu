@@ -222,7 +222,9 @@ func (s *Set) Undeclare(id ID) {
 
 	s.supported[id] = false
 	s.used[id].Store(false)
-	s.declared = slices.DeleteFunc(s.declared, func(declared ID) bool { return declared == id })
+	s.declared = slices.DeleteFunc(s.declared, func(declared ID) bool {
+		return declared == id
+	})
 }
 
 // Mark records that a supported feature was used. An unknown identifier is ignored.

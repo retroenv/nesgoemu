@@ -549,7 +549,9 @@ func parseInputs(inputs []inputArg) ([]controllerInput, error) {
 		})
 	}
 
-	sort.SliceStable(parsed, func(i, j int) bool { return parsed[i].Frame < parsed[j].Frame })
+	sort.SliceStable(parsed, func(i, j int) bool {
+		return parsed[i].Frame < parsed[j].Frame
+	})
 
 	return parsed, nil
 }

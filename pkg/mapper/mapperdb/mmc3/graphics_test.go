@@ -10,7 +10,9 @@ import (
 func TestGraphicsIgnoresRegisterSelectionAndPRGBanks(t *testing.T) {
 	m, _ := newTestMapper(t)
 	var events []bus.GraphicsEvent
-	m.ObserveGraphics(func(event bus.GraphicsEvent) { events = append(events, event) })
+	m.ObserveGraphics(func(event bus.GraphicsEvent) {
+		events = append(events, event)
+	})
 	m.Write(0x8000, 2)
 	assert.Empty(t, events)
 	m.Write(0x8001, 3)

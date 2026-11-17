@@ -140,7 +140,10 @@ func TestImageToolsValidateClosedSchemas(t *testing.T) {
 	created := callTool[createMachineResult](t, client, createMachineToolName, map[string]any{romKey: rom})
 	for _, tool := range []string{screenshotToolName, nametablesToolName, patternTablesToolName} {
 		t.Run(tool, func(t *testing.T) {
-			result, err := client.CallTool(t.Context(), tool, map[string]any{machineIDKey: created.MachineID, "unrecognized": true})
+			result, err := client.CallTool(t.Context(), tool, map[string]any{
+				machineIDKey:   created.MachineID,
+				"unrecognized": true,
+			})
 			assert.NoError(t, err)
 			assert.True(t, result.IsError)
 		})

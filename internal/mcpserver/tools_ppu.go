@@ -328,7 +328,9 @@ func (m *Machine) recordWAV(ctx context.Context, path string, samples uint64) er
 	// Audio that earlier runs queued is not part of the new recording.
 	m.sys.DiscardQueuedAudio()
 	err := writeFileAtomic(path, func(w io.Writer) error {
-		return m.sys.Guard(func() error { return m.sys.WriteWAV(ctx, w, samples) })
+		return m.sys.Guard(func() error {
+			return m.sys.WriteWAV(ctx, w, samples)
+		})
 	})
 	if err != nil {
 		return fmt.Errorf("recording wav: %w", err)

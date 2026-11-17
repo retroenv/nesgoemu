@@ -48,7 +48,8 @@ func (*deadlineTransitionContext) Value(any) any {
 func TestRunFramesReportsDeadlineBetweenChecks(t *testing.T) {
 	server, client, rom := counterServer(t)
 	created := callTool[createMachineResult](t, client, createMachineToolName, map[string]any{
-		romKey: rom, entrypointKey: 0x8000,
+		romKey:        rom,
+		entrypointKey: 0x8000,
 	})
 	machine, err := server.registry.get(created.MachineID)
 	assert.NoError(t, err)

@@ -33,7 +33,8 @@ func TestReplayReproducesMixedRun(t *testing.T) {
 	client, romPath, _ := controllerServer(t)
 
 	created := callTool[createMachineResult](t, client, createMachineToolName, map[string]any{
-		romKey: romPath, entrypointKey: 0x8000,
+		romKey:        romPath,
+		entrypointKey: 0x8000,
 	})
 	id := created.MachineID
 	runMixedScenario(t, client, id)
@@ -48,30 +49,38 @@ func TestReplayReproducesMixedRun(t *testing.T) {
 	fork := callTool[createMachineResult](t, client, forkMachineToolName, map[string]any{machineIDKey: id})
 	assert.Equal(t, want, snapshotMachine(t, client, fork.MachineID))
 	forkAtCheckpoint := callTool[createMachineResult](t, client, forkMachineToolName, map[string]any{
-		machineIDKey: id, checkpointIDKey: checkpoint.CheckpointID,
+		machineIDKey:    id,
+		checkpointIDKey: checkpoint.CheckpointID,
 	})
 	assert.Equal(t, want, snapshotMachine(t, client, forkAtCheckpoint.MachineID))
 
 	// Run on, then restore. The events after the checkpoint belong to the
 	// discarded timeline and must not return in a later restore.
 	callTool[runFramesOut](t, client, runFramesToolName, map[string]any{
-		machineIDKey: id, framesKey: 5,
-		inputsKey: []map[string]any{pressA(0)},
+		machineIDKey: id,
+		framesKey:    5,
+		inputsKey:    []map[string]any{pressA(0)},
 	})
 	callTool[restoreResult](t, client, restoreToolName, map[string]any{
-		machineIDKey: id, checkpointIDKey: checkpoint.CheckpointID,
+		machineIDKey:    id,
+		checkpointIDKey: checkpoint.CheckpointID,
 	})
 	assert.Equal(t, want, snapshotMachine(t, client, id))
 	assert.Equal(t, eventCount, callTool[eventLogResult](t, client, eventLogToolName, map[string]any{machineIDKey: id}).Total)
 
-	callTool[runFramesOut](t, client, runFramesToolName, map[string]any{machineIDKey: id, framesKey: 3})
+	callTool[runFramesOut](t, client, runFramesToolName, map[string]any{
+		machineIDKey: id,
+		framesKey:    3,
+	})
 	callTool[restoreResult](t, client, restoreToolName, map[string]any{
-		machineIDKey: id, checkpointIDKey: checkpoint.CheckpointID,
+		machineIDKey:    id,
+		checkpointIDKey: checkpoint.CheckpointID,
 	})
 	assert.Equal(t, want, snapshotMachine(t, client, id))
 
 	restored := callTool[createMachineResult](t, client, restoreMachineToolName, map[string]any{
-		romKey: romPath, eventsKey: checkpoint.EventsFile,
+		romKey:    romPath,
+		eventsKey: checkpoint.EventsFile,
 	})
 	assert.Equal(t, want, snapshotMachine(t, client, restored.MachineID))
 }
@@ -82,14 +91,19 @@ func TestEventLogRecordsAbsoluteFramesAndReleases(t *testing.T) {
 	client, romPath, _ := controllerServer(t)
 
 	created := callTool[createMachineResult](t, client, createMachineToolName, map[string]any{
-		romKey: romPath, entrypointKey: 0x8000,
+		romKey:        romPath,
+		entrypointKey: 0x8000,
 	})
 	id := created.MachineID
 
-	callTool[runFramesOut](t, client, runFramesToolName, map[string]any{machineIDKey: id, framesKey: 5})
+	callTool[runFramesOut](t, client, runFramesToolName, map[string]any{
+		machineIDKey: id,
+		framesKey:    5,
+	})
 	callTool[runUntilResult](t, client, runUntilToolName, map[string]any{
-		machineIDKey: id, framesKey: 4,
-		inputsKey: []map[string]any{pressA(1), release(3)},
+		machineIDKey: id,
+		framesKey:    4,
+		inputsKey:    []map[string]any{pressA(1), release(3)},
 	})
 
 	log := callTool[eventLogResult](t, client, eventLogToolName, map[string]any{machineIDKey: id})
@@ -107,9 +121,13 @@ func TestRestoreMachineRejectsOtherROM(t *testing.T) {
 	client, romPath, dir := controllerServer(t)
 
 	created := callTool[createMachineResult](t, client, createMachineToolName, map[string]any{
-		romKey: romPath, entrypointKey: 0x8000,
+		romKey:        romPath,
+		entrypointKey: 0x8000,
 	})
-	callTool[runFramesOut](t, client, runFramesToolName, map[string]any{machineIDKey: created.MachineID, framesKey: 2})
+	callTool[runFramesOut](t, client, runFramesToolName, map[string]any{
+		machineIDKey: created.MachineID,
+		framesKey:    2,
+	})
 	checkpoint := callTool[checkpointResult](t, client, checkpointToolName, map[string]any{
 		machineIDKey: created.MachineID,
 	})
@@ -125,7 +143,8 @@ func TestRestoreMachineRejectsOtherROM(t *testing.T) {
 	otherPath := filepath.Join(dir, "other.nes")
 	writeCounterROM(t, otherPath)
 	result, err := client.CallTool(t.Context(), restoreMachineToolName, map[string]any{
-		romKey: otherPath, eventsKey: checkpoint.EventsFile,
+		romKey:    otherPath,
+		eventsKey: checkpoint.EventsFile,
 	})
 	assert.NoError(t, err)
 	assert.True(t, result.IsError)
@@ -137,39 +156,63 @@ func TestRestoreMachineRejectsOtherROM(t *testing.T) {
 func TestReplayIsExactInsideAFrame(t *testing.T) {
 	_, client, rom := counterServer(t)
 	created := callTool[createMachineResult](t, client, createMachineToolName, map[string]any{
-		romKey: rom, entrypointKey: 0x8000,
+		romKey:        rom,
+		entrypointKey: 0x8000,
 	})
 	id := created.MachineID
 
-	callTool[runFramesOut](t, client, runFramesToolName, map[string]any{machineIDKey: id, framesKey: 3})
-	callTool[stepResultOut](t, client, stepToolName, map[string]any{
-		modeKey: modeInstructions, machineIDKey: id, instructionsKey: 37})
-	callTool[writeMemoryResult](t, client, writeMemoryToolName, map[string]any{
-		machineIDKey: id, spaceKey: spaceCPU, addressKey: 0x0200, bytesKey: []int{0x55},
+	callTool[runFramesOut](t, client, runFramesToolName, map[string]any{
+		machineIDKey: id,
+		framesKey:    3,
 	})
 	callTool[stepResultOut](t, client, stepToolName, map[string]any{
-		modeKey: modeInstructions, machineIDKey: id, instructionsKey: 5})
+		modeKey:         modeInstructions,
+		machineIDKey:    id,
+		instructionsKey: 37,
+	})
+	callTool[writeMemoryResult](t, client, writeMemoryToolName, map[string]any{
+		machineIDKey: id,
+		spaceKey:     spaceCPU,
+		addressKey:   0x0200,
+		bytesKey:     []int{0x55},
+	})
+	callTool[stepResultOut](t, client, stepToolName, map[string]any{
+		modeKey:         modeInstructions,
+		machineIDKey:    id,
+		instructionsKey: 5,
+	})
 	want := snapshotMachine(t, client, id)
 	checkpoint := callTool[checkpointResult](t, client, checkpointToolName, map[string]any{machineIDKey: id})
 
 	fork := callTool[createMachineResult](t, client, forkMachineToolName, map[string]any{machineIDKey: id})
 	assert.Equal(t, want, snapshotMachine(t, client, fork.MachineID))
 
-	callTool[runFramesOut](t, client, runFramesToolName, map[string]any{machineIDKey: id, framesKey: 2})
+	callTool[runFramesOut](t, client, runFramesToolName, map[string]any{
+		machineIDKey: id,
+		framesKey:    2,
+	})
 	assert.NotEqual(t, want, snapshotMachine(t, client, id))
 	callTool[restoreResult](t, client, restoreToolName, map[string]any{
-		machineIDKey: id, checkpointIDKey: checkpoint.CheckpointID,
+		machineIDKey:    id,
+		checkpointIDKey: checkpoint.CheckpointID,
 	})
 	assert.Equal(t, want, snapshotMachine(t, client, id))
 
 	restored := callTool[createMachineResult](t, client, restoreMachineToolName, map[string]any{
-		romKey: rom, eventsKey: checkpoint.EventsFile,
+		romKey:    rom,
+		eventsKey: checkpoint.EventsFile,
 	})
 	assert.Equal(t, want, snapshotMachine(t, client, restored.MachineID))
 
 	// The restored machine continues like the original.
-	callTool[runFramesOut](t, client, runFramesToolName, map[string]any{machineIDKey: id, framesKey: 2})
-	callTool[runFramesOut](t, client, runFramesToolName, map[string]any{machineIDKey: fork.MachineID, framesKey: 2})
+	callTool[runFramesOut](t, client, runFramesToolName, map[string]any{
+		machineIDKey: id,
+		framesKey:    2,
+	})
+	callTool[runFramesOut](t, client, runFramesToolName, map[string]any{
+		machineIDKey: fork.MachineID,
+		framesKey:    2,
+	})
 	assert.Equal(t, snapshotMachine(t, client, id), snapshotMachine(t, client, fork.MachineID))
 }
 
@@ -249,10 +292,15 @@ func TestDisplayPaletteSurvivesReplay(t *testing.T) {
 	path := filepath.Join(filepath.Dir(rom), "test.pal")
 	assert.NoError(t, os.WriteFile(path, bytes.Repeat([]byte{200, 160, 120}, 64), 0o600))
 	created := callTool[createMachineResult](t, client, createMachineToolName, map[string]any{
-		romKey: rom, entrypointKey: 0x8000, paletteKey: path,
+		romKey:        rom,
+		entrypointKey: 0x8000,
+		paletteKey:    path,
 	})
 	id := created.MachineID
-	callTool[runFramesOut](t, client, runFramesToolName, map[string]any{machineIDKey: id, framesKey: 2})
+	callTool[runFramesOut](t, client, runFramesToolName, map[string]any{
+		machineIDKey: id,
+		framesKey:    2,
+	})
 	want := snapshotMachine(t, client, id)
 	checkpoint := callTool[checkpointResult](t, client, checkpointToolName, map[string]any{machineIDKey: id})
 	assert.NoError(t, os.Remove(path))
@@ -270,19 +318,27 @@ func TestDisplayPaletteSurvivesReplay(t *testing.T) {
 	fork := callTool[createMachineResult](t, client, forkMachineToolName, map[string]any{machineIDKey: id})
 	assert.Equal(t, want, snapshotMachine(t, client, fork.MachineID))
 	restored := callTool[createMachineResult](t, client, restoreMachineToolName, map[string]any{
-		romKey: rom, eventsKey: checkpoint.EventsFile,
+		romKey:    rom,
+		eventsKey: checkpoint.EventsFile,
 	})
 	assert.Equal(t, want, snapshotMachine(t, client, restored.MachineID))
-	callTool[runFramesOut](t, client, runFramesToolName, map[string]any{machineIDKey: id, framesKey: 3})
+	callTool[runFramesOut](t, client, runFramesToolName, map[string]any{
+		machineIDKey: id,
+		framesKey:    3,
+	})
 	callTool[restoreResult](t, client, restoreToolName, map[string]any{
-		machineIDKey: id, checkpointIDKey: checkpoint.CheckpointID,
+		machineIDKey:    id,
+		checkpointIDKey: checkpoint.CheckpointID,
 	})
 	assert.Equal(t, want, snapshotMachine(t, client, id))
 
 	machine, err := server.registry.get(id)
 	assert.NoError(t, err)
 	assert.NoError(t, machine.hardReset(t.Context(), nil))
-	callTool[runFramesOut](t, client, runFramesToolName, map[string]any{machineIDKey: id, framesKey: 2})
+	callTool[runFramesOut](t, client, runFramesToolName, map[string]any{
+		machineIDKey: id,
+		framesKey:    2,
+	})
 	assert.Equal(t, want, snapshotMachine(t, client, id))
 }
 
@@ -344,7 +400,10 @@ func snapshotMachine(t *testing.T, client *mcptest.Client, machineID string) mac
 	t.Helper()
 
 	memory := callTool[readMemoryResult](t, client, readMemoryToolName, map[string]any{
-		machineIDKey: machineID, spaceKey: spaceRAM, addressKey: 0, lengthKey: nes.RAMEndAddress + 1,
+		machineIDKey: machineID,
+		spaceKey:     spaceRAM,
+		addressKey:   0,
+		lengthKey:    nes.RAMEndAddress + 1,
 	})
 	result, err := client.CallTool(t.Context(), screenshotToolName, map[string]any{machineIDKey: machineID})
 	assert.NoError(t, err)
@@ -358,12 +417,18 @@ func snapshotMachine(t *testing.T, client *mcptest.Client, machineID string) mac
 
 // pressA is an input event that presses button A at a relative frame.
 func pressA(frame int) map[string]any {
-	return map[string]any{frameKey: frame, buttonsKey: []string{"A"}}
+	return map[string]any{
+		frameKey:   frame,
+		buttonsKey: []string{"A"},
+	}
 }
 
 // release is an input event that releases every button at a relative frame.
 func release(frame int) map[string]any {
-	return map[string]any{frameKey: frame, buttonsKey: []string{}}
+	return map[string]any{
+		frameKey:   frame,
+		buttonsKey: []string{},
+	}
 }
 
 // runMixedScenario runs inputs, releases, a poke, a hold, a mid-frame step, a
@@ -372,25 +437,39 @@ func runMixedScenario(t *testing.T, client *mcptest.Client, id string) {
 	t.Helper()
 
 	callTool[runFramesOut](t, client, runFramesToolName, map[string]any{
-		machineIDKey: id, framesKey: 4,
-		inputsKey: []map[string]any{pressA(1), release(3)},
+		machineIDKey: id,
+		framesKey:    4,
+		inputsKey:    []map[string]any{pressA(1), release(3)},
 	})
 	callTool[writeMemoryResult](t, client, writeMemoryToolName, map[string]any{
-		machineIDKey: id, spaceKey: spaceCPU, addressKey: 0x0200, bytesKey: []int{0x55},
+		machineIDKey: id,
+		spaceKey:     spaceCPU,
+		addressKey:   0x0200,
+		bytesKey:     []int{0x55},
 	})
 	callTool[setButtonsResult](t, client, setButtonsToolName, map[string]any{
-		machineIDKey: id, buttonsKey: []string{"A"}, "hold_frames": 2,
+		machineIDKey:  id,
+		buttonsKey:    []string{"A"},
+		"hold_frames": 2,
 	})
 	callTool[stepResultOut](t, client, stepToolName, map[string]any{
-		modeKey: modeInstructions, machineIDKey: id, instructionsKey: 37})
+		modeKey:         modeInstructions,
+		machineIDKey:    id,
+		instructionsKey: 37,
+	})
 	callTool[runUntilResult](t, client, runUntilToolName, map[string]any{
-		machineIDKey: id, framesKey: 3,
-		inputsKey: []map[string]any{pressA(1), release(2)},
+		machineIDKey: id,
+		framesKey:    3,
+		inputsKey:    []map[string]any{pressA(1), release(2)},
 	})
 	callTool[resetResult](t, client, resetToolName, map[string]any{machineIDKey: id})
 	callTool[runFramesOut](t, client, runFramesToolName, map[string]any{
-		machineIDKey: id, framesKey: 3,
-		inputsKey: []map[string]any{pressA(0)},
+		machineIDKey: id,
+		framesKey:    3,
+		inputsKey:    []map[string]any{pressA(0)},
 	})
-	callTool[runFramesOut](t, client, runFramesToolName, map[string]any{machineIDKey: id, framesKey: 2})
+	callTool[runFramesOut](t, client, runFramesToolName, map[string]any{
+		machineIDKey: id,
+		framesKey:    2,
+	})
 }

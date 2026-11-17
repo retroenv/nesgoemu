@@ -68,36 +68,21 @@ func newTestServer(t *testing.T, opts Options) *Server {
 }
 
 func TestCreateStepReadScreenshot(t *testing.T) {
-	dir := t.TempDir()
-	romPath := filepath.Join(dir, "test.nes")
-	writeSyntheticROM(t, romPath)
-
-	server := newTestServer(t, Options{
-		Name:    testServerName,
-		Version: "0",
-
-		Roots: []string{dir},
-	})
-	client := mcptest.New(t.Context(), server.mcp)
-	defer client.Close()
+	client, created := syntheticMachineClient(t)
 
 	discover, err := client.Discover(t.Context())
 	assert.NoError(t, err)
 	assert.Contains(t, discover.Instructions, "machine_id")
 
-	var created createMachineResult
-	err = client.CallToolInto(t.Context(), createMachineToolName, map[string]any{
-		romKey: romPath, entrypointKey: 0x8000,
-	}, &created)
-	assert.NoError(t, err)
 	assert.NotEmpty(t, created.MachineID)
 	assert.Equal(t, uint16(0), created.ROM.MapperID)
 	assert.Equal(t, 0x8000, created.ROM.PRGSize)
 
 	var stepped stepResultOut
 	err = client.CallToolInto(t.Context(), stepToolName, map[string]any{
-		"mode":       modeInstructions,
-		machineIDKey: created.MachineID, instructionsKey: 2,
+		"mode":          modeInstructions,
+		machineIDKey:    created.MachineID,
+		instructionsKey: 2,
 	}, &stepped)
 	assert.NoError(t, err)
 	assert.Equal(t, uint64(2), stepped.Instructions)
@@ -105,7 +90,10 @@ func TestCreateStepReadScreenshot(t *testing.T) {
 
 	var memory readMemoryResult
 	err = client.CallToolInto(t.Context(), readMemoryToolName, map[string]any{
-		machineIDKey: created.MachineID, spaceKey: spaceRAM, addressKey: 0x10, lengthKey: 1,
+		machineIDKey: created.MachineID,
+		spaceKey:     spaceRAM,
+		addressKey:   0x10,
+		lengthKey:    1,
 	}, &memory)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, memory.Available)
@@ -127,6 +115,30 @@ func TestCreateStepReadScreenshot(t *testing.T) {
 	assert.Equal(t, "vertical", info.Mirroring)
 }
 
+// syntheticMachineClient creates a client and a machine over the synthetic ROM.
+func syntheticMachineClient(t *testing.T) (*mcptest.Client, createMachineResult) {
+	t.Helper()
+
+	dir := t.TempDir()
+	romPath := filepath.Join(dir, "test.nes")
+	writeSyntheticROM(t, romPath)
+
+	server := newTestServer(t, Options{
+		Name:    testServerName,
+		Version: "0",
+
+		Roots: []string{dir},
+	})
+	client := mcptest.New(t.Context(), server.mcp)
+	t.Cleanup(client.Close)
+
+	created := callTool[createMachineResult](t, client, createMachineToolName, map[string]any{
+		romKey:        romPath,
+		entrypointKey: 0x8000,
+	})
+	return client, created
+}
+
 func TestRunFramesAdvancesTime(t *testing.T) {
 	dir := t.TempDir()
 	romPath := filepath.Join(dir, "test.nes")
@@ -142,13 +154,15 @@ func TestRunFramesAdvancesTime(t *testing.T) {
 
 	var created createMachineResult
 	err := client.CallToolInto(t.Context(), createMachineToolName, map[string]any{
-		romKey: romPath, entrypointKey: 0x8000,
+		romKey:        romPath,
+		entrypointKey: 0x8000,
 	}, &created)
 	assert.NoError(t, err)
 
 	var run runFramesOut
 	err = client.CallToolInto(t.Context(), runFramesToolName, map[string]any{
-		machineIDKey: created.MachineID, framesKey: 3,
+		machineIDKey: created.MachineID,
+		framesKey:    3,
 		"inputs": []map[string]any{{
 			frameKey:   0,
 			buttonsKey: []string{"A", "Start"},
@@ -407,7 +421,11 @@ func TestCaptureBoundsMemoryRanges(t *testing.T) {
 	created := callTool[createMachineResult](t, client, createMachineToolName, map[string]any{romKey: rom})
 	reads := make([]map[string]any, maxCaptureReads+1)
 	for index := range reads {
-		reads[index] = map[string]any{spaceKey: spaceRAM, addressKey: index, lengthKey: 1}
+		reads[index] = map[string]any{
+			spaceKey:   spaceRAM,
+			addressKey: index,
+			lengthKey:  1,
+		}
 	}
 	arguments := map[string]any{
 		machineIDKey: created.MachineID,

@@ -84,7 +84,9 @@ func TestReadHookDuringUpdates(t *testing.T) {
 	go func() {
 		defer close(done)
 		for range 1000 {
-			n.SetReadHook(func(uint16) (byte, bool) { return 0x7F, true })
+			n.SetReadHook(func(uint16) (byte, bool) {
+				return 0x7F, true
+			})
 			n.SetReadHook(nil)
 		}
 	}()

@@ -204,23 +204,28 @@ func TestReadRegularFileLimits(t *testing.T) {
 func TestOutputToolsRefuseUnsafePaths(t *testing.T) {
 	server, client, romPath := counterServer(t)
 	created := callTool[createMachineResult](t, client, createMachineToolName, map[string]any{
-		romKey: romPath, entrypointKey: 0x8000,
+		romKey:        romPath,
+		entrypointKey: 0x8000,
 	})
 	before, err := os.ReadFile(romPath)
 	assert.NoError(t, err)
 
 	assert.Contains(t, callError(t, client, cdlExportToolName, map[string]any{
-		machineIDKey: created.MachineID, pathKey: romPath,
+		machineIDKey: created.MachineID,
+		pathKey:      romPath,
 	}), "must end in .cdl")
 	assert.Contains(t, callError(t, client, recordAudioToolName, map[string]any{
-		machineIDKey: created.MachineID, pathKey: romPath, samplesKey: 10,
+		machineIDKey: created.MachineID,
+		pathKey:      romPath,
+		samplesKey:   10,
 	}), "must end in .wav")
 
 	outside := t.TempDir()
 	link := filepath.Join(server.roots.first(), "link.cdl")
 	assert.NoError(t, os.Symlink(filepath.Join(outside, "pwned.cdl"), link))
 	assert.Contains(t, callError(t, client, cdlExportToolName, map[string]any{
-		machineIDKey: created.MachineID, pathKey: "link.cdl",
+		machineIDKey: created.MachineID,
+		pathKey:      "link.cdl",
 	}), "outside the allowed roots")
 	_, err = os.Stat(filepath.Join(outside, "pwned.cdl"))
 	assert.True(t, errors.Is(err, os.ErrNotExist))
@@ -304,7 +309,8 @@ func TestCreateMachineRejectsEntrypointOutsideAddressSpace(t *testing.T) {
 
 	for _, entrypoint := range []int{-5, 0x10000} {
 		message := callError(t, client, createMachineToolName, map[string]any{
-			romKey: romPath, entrypointKey: entrypoint,
+			romKey:        romPath,
+			entrypointKey: entrypoint,
 		})
 		assert.Contains(t, message, "entrypoint")
 	}
@@ -313,25 +319,35 @@ func TestCreateMachineRejectsEntrypointOutsideAddressSpace(t *testing.T) {
 func TestWriteMemoryChecksWholeRangeBeforeWriting(t *testing.T) {
 	_, client, romPath := counterServer(t)
 	created := callTool[createMachineResult](t, client, createMachineToolName, map[string]any{
-		romKey: romPath, entrypointKey: 0x8000,
+		romKey:        romPath,
+		entrypointKey: 0x8000,
 	})
 	id := created.MachineID
 
 	// The range starts in RAM and ends in the PPU registers.
 	message := callError(t, client, writeMemoryToolName, map[string]any{
-		machineIDKey: id, spaceKey: spaceCPU, addressKey: 0x1FFE, bytesKey: []int{1, 2, 3, 4},
+		machineIDKey: id,
+		spaceKey:     spaceCPU,
+		addressKey:   0x1FFE,
+		bytesKey:     []int{1, 2, 3, 4},
 	})
 	assert.Contains(t, message, "not writable")
 
 	memory := callTool[readMemoryResult](t, client, readMemoryToolName, map[string]any{
-		machineIDKey: id, spaceKey: spaceRAM, addressKey: 0x07FE, lengthKey: 2,
+		machineIDKey: id,
+		spaceKey:     spaceRAM,
+		addressKey:   0x07FE,
+		lengthKey:    2,
 	})
 	assert.Equal(t, []int{0, 0}, memory.Bytes)
 	log := callTool[eventLogResult](t, client, eventLogToolName, map[string]any{machineIDKey: id})
 	assert.Equal(t, 0, log.Total)
 
 	message = callError(t, client, writeMemoryToolName, map[string]any{
-		machineIDKey: id, spaceKey: spaceCPU, addressKey: 0x10, bytesKey: []int{256},
+		machineIDKey: id,
+		spaceKey:     spaceCPU,
+		addressKey:   0x10,
+		bytesKey:     []int{256},
 	})
 	assert.Contains(t, message, "above the maximum")
 }
@@ -358,14 +374,19 @@ func TestReadMemoryReachesPRGBeyond64KiB(t *testing.T) {
 
 	created := callTool[createMachineResult](t, client, createMachineToolName, map[string]any{romKey: romPath})
 	memory := callTool[readMemoryResult](t, client, readMemoryToolName, map[string]any{
-		machineIDKey: created.MachineID, spaceKey: spacePRG, offsetKey: 0x1ABCD, lengthKey: 2,
+		machineIDKey: created.MachineID,
+		spaceKey:     spacePRG,
+		offsetKey:    0x1ABCD,
+		lengthKey:    2,
 	})
 	assert.Equal(t, 0x1ABCD, memory.Start)
 	assert.Equal(t, 0x7E, memory.Bytes[0])
 	assert.Contains(t, memory.Hex, "01ABCD:")
 
 	message := callError(t, client, readMemoryToolName, map[string]any{
-		machineIDKey: created.MachineID, spaceKey: spaceCPU, offsetKey: 5,
+		machineIDKey: created.MachineID,
+		spaceKey:     spaceCPU,
+		offsetKey:    5,
 	})
 	assert.Contains(t, message, "prg and chr")
 }
@@ -373,14 +394,18 @@ func TestReadMemoryReachesPRGBeyond64KiB(t *testing.T) {
 func TestReadStatusRegisterKeepsPPUState(t *testing.T) {
 	_, client, romPath := counterServer(t)
 	created := callTool[createMachineResult](t, client, createMachineToolName, map[string]any{
-		romKey: romPath, entrypointKey: 0x8000,
+		romKey:        romPath,
+		entrypointKey: 0x8000,
 	})
 	id := created.MachineID
 	assert.NoError(t, runFramesTool(t, client, id, 2))
 
 	before := inspectSection[ppuSnapshotOut](t, client, sectionPPU, id)
 	memory := callTool[readMemoryResult](t, client, readMemoryToolName, map[string]any{
-		machineIDKey: id, spaceKey: spaceCPU, addressKey: 0x2002, lengthKey: 1,
+		machineIDKey: id,
+		spaceKey:     spaceCPU,
+		addressKey:   0x2002,
+		lengthKey:    1,
 	})
 	after := inspectSection[ppuSnapshotOut](t, client, sectionPPU, id)
 
@@ -391,54 +416,12 @@ func TestReadStatusRegisterKeepsPPUState(t *testing.T) {
 func TestInvalidArgumentsAreRejected(t *testing.T) {
 	_, client, romPath := counterServer(t)
 	created := callTool[createMachineResult](t, client, createMachineToolName, map[string]any{
-		romKey: romPath, entrypointKey: 0x8000,
+		romKey:        romPath,
+		entrypointKey: 0x8000,
 	})
 	id := created.MachineID
 
-	tests := []struct {
-		args map[string]any
-		name string
-		tool string
-		want string
-	}{
-		{
-			args: map[string]any{actionKey: searchFilter, fieldOp: searchValue, fieldValue: 300},
-			name: "filter value above a byte",
-			tool: memorySearchToolName,
-			want: "invalid arguments",
-		},
-		{
-			args: map[string]any{actionKey: searchFilter, fieldOp: "bigger"},
-			name: "unknown filter",
-			tool: memorySearchToolName,
-			want: "invalid arguments",
-		},
-		{
-			args: map[string]any{offsetKey: -1},
-			name: "negative trace offset",
-			tool: getTraceToolName,
-			want: "negative",
-		},
-		{
-			args: map[string]any{kindKey: "write", addressKey: 0x10, fieldValue: 999},
-			name: "breakpoint value above a byte",
-			tool: addBreakpointToolName,
-			want: "outside 0 to 255",
-		},
-		{
-			args: map[string]any{framesKey: 1, timeoutKey: "1h"},
-			name: "timeout above the limit",
-			tool: runFramesToolName,
-			want: "exceeds the limit",
-		},
-		{
-			args: map[string]any{pathKey: "x.wav", samplesKey: 0},
-			name: "record zero samples",
-			tool: recordAudioToolName,
-			want: "outside 1 to",
-		},
-	}
-	for _, tt := range tests {
+	for _, tt := range invalidArgumentTests {
 		t.Run(tt.name, func(t *testing.T) {
 			args := map[string]any{machineIDKey: id}
 			for key, value := range tt.args {
@@ -449,15 +432,80 @@ func TestInvalidArgumentsAreRejected(t *testing.T) {
 	}
 }
 
+// invalidArgumentTests lists tool calls with invalid arguments and the expected error text.
+var invalidArgumentTests = []struct {
+	args map[string]any
+	name string
+	tool string
+	want string
+}{
+	{
+		args: map[string]any{
+			actionKey:  searchFilter,
+			fieldOp:    searchValue,
+			fieldValue: 300,
+		},
+		name: "filter value above a byte",
+		tool: memorySearchToolName,
+		want: "invalid arguments",
+	},
+	{
+		args: map[string]any{
+			actionKey: searchFilter,
+			fieldOp:   "bigger",
+		},
+		name: "unknown filter",
+		tool: memorySearchToolName,
+		want: "invalid arguments",
+	},
+	{
+		args: map[string]any{offsetKey: -1},
+		name: "negative trace offset",
+		tool: getTraceToolName,
+		want: "negative",
+	},
+	{
+		args: map[string]any{
+			kindKey:    "write",
+			addressKey: 0x10,
+			fieldValue: 999,
+		},
+		name: "breakpoint value above a byte",
+		tool: addBreakpointToolName,
+		want: "outside 0 to 255",
+	},
+	{
+		args: map[string]any{
+			framesKey:  1,
+			timeoutKey: "1h",
+		},
+		name: "timeout above the limit",
+		tool: runFramesToolName,
+		want: "exceeds the limit",
+	},
+	{
+		args: map[string]any{
+			pathKey:    "x.wav",
+			samplesKey: 0,
+		},
+		name: "record zero samples",
+		tool: recordAudioToolName,
+		want: "outside 1 to",
+	},
+}
+
 func TestRecordAudioWritesRequestedSamples(t *testing.T) {
 	_, client, romPath := counterServer(t)
 	created := callTool[createMachineResult](t, client, createMachineToolName, map[string]any{
-		romKey: romPath, entrypointKey: 0x8000,
+		romKey:        romPath,
+		entrypointKey: 0x8000,
 	})
 
 	path := filepath.Join(filepath.Dir(romPath), "out.wav")
 	result := callTool[recordAudioResult](t, client, recordAudioToolName, map[string]any{
-		machineIDKey: created.MachineID, pathKey: path, samplesKey: 500,
+		machineIDKey: created.MachineID,
+		pathKey:      path,
+		samplesKey:   500,
 	})
 	assert.Equal(t, uint64(500), result.Samples)
 
@@ -471,7 +519,8 @@ func TestRecordAudioWritesRequestedSamples(t *testing.T) {
 func TestConcurrentCallsOnOneMachine(t *testing.T) {
 	server, client, romPath := counterServer(t)
 	created := callTool[createMachineResult](t, client, createMachineToolName, map[string]any{
-		romKey: romPath, entrypointKey: 0x8000,
+		romKey:        romPath,
+		entrypointKey: 0x8000,
 	})
 	id := created.MachineID
 
@@ -512,7 +561,9 @@ func TestBatterySaveFileSymbolicLinkRefused(t *testing.T) {
 	assert.NoError(t, os.Symlink(outside, romPath+".sav"))
 
 	assert.Contains(t, callError(t, client, createMachineToolName, map[string]any{
-		romKey: romPath, entrypointKey: 0x8000, "battery": true,
+		romKey:        romPath,
+		entrypointKey: 0x8000,
+		"battery":     true,
 	}), "symbolic link")
 }
 
@@ -539,7 +590,8 @@ func TestMachineLimitRejectsBeforeLoading(t *testing.T) {
 	missing := map[string]any{romKey: filepath.Join(dir, "missing.nes")}
 	assert.Contains(t, callError(t, client, createMachineToolName, missing), "machine limit 1 reached")
 	assert.Contains(t, callError(t, client, restoreMachineToolName, map[string]any{
-		romKey: filepath.Join(dir, "missing.nes"), eventsKey: "missing.json",
+		romKey:    filepath.Join(dir, "missing.nes"),
+		eventsKey: "missing.json",
 	}), "machine limit 1 reached")
 	assert.Contains(t, callError(t, client, forkMachineToolName, map[string]any{
 		machineIDKey: created.MachineID,
@@ -549,32 +601,45 @@ func TestMachineLimitRejectsBeforeLoading(t *testing.T) {
 func TestRecordAudioHonorsTimeoutAndWritesNoFile(t *testing.T) {
 	_, client, romPath := counterServer(t)
 	created := callTool[createMachineResult](t, client, createMachineToolName, map[string]any{
-		romKey: romPath, entrypointKey: 0x8000,
+		romKey:        romPath,
+		entrypointKey: 0x8000,
 	})
 	path := filepath.Join(filepath.Dir(romPath), "slow.wav")
 
 	message := callError(t, client, recordAudioToolName, map[string]any{
-		machineIDKey: created.MachineID, pathKey: path, samplesKey: 2_000_000, timeoutKey: "1ms",
+		machineIDKey: created.MachineID,
+		pathKey:      path,
+		samplesKey:   2_000_000,
+		timeoutKey:   "1ms",
 	})
 	assert.Contains(t, message, "deadline exceeded")
 	_, err := os.Stat(path)
 	assert.True(t, errors.Is(err, os.ErrNotExist))
 
 	// The machine is usable after the failed recording.
-	callTool[runFramesOut](t, client, runFramesToolName, map[string]any{machineIDKey: created.MachineID, framesKey: 1})
+	callTool[runFramesOut](t, client, runFramesToolName, map[string]any{
+		machineIDKey: created.MachineID,
+		framesKey:    1,
+	})
 }
 
 func TestRecordAudioContainsOnlyNewAudio(t *testing.T) {
 	_, client, romPath := counterServer(t)
 	created := callTool[createMachineResult](t, client, createMachineToolName, map[string]any{
-		romKey: romPath, entrypointKey: 0x8000,
+		romKey:        romPath,
+		entrypointKey: 0x8000,
 	})
-	callTool[runFramesOut](t, client, runFramesToolName, map[string]any{machineIDKey: created.MachineID, framesKey: 120})
+	callTool[runFramesOut](t, client, runFramesToolName, map[string]any{
+		machineIDKey: created.MachineID,
+		framesKey:    120,
+	})
 	before := inspectSection[cpuStateResult](t, client, sectionCPU, created.MachineID)
 
 	path := filepath.Join(filepath.Dir(romPath), "new.wav")
 	callTool[recordAudioResult](t, client, recordAudioToolName, map[string]any{
-		machineIDKey: created.MachineID, pathKey: path, samplesKey: 44100,
+		machineIDKey: created.MachineID,
+		pathKey:      path,
+		samplesKey:   44100,
 	})
 	after := inspectSection[cpuStateResult](t, client, sectionCPU, created.MachineID)
 

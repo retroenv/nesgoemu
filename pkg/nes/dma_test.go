@@ -50,8 +50,12 @@ func TestDMCEnableDefersFetchAndIRQ(t *testing.T) {
 	sys.Bus.APU.Write(0x4010, 0x80)
 	var writes []apu.RegisterWrite
 	var fetches []apu.DMCFetch
-	sys.apu.ObserveRegisterWrites(func(write apu.RegisterWrite) { writes = append(writes, write) })
-	sys.apu.ObserveDMCFetches(func(fetch apu.DMCFetch) { fetches = append(fetches, fetch) })
+	sys.apu.ObserveRegisterWrites(func(write apu.RegisterWrite) {
+		writes = append(writes, write)
+	})
+	sys.apu.ObserveDMCFetches(func(fetch apu.DMCFetch) {
+		fetches = append(fetches, fetch)
+	})
 	for range 2 {
 		_, err := sys.StepSystem()
 		assert.NoError(t, err)
