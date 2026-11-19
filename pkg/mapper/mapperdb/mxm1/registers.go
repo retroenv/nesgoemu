@@ -3,6 +3,10 @@ package mxm1
 import "github.com/retroenv/nesgoemu/pkg/feature"
 
 func (m *Mapper) writeRegister(address uint16, value byte) {
+	if m.isMapper801 && m.writeBank801(address, value) {
+		return
+	}
+
 	switch address & registerGroupMask {
 	case regIdentityStart:
 		m.writeStatus(address, value)
@@ -262,6 +266,25 @@ func (m *Mapper) writeRemapRegisters(address uint16, value byte) {
 
 	case regRemapPage:
 		m.remapPage = value & remapPageMask
+		if m.isMapper801 {
+			m.remapPage &= controlEnable
+		}
+
+	case reg801RemapOffset:
+		if m.isMapper801 {
+			m.remapOffset801 = value
+		}
+
+	case reg801RemapNTFlip:
+		if m.isMapper801 {
+			m.remapNTFlip801 = value&controlEnable != 0
+		}
+
+	case reg801RemapPosition, reg801RemapPositionAlias:
+		if m.isMapper801 {
+			// These ports set the table index. PPUSCROLL sets the ordinary row.
+			m.remapPosition801 = value
+		}
 	}
 }
 
@@ -303,26 +326,8 @@ func (m *Mapper) markGraphicsModes() {
 }
 
 func (m *Mapper) readRegister(address uint16) byte {
-	if address >= regIdentityStart && address <= regIdentityEnd {
-		return identityResponse[address-regIdentityStart]
-	}
-
-	if address >= regPRGReadback && address <= regPRGReadbackEnd {
-		// Decode the readback record. Do not use the write-register meanings
-		// of these addresses. The first byte includes the window index.
-		slot := (address - regPRGReadback) / prgReadbackStride
-		part := (address - regPRGReadback) % prgReadbackStride
-
-		switch part {
-		case 0:
-			return byte(slot) | m.prgFlags[slot]
-
-		case 1:
-			return byte(m.prgBanks[slot] >> 8)
-
-		default:
-			return byte(m.prgBanks[slot])
-		}
+	if value, ok := m.readBankStatus(address); ok {
+		return value
 	}
 
 	switch address {
@@ -356,6 +361,36 @@ func (m *Mapper) readRegister(address uint16) byte {
 	}
 
 	return m.OpenBus()
+}
+
+func (m *Mapper) readBankStatus(address uint16) (byte, bool) {
+	if m.isMapper801 {
+		return m.readBankStatus801(address)
+	}
+
+	if address >= regIdentityStart && address <= regIdentityEnd {
+		return identityResponse[address-regIdentityStart], true
+	}
+
+	if address >= regPRGReadback && address <= regPRGReadbackEnd {
+		// Decode the readback record. Do not use the write-register meanings
+		// of these addresses. The first byte includes the window index.
+		slot := (address - regPRGReadback) / prgReadbackStride
+		part := (address - regPRGReadback) % prgReadbackStride
+
+		switch part {
+		case 0:
+			return byte(slot) | m.prgFlags[slot], true
+
+		case 1:
+			return byte(m.prgBanks[slot] >> 8), true
+
+		default:
+			return byte(m.prgBanks[slot]), true
+		}
+	}
+
+	return 0, false
 }
 
 // copyBlocks copies 8 KiB blocks at once. The mapper keeps the destination
@@ -400,7 +435,12 @@ func (m *Mapper) streamValue(cursor byte) byte {
 		return m.prgSelect
 
 	case statePRGBankHigh:
-		return byte(m.prgBanks[0] >> 8)
+		bank := m.prgBanks[0]
+		if m.isMapper801 {
+			bank &= prgBankMask801
+		}
+
+		return byte(bank >> 8)
 
 	case statePRGBankLow:
 		return byte(m.prgBanks[0])

@@ -14,14 +14,7 @@ func (m *Mapper) InspectCPU(address uint16) (byte, bool) {
 		return 0, true
 	}
 
-	w := m.cpuWindows[slot]
-	if slot == alternateSlot && m.altEnabled {
-		w.data = m.prgROM
-		w.offset = int(m.altBank) * prgBankSize
-		if m.altRAM {
-			w.data = m.ram
-		}
-	}
+	w := m.cpuReadWindow(slot)
 
 	return readWrapped(w.data, w.offset+int(address&prgOffsetMask), m.OpenBus()), true
 }

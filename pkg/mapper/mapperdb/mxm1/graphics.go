@@ -40,6 +40,12 @@ func (m *Mapper) observeFetch(address uint16) bool {
 		// on the attribute and pattern reads that follow, while the name count
 		// does not change.
 		m.verticalPosition++
+		if m.isMapper801 {
+			m.remapPosition801++
+			if m.verticalPosition == nameTableHeight801 {
+				m.verticalPosition = 0
+			}
+		}
 	}
 
 	if m.manualScroll == 0 && m.scrollDirty {
@@ -94,7 +100,9 @@ func (m *Mapper) readVRAM(address uint16) byte {
 
 	y := m.verticalPosition
 	mapped := address
-	if m.remapEnabled {
+	if m.remapEnabled && m.isMapper801 {
+		y, mapped = m.remapAddress801(address, m.remapPosition801)
+	} else if m.remapEnabled {
 		// Remap coarse Y in the bus address. Keep fine Y separate for
 		// descriptors and metatiles. Sprite-mode fallback can keep the
 		// original address, so the code keeps both address and mapped.
@@ -170,7 +178,7 @@ func (m *Mapper) readDescriptor(address, mapped uint16, y byte, name bool) (byte
 	}
 
 	m.descriptorFetchesLeft--
-	if m.descriptorFetchesLeft == 2 && m.attributeMode != attributeModePatternOnly {
+	if m.descriptorFetchesLeft == 2 && (m.isMapper801 || m.attributeMode != attributeModePatternOnly) {
 		return m.fetchAttribute(y), true
 	}
 
@@ -197,7 +205,7 @@ func (m *Mapper) fetchAttribute(y byte) byte {
 	var palette byte
 
 	switch m.attributeMode {
-	case attributeModeTile, attributeModeFineY:
+	case attributeModeTile, attributeModeFineY, attributeModePatternOnly:
 		if m.attributeMode == attributeModeFineY {
 			base += int(m.tileFineY) * descriptorBankSize
 		}
@@ -212,6 +220,11 @@ func (m *Mapper) fetchAttribute(y byte) byte {
 		// Two extra bytes store eight row palettes, with four two-bit values
 		// in each byte. Select the byte with Y/4. Then extract the palette,
 		// from the high bits to the low bits.
+		if m.isMapper801 {
+			// Mapper 801 uses the latched row for both selections.
+			y = m.tileFineY
+		}
+
 		value := m.descriptorByte(base + descriptorBankSize + int((y&fineYMask)>>2))
 		palette = value >> uint(6-2*(y&packedRowMask)) & paletteNumberMask
 	}
@@ -223,6 +236,10 @@ func (m *Mapper) fetchAttribute(y byte) byte {
 
 func (m *Mapper) fetchPattern(address uint16) byte {
 	base := int(m.descriptorBanks[m.tileTable])*descriptorBankSize + int(m.tileOffset)*descriptorSize
+	if m.isMapper801 && m.attributeMode == attributeModeFineY {
+		base += int(m.tileFineY) * descriptorBankSize
+	}
+
 	descriptor := uint16(m.descriptorByte(base))<<8 | uint16(m.descriptorByte(base+1))
 
 	if m.remapEnabled {
@@ -232,12 +249,21 @@ func (m *Mapper) fetchPattern(address uint16) byte {
 	// The descriptor gives the large bank number. The PPU gives the tile and
 	// row offset in that bank. Wide mode doubles the bank stride. The
 	// second-plane selector then selects the lower or upper 4 KiB half.
-	offset := int(descriptor&descriptorBankMask) * patternPageSize
+	bank := descriptor & descriptorBankMask
+	if m.isMapper801 {
+		bank = m.descriptorBank801(bank)
+	}
+
+	offset := int(bank) * patternPageSize
 	if m.wideBanks {
 		offset *= 2
 		if m.secondPlane {
 			offset += patternPageSize
 		}
+	}
+
+	if m.isMapper801 {
+		offset &= chrAddressMask801
 	}
 
 	return readWrapped(m.patternMemory(m.patternRAM[m.tileTable]), offset+int(address&patternPageMask), 0)

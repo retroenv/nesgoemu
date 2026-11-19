@@ -63,5 +63,6 @@ var constructors = map[uint16]constructor{
 	220: mxm0.New,
 	232: camerica.NewQuattro,
 	682: rainbow.New,
-	800: mxm1.New,
+	800: mxm1.New800,
+	801: mxm1.New801,
 }

@@ -59,6 +59,9 @@ links to its NESdev documentation.
       <td><a href="https://www.nesdev.org/wiki/NES_2.0_Mapper_682">682 Rainbow</a></td>
       <td>800 MXM-1 (Former Dawn Demo v3.2)</td>
     </tr>
+    <tr>
+      <td>801 MXM-1 (Former Dawn Hover Boots Demo)</td>
+    </tr>
   </tbody>
 </table>
 

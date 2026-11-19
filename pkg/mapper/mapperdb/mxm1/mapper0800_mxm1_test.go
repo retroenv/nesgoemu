@@ -116,7 +116,7 @@ func newTestMapper(t *testing.T) (*Mapper, *bus.Bus) {
 
 	b := mappertest.NewBus(cart)
 
-	mapper, err := New(mapperbase.New(b))
+	mapper, err := New800(mapperbase.New(b))
 	assert.NoError(t, err)
 
 	m := mapper.(*Mapper)
@@ -146,7 +146,7 @@ func TestRejectsOtherSubmapper(t *testing.T) {
 		},
 	})
 
-	mapper, err := New(base)
+	mapper, err := New800(base)
 	assert.Nil(t, mapper)
 	assert.Error(t, err)
 	assert.Equal(t, "MXM-1 submapper 1 is not supported", err.Error())

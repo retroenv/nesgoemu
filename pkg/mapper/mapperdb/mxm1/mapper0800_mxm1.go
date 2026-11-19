@@ -1,6 +1,7 @@
-// Package mxm1 implements mapper 800, submapper 0, as the Former Dawn Demo v3.2
-// uses it. Register reads and writes are not symmetric. A state machine follows
-// the PPU fetches. The package does not implement expansion audio.
+// Package mxm1 implements mapper 800 for Former Dawn Demo v3.2 and mapper 801
+// for Former Dawn Hover Boots Demo. Both use submapper 0. Each board has
+// separate bank registers. Both use the PPU fetch sequence to select graphics.
+// The package does not implement expansion audio or CRT display effects.
 //
 // The older MXM-0 board (220, submapper 1, the House of Truth minimapper) uses
 // a different register protocol and graphics packing. Its flashcart FPGA
@@ -14,9 +15,10 @@
 // pixels. There is no separate framebuffer. The extra graphics come from the
 // data that each fetch sees.
 //
-// This mapper has no public test ROM and no public hardware test result. The
-// tests check the register behavior that the code describes. They do not prove
-// hardware timing.
+// The mapper bitstream in the Hover Boots release is the reference for the
+// mapper 801 bank ports and descriptor fetches. This implementation updates the
+// vertical counter when the CPU writes to it. The PPU fetch sequence controls
+// the scanline timing.
 package mxm1
 
 import (
@@ -67,9 +69,10 @@ type registers struct {
 	prgFlags           [cpuWindowCount]byte
 	prgBanks           [cpuWindowCount]uint16
 	readLatch          byte
-	altEnabled         bool
-	altRAM             bool
-	altBank            uint16
+
+	altEnabled bool
+	altRAM     bool
+	altBank    uint16
 
 	chrMode, chrSelect byte
 	chrRAM             [chrWindowCount]bool
@@ -78,13 +81,12 @@ type registers struct {
 	irqEnabled                     bool
 	irqTarget, irqOffset, scanline byte
 	irqPending, previousPending    bool
-	irqPhase, readInhibit          byte
+	irqPhase                       byte
 
 	descriptorEnabled               bool
 	attributeMode, descriptorSelect byte
 	descriptorRAM, patternRAM       [ntWindowCount]bool
 	descriptorBanks                 [ntWindowCount]uint16
-	manualScroll, verticalPosition  byte
 
 	ntEnabled        bool
 	ntMode, ntSelect byte
@@ -92,8 +94,8 @@ type registers struct {
 	ntBanks          [ntWindowCount]uint16
 
 	wideBanks, spriteMode, secondPlane, spriteSecondPlane bool
-
-	writeBank uint16
+	readInhibit                                           byte
+	writeBank                                             uint16
 
 	copySource, copyDestination byte
 	copyFrom, copyTo            uint16
@@ -107,16 +109,22 @@ type registers struct {
 	remapCursor  uint16
 	remapPage    byte
 
+	remapOffset801   byte
+	remapPosition801 byte
+	remapNTFlip801   bool
+
 	streamCursor byte
 
-	ppuRegisters [ppuRegisterCount]byte
-	scrollDirty  bool
+	ppuRegisters                   [ppuRegisterCount]byte
+	scrollDirty                    bool
+	manualScroll, verticalPosition byte
 
 	lastAddress         uint16
 	repeatCount         byte
 	frameStart, inFrame bool
 	nameReads           uint32
 	previousNameReads   byte
+	dummyAttribute      bool
 
 	metatileFetchesLeft                        byte
 	metatileLow, metatileHigh, metatilePalette byte
@@ -130,6 +138,8 @@ type registers struct {
 // of MXM.
 type Mapper struct {
 	*mapperbase.Base
+	isMapper801 bool
+
 	registers
 
 	prgROM, chrROM, ram, chrMemory []byte
@@ -137,62 +147,16 @@ type Mapper struct {
 	cpuWindows [cpuWindowCount]window
 	ppuWindows [chrWindowCount]window
 	ntWindows  [ntWindowCount]window
-
-	dummyAttribute bool
 }
 
-// New constructs submapper 0 of the demo with the RAM sizes from the NES 2.0
-// header. It rejects other submappers before it initializes devices or installs
-// PPU hooks.
-func New(base *mapperbase.Base) (bus.Mapper, error) {
-	cart := base.Cartridge()
-	if err := mapperbase.ValidateRAMSizes(cart); err != nil {
-		return nil, fmt.Errorf("checking RAM sizes: %w", err)
-	}
-	if cart.NES2 != nil && cart.NES2.Submapper != 0 {
-		return nil, fmt.Errorf("MXM-1 submapper %d is not supported", cart.NES2.Submapper)
-	}
-	if len(cart.PRG) < prgBankSize || len(cart.PRG)%prgBankSize != 0 {
-		return nil, errors.New("MXM-1 requires PRG ROM in 8 KiB banks")
-	}
-
-	ramSize := mapperbase.PrgRAMSize(cart)
-	chrSize := defaultCHRRAM
-	if cart.NES2 != nil {
-		chrSize = mapperbase.ChrRAMTotal(cart.NES2.RAMSizes)
-	}
-
-	m := &Mapper{
-		Base:      base,
-		prgROM:    cart.PRG,
-		chrROM:    cart.CHR,
-		ram:       make([]byte, ramSize+ntBankSize),
-		chrMemory: make([]byte, chrSize),
-	}
-
-	m.SetName(name)
-	m.SetPrgRAM(m.ram)
-	m.SetChrRAM(m.chrMemory)
-	m.SetPrgWindowSize(prgBankSize)
-	m.SetChrWindowSize(chrBankSize)
-	if err := m.Base.Initialize(); err != nil {
-		return nil, fmt.Errorf("initializing mapper: %w", err)
-	}
-
-	for _, id := range declaredFeatures {
-		m.DeclareFeature(id)
-	}
-
-	m.NameTableMemory().SetReadHook(m.readNameTable)
-	m.NameTableMemory().SetWriteHook(m.writeNameTable)
-	m.Reset()
-
-	return m, nil
+// New800 constructs mapper 800, submapper 0. It uses the NES 2.0 RAM sizes
+// when the header is available.
+func New800(base *mapperbase.Base) (bus.Mapper, error) {
+	return newMapper(base, false)
 }
 
 // Reset restores the mapper registers. It does not erase cartridge RAM.
 func (m *Mapper) Reset() {
-	m.dummyAttribute = false
 	m.registers = registers{
 		prgBanks:        [cpuWindowCount]uint16{0, 0, 1, 2, lastPRGBank},
 		metatileStride:  metatileDefaultStride,
@@ -200,7 +164,7 @@ func (m *Mapper) Reset() {
 		copyDestination: copySourceRAM,
 	}
 
-	if len(m.ram) > ntBankSize {
+	if !m.isMapper801 && len(m.ram) > ntBankSize {
 		m.prgFlags[0] = bankSourceRAM
 	}
 
@@ -209,13 +173,16 @@ func (m *Mapper) Reset() {
 	}
 
 	for slot := range m.ppuWindows {
-		m.ppuWindows[slot] = window{
-			data:   m.chrROM,
-			offset: (initialCHRBank + slot) * chrBankSize,
+		m.ppuWindows[slot] = window{data: m.chrROM}
+		if !m.isMapper801 {
+			m.ppuWindows[slot].offset = (initialCHRBank + slot) * chrBankSize
 		}
 	}
 
-	m.ppuWindows[initialCHRExceptionSlot].offset = initialCHRExceptionBank * chrBankSize
+	if !m.isMapper801 {
+		m.ppuWindows[initialCHRExceptionSlot].offset = initialCHRExceptionBank * chrBankSize
+	}
+
 	m.ntWindows = [ntWindowCount]window{}
 	m.SetMapperIRQ(false)
 }
@@ -254,19 +221,7 @@ func (m *Mapper) Read(address uint16) byte {
 	}
 
 	slot := int(address-cpuWindowBase) / prgBankSize
-	w := m.cpuWindows[slot]
-	if slot == alternateSlot && m.altEnabled {
-		data := m.prgROM
-		if m.altRAM {
-			data = m.ram
-		}
-
-		w = window{
-			data:   data,
-			offset: int(m.altBank) * prgBankSize,
-		}
-	}
-
+	w := m.cpuReadWindow(slot)
 	value := readWrapped(w.data, w.offset+int(address&prgOffsetMask), m.OpenBus())
 	if m.prgFlags[slot]&prgGraphicsLatch != 0 {
 		// The graphics aperture hides the data of the original CPU read.
@@ -359,7 +314,28 @@ func (m *Mapper) writeNameTable(address uint16, value byte) bool {
 	return true
 }
 
+func (m *Mapper) cpuReadWindow(slot int) window {
+	if m.isMapper801 || slot != alternateSlot || !m.altEnabled {
+		return m.cpuWindows[slot]
+	}
+
+	data := m.prgROM
+	if m.altRAM {
+		data = m.ram
+	}
+
+	return window{
+		data:   data,
+		offset: int(m.altBank) * prgBankSize,
+	}
+}
+
 func (m *Mapper) mapCPU(slot int, bank uint16, flags byte) {
+	if m.isMapper801 {
+		// Only nine bits of the PRG bank register select an address.
+		bank &= prgBankMask801
+	}
+
 	w := window{
 		data: m.prgROM,
 		prg:  true,
@@ -367,6 +343,10 @@ func (m *Mapper) mapCPU(slot int, bank uint16, flags byte) {
 
 	if flags&bankSourceRAM != 0 {
 		w.data = m.ram
+		if m.isMapper801 {
+			w.data = w.data[:len(w.data)-ntBankSize]
+		}
+
 		w.writable = true
 		w.prg = false
 	}
@@ -415,6 +395,57 @@ func (m *Mapper) mapAlternateCPU() {
 	} else {
 		m.mapCPU(alternateSlot, m.prgBanks[alternateSlot], m.prgFlags[alternateSlot])
 	}
+}
+
+func newMapper(base *mapperbase.Base, isMapper801 bool) (bus.Mapper, error) {
+	cart := base.Cartridge()
+	if err := mapperbase.ValidateRAMSizes(cart); err != nil {
+		return nil, fmt.Errorf("checking RAM sizes: %w", err)
+	}
+	if cart.NES2 != nil && cart.NES2.Submapper != 0 {
+		return nil, fmt.Errorf("MXM-1 submapper %d is not supported", cart.NES2.Submapper)
+	}
+	if isMapper801 {
+		if err := validateLayout801(cart); err != nil {
+			return nil, err
+		}
+	} else if len(cart.PRG) < prgBankSize || len(cart.PRG)%prgBankSize != 0 {
+		return nil, errors.New("MXM-1 requires PRG ROM in 8 KiB banks")
+	}
+
+	ramSize := mapperbase.PrgRAMSize(cart)
+	chrSize := defaultCHRRAM
+	if cart.NES2 != nil {
+		chrSize = mapperbase.ChrRAMTotal(cart.NES2.RAMSizes)
+	}
+
+	m := &Mapper{
+		Base:        base,
+		isMapper801: isMapper801,
+		prgROM:      cart.PRG,
+		chrROM:      cart.CHR,
+		ram:         make([]byte, ramSize+ntBankSize),
+		chrMemory:   make([]byte, chrSize),
+	}
+
+	m.SetName(name)
+	m.SetPrgRAM(m.ram)
+	m.SetChrRAM(m.chrMemory)
+	m.SetPrgWindowSize(prgBankSize)
+	m.SetChrWindowSize(chrBankSize)
+	if err := m.Base.Initialize(); err != nil {
+		return nil, fmt.Errorf("initializing mapper: %w", err)
+	}
+
+	for _, id := range declaredFeatures {
+		m.DeclareFeature(id)
+	}
+
+	m.NameTableMemory().SetReadHook(m.readNameTable)
+	m.NameTableMemory().SetWriteHook(m.writeNameTable)
+	m.Reset()
+
+	return m, nil
 }
 
 func readWrapped(data []byte, offset int, fallback byte) byte {
