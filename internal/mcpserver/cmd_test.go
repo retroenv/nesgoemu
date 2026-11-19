@@ -37,8 +37,8 @@ func TestExtractRootsRejectsMissingDirectory(t *testing.T) {
 }
 
 func TestMainRejectsPositionalArguments(t *testing.T) {
-	err := Main([]string{"/roms"}, "test")
+	err := Main(t.Context(), []string{"/roms"}, "test")
 	assert.ErrorContains(t, err, "unexpected argument")
-	err = Main([]string{"-transport", "carrier"}, "test")
+	err = Main(t.Context(), []string{"-transport", "carrier"}, "test")
 	assert.ErrorContains(t, err, "unknown transport")
 }

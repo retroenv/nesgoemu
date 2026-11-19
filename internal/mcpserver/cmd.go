@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/retroenv/retrogolib/app"
 	"github.com/retroenv/retrogolib/cli"
 	"github.com/retroenv/retrogolib/log"
 )
@@ -29,7 +28,7 @@ const shutdownTimeout = 5 * time.Second
 const idleTimeout = 2 * time.Minute
 
 // Main runs the MCP server command and returns an error when it fails.
-func Main(args []string, version string) error {
+func Main(ctx context.Context, args []string, version string) error {
 	rootDirs, rest, err := extractRoots(args)
 	if err != nil {
 		return err
@@ -77,8 +76,6 @@ func Main(args []string, version string) error {
 	if err != nil {
 		return err
 	}
-
-	ctx := app.Context()
 
 	switch flags.Transport {
 	case transportStdio:

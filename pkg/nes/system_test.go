@@ -1,9 +1,13 @@
 package nes
 
 import (
+	"context"
 	"image"
 	"io"
+	"net"
+	"syscall"
 	"testing"
+	"time"
 
 	"github.com/retroenv/nesgoemu/pkg/bus"
 	"github.com/retroenv/nesgoemu/pkg/memory"
@@ -13,6 +17,17 @@ import (
 	"github.com/retroenv/retrogolib/arch/system/nes/register"
 	"github.com/retroenv/retrogolib/assert"
 )
+
+func TestStartReturnsDebuggerListenError(t *testing.T) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	assert.NoError(t, err)
+	defer func() { assert.NoError(t, listener.Close()) }()
+
+	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
+	defer cancel()
+	err = Start(ctx, WithDebug(listener.Addr().String()), WithDisabledGUI(), WithDisabledAudio(), WithSavePath(""))
+	assert.ErrorIs(t, err, syscall.EADDRINUSE)
+}
 
 func TestClockComponents(t *testing.T) {
 	mapper := &clockMapper{}

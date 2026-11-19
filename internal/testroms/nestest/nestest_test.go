@@ -32,7 +32,7 @@ func TestNestest(t *testing.T) {
 		nes.WithDisabledGUI(),
 		nes.WithTracingTarget(trace),
 	}
-	assert.NoError(t, nes.Start(options...))
+	assert.NoError(t, nes.Start(t.Context(), options...))
 
 	assert.NoError(t, trace.Flush())
 

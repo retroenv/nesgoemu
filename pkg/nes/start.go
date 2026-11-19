@@ -1,16 +1,16 @@
 package nes
 
 import (
+	"context"
 	"errors"
 
 	"github.com/retroenv/nesgoemu/pkg/nes/debugger"
-	"github.com/retroenv/retrogolib/app"
 	"github.com/retroenv/retrogolib/audio"
 	"github.com/retroenv/retrogolib/gui"
 )
 
-// Start is the main entrypoint for a NES program that starts the execution.
-func Start(options ...Option) error {
+// Start runs the NES program until it stops or the context is canceled.
+func Start(ctx context.Context, options ...Option) error {
 	opts := NewOptions(options...)
 	sys, err := NewSystem(opts)
 	if err != nil {
@@ -18,13 +18,6 @@ func Start(options ...Option) error {
 	}
 	if opts.entrypoint >= 0 {
 		sys.PC = uint16(opts.entrypoint)
-	}
-
-	ctx := app.Context()
-	var debugServer *debugger.Debugger
-	if opts.debug {
-		debugServer = debugger.New(opts.debugAddress, sys.Bus)
-		go debugServer.Start(ctx)
 	}
 
 	guiStarter := setupNoGui
@@ -42,9 +35,34 @@ func Start(options ...Option) error {
 		defer playback.Stop()
 	}
 
-	runErr := sys.runRenderer(ctx, opts, guiStarter, playbackErrors(playback))
+	var debugErr error
+	runCtx := ctx
+	var stopDebug func() error
+	if opts.debug {
+		runCtx, stopDebug = startDebugger(ctx, debugger.New(opts.debugAddress, sys.Bus))
+	}
+
+	runErr := sys.runRenderer(runCtx, opts, guiStarter, playbackErrors(playback))
+	if stopDebug != nil {
+		debugErr = stopDebug()
+	}
+
 	sys.memory.FlushPrintf()
 	summaryErr := sys.writeSummary(opts.summaryTarget, opts.summaryFeatures)
 
-	return errors.Join(runErr, sys.SaveBattery(), summaryErr)
+	return errors.Join(runErr, debugErr, sys.SaveBattery(), summaryErr)
+}
+
+func startDebugger(ctx context.Context, server *debugger.Debugger) (context.Context, func() error) {
+	runCtx, cancel := context.WithCancel(ctx)
+	done := make(chan error, 1)
+	go func() {
+		done <- server.Serve(runCtx)
+		cancel()
+	}()
+
+	return runCtx, func() error {
+		cancel()
+		return <-done
+	}
 }

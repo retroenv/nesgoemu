@@ -13,6 +13,7 @@ import (
 	"github.com/retroenv/nesgoemu/internal/mcpserver"
 	"github.com/retroenv/nesgoemu/pkg/nes"
 	"github.com/retroenv/nesgoemu/pkg/ppu"
+	"github.com/retroenv/retrogolib/app"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 	_ "github.com/retroenv/retrogolib/audio/sdl2"
 	_ "github.com/retroenv/retrogolib/audio/sdl3"
@@ -51,8 +52,9 @@ var (
 )
 
 func main() {
+	ctx := app.Context()
 	if len(os.Args) > 1 && os.Args[1] == "mcp" {
-		if err := mcpserver.Main(os.Args[2:], buildinfo.Version(version, commit, date)); err != nil {
+		if err := mcpserver.Main(ctx, os.Args[2:], buildinfo.Version(version, commit, date)); err != nil {
 			fmt.Fprintf(os.Stderr, "mcp server failed: %v\n", err)
 			os.Exit(1)
 		}
@@ -62,7 +64,7 @@ func main() {
 
 	options, input := readArguments()
 
-	if err := emulateFile(options, input); err != nil {
+	if err := emulateFile(ctx, options, input); err != nil {
 		fmt.Println(fmt.Errorf("emulation failed: %w", err))
 		os.Exit(1)
 	}
@@ -101,13 +103,14 @@ func printBanner() {
 	fmt.Printf("version: %s\n\n", buildinfo.Version(version, commit, date))
 }
 
-func emulateFile(options optionFlags, input string) error {
+func emulateFile(ctx context.Context, options optionFlags, input string) error {
 	cart, err := readCartridge(input)
 	if err != nil {
 		return err
 	}
+
 	if options.WAV != "" {
-		return recordWAV(context.Background(), cart, options)
+		return recordWAV(ctx, cart, options)
 	}
 
 	opts, err := emulatorOptions(options, cart, input)
@@ -115,7 +118,7 @@ func emulateFile(options optionFlags, input string) error {
 		return err
 	}
 
-	if err := nes.Start(opts...); err != nil {
+	if err := nes.Start(ctx, opts...); err != nil {
 		return fmt.Errorf("starting emulator: %w", err)
 	}
 

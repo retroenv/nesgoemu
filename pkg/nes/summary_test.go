@@ -124,6 +124,7 @@ func TestSummaryTargetIsDisabledByDefault(t *testing.T) {
 func TestStartWritesSummaryWhenEnabled(t *testing.T) {
 	var out bytes.Buffer
 	err := Start(
+		t.Context(),
 		WithCartridge(newSummaryCartridge(t)),
 		WithDisabledGUI(),
 		WithSavePath(""),
@@ -136,6 +137,7 @@ func TestStartWritesSummaryWhenEnabled(t *testing.T) {
 
 	out.Reset()
 	err = Start(
+		t.Context(),
 		WithCartridge(newSummaryCartridge(t)),
 		WithDisabledGUI(),
 		WithSavePath(""),
@@ -185,6 +187,7 @@ func TestStartRecordsRenderers(t *testing.T) {
 
 	var out bytes.Buffer
 	err := Start(
+		t.Context(),
 		WithCartridge(newSummaryCartridge(t)),
 		WithSavePath(""),
 		WithSummaryTarget(&out),

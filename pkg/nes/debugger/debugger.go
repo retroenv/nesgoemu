@@ -3,6 +3,7 @@ package debugger
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -48,11 +49,24 @@ func New(listenAddress string, bus *bus.Bus) *Debugger {
 
 // Start the debugger webserver, this needs to be called in a goroutine.
 func (d *Debugger) Start(ctx context.Context) {
+	if err := d.Serve(ctx); err != nil {
+		panic(err)
+	}
+}
+
+// Serve runs the debugger until the context ends or the server fails.
+func (d *Debugger) Serve(ctx context.Context) error {
 	d.server.BaseContext = func(_ net.Listener) context.Context {
 		return ctx
 	}
 
-	if err := d.server.ListenAndServe(); err != nil {
-		panic(fmt.Errorf("listening on %s: %w", d.server.Addr, err))
+	stop := context.AfterFunc(ctx, func() {
+		_ = d.server.Close()
+	})
+	defer stop()
+
+	if err := d.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		return fmt.Errorf("listening on %s: %w", d.server.Addr, err)
 	}
+	return nil
 }
