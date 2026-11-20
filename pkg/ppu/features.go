@@ -1,9 +1,9 @@
 package ppu
 
-import "github.com/retroenv/nesgoemu/pkg/feature"
-
-// visibleScanLines is the number of scan lines that show the picture.
-const visibleScanLines = 240
+import (
+	"github.com/retroenv/nesgoemu/pkg/feature"
+	"github.com/retroenv/nesgoemu/pkg/ppu/renderstate"
+)
 
 // Features returns the PPU feature inventory in declaration order.
 func (p *PPU) Features() []feature.Usage {
@@ -61,5 +61,5 @@ func (p *PPU) markScrollWrite() {
 // visible line.
 func (p *PPU) drawingVisibleLine() bool {
 	rendering := p.mask.RenderBackground() || p.mask.RenderSprites()
-	return rendering && p.renderState.ScanLine() < visibleScanLines
+	return rendering && p.renderState.ScanLine() < renderstate.VisibleScanlines
 }

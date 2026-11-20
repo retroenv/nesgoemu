@@ -8,6 +8,7 @@ import (
 	"github.com/retroenv/nesgoemu/pkg/mapper"
 	"github.com/retroenv/nesgoemu/pkg/ppu/control"
 	"github.com/retroenv/nesgoemu/pkg/ppu/mask"
+	"github.com/retroenv/nesgoemu/pkg/ppu/renderstate"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 	"github.com/retroenv/retrogolib/arch/system/nes/register"
 	"github.com/retroenv/retrogolib/assert"
@@ -86,7 +87,7 @@ func TestFeaturesMarkHiddenLeftColumn(t *testing.T) {
 // stepToVisibleLine moves the PPU to a visible line and then turns rendering
 // on. The test bus cannot fetch tiles, so no step runs with rendering on.
 func stepToVisibleLine(p *PPU) {
-	for p.renderState.ScanLine() >= visibleScanLines || p.renderState.ScanLine() < 10 {
+	for p.renderState.ScanLine() >= renderstate.VisibleScanlines || p.renderState.ScanLine() < 10 {
 		p.Step(341)
 	}
 
@@ -131,7 +132,7 @@ func TestFeaturesMarkMidFrameScrollWrites(t *testing.T) {
 	assert.False(t, usedFeature(p, feature.MidFrameScroll), "rendering is off")
 
 	stepToVisibleLine(p)
-	assert.True(t, p.renderState.ScanLine() < visibleScanLines)
+	assert.True(t, p.renderState.ScanLine() < renderstate.VisibleScanlines)
 	p.Write(register.PPU_SCROLL, 8)
 	assert.True(t, usedFeature(p, feature.MidFrameScroll))
 }

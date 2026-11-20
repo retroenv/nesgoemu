@@ -1,6 +1,23 @@
 // Package renderstate handles PPU render handling of cycles, scan lines and frames.
 package renderstate
 
+const (
+	// FirstVisibleDot and LastVisibleDot bound the visible dots of a scanline.
+	FirstVisibleDot = 1
+	LastVisibleDot  = 256
+
+	// FirstBackgroundPrefetchDot and LastBackgroundPrefetchDot bound the
+	// background tile fetches for the next scanline.
+	FirstBackgroundPrefetchDot = 321
+	LastBackgroundPrefetchDot  = 336
+
+	// VisibleScanlines is the number of scanlines that show the picture.
+	VisibleScanlines = 240
+
+	// PreRenderScanline is the last scanline of an NTSC frame.
+	PreRenderScanline = 261
+)
+
 type mask interface {
 	RenderBackground() bool
 	RenderSprites() bool
@@ -17,7 +34,7 @@ type RenderState struct {
 func New() *RenderState {
 	return &RenderState{
 		cycle:    340,
-		scanLine: 240,
+		scanLine: VisibleScanlines,
 	}
 }
 
@@ -30,7 +47,7 @@ func (r *RenderState) Tick(mask mask) {
 func (r *RenderState) TickRendering(rendering bool) {
 	if rendering {
 		// for odd frames, the cycle at the end of the scanline is skipped
-		if r.scanLine == 261 && r.cycle == 339 && r.frame%2 == 1 {
+		if r.scanLine == PreRenderScanline && r.cycle == 339 && r.frame%2 == 1 {
 			r.nextFrame()
 			return
 		}
@@ -44,7 +61,7 @@ func (r *RenderState) TickRendering(rendering bool) {
 	r.cycle = 0
 
 	r.scanLine++
-	if r.scanLine <= 261 {
+	if r.scanLine <= PreRenderScanline {
 		return
 	}
 

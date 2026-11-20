@@ -3,6 +3,7 @@ package ppu
 import (
 	"image"
 
+	"github.com/retroenv/nesgoemu/pkg/ppu/renderstate"
 	"github.com/retroenv/retrogolib/arch/system/nes/register"
 )
 
@@ -35,7 +36,8 @@ func (p *PPU) step() {
 	if rendering {
 		p.renderBackground(cycle, scanLine)
 		// sprite evaluation occurs if either the sprite layer or background layer is enabled
-		if cycle >= 257 && cycle <= 320 && (scanLine < 240 || scanLine == 261) {
+		renderLine := scanLine < renderstate.VisibleScanlines || scanLine == renderstate.PreRenderScanline
+		if cycle >= 257 && cycle <= 320 && renderLine {
 			p.sprites.Render()
 		}
 	}
@@ -52,7 +54,7 @@ func (p *PPU) step() {
 		p.probeFinish()
 		p.nmi.SetOccurred(true)
 
-	case 261:
+	case renderstate.PreRenderScanline:
 		p.nmi.SetOccurred(false)
 		p.status.SetSpriteOverflow(false)
 		p.status.SetSpriteZeroHit(false)
@@ -60,13 +62,13 @@ func (p *PPU) step() {
 }
 
 func (p *PPU) renderBackground(cycle, scanLine int) {
-	preLine := scanLine == 261
-	visibleLine := scanLine < 240
+	preLine := scanLine == renderstate.PreRenderScanline
+	visibleLine := scanLine < renderstate.VisibleScanlines
 	renderLine := preLine || visibleLine
 
 	// cycle 0 is an idle cycle
-	preFetchCycle := cycle >= 321 && cycle <= 336
-	visibleCycle := cycle >= 1 && cycle <= 256
+	preFetchCycle := cycle >= renderstate.FirstBackgroundPrefetchDot && cycle <= renderstate.LastBackgroundPrefetchDot
+	visibleCycle := cycle >= renderstate.FirstVisibleDot && cycle <= renderstate.LastVisibleDot
 	fetchCycle := preFetchCycle || visibleCycle
 
 	if visibleLine && visibleCycle {
