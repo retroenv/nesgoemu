@@ -5,8 +5,11 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/retroenv/retrogolib/arch/system/nes"
 	"github.com/retroenv/retrogolib/assert"
 )
+
+const ntscCPURate = float64(nes.NTSCCPUClockNumerator) / nes.NTSCCPUClockDenominator
 
 func BenchmarkAdd(b *testing.B) {
 	for _, rate := range []int{44100, 48000} {
@@ -20,22 +23,17 @@ func BenchmarkAdd(b *testing.B) {
 	}
 }
 
-func TestNewUsesNTSCRateRatio(t *testing.T) {
-	s := New(44100, func(float64) {})
-
-	assert.Equal(t, 40.584415584, round(s.cyclesPerSample, 9))
-}
-
 func TestAddEmitsOneSamplePerPeriod(t *testing.T) {
-	const cycles = 441_000
+	const cycles, rate = 441_000, 44_100
 	samples := collect()
-	s := New(44100, samples.add)
+	s := New(rate, samples.add)
 
 	for range cycles {
 		s.Add(0.5)
 	}
 
-	assert.Len(t, samples.values, int(float64(cycles)/s.cyclesPerSample))
+	want := math.Floor(float64(cycles) * rate / ntscCPURate)
+	assert.Len(t, samples.values, int(want))
 }
 
 func TestAddPreservesDCGain(t *testing.T) {
@@ -62,16 +60,33 @@ func TestAddCarriesTheFractionalPeriod(t *testing.T) {
 	assert.Len(t, samples.values, 77)
 }
 
-func TestAddDoesNotDriftOverTime(t *testing.T) {
-	const cycles = 4_410_000
+func TestPALSamplerCarriesTheFractionalPeriod(t *testing.T) {
+	// At 44.1 kHz, 709379 PAL CPU cycles give exactly 18816 output samples.
+	const sampleRate, cycles, sampleCount = 44100, 709379, 18816
+	ntsc := New(sampleRate, func(float64) {})
 	samples := collect()
-	s := New(44100, samples.add)
+	pal := NewPAL(sampleRate, samples.add)
+	assert.NotEqual(t, len(ntsc.history), len(pal.history))
+
+	for range cycles - 1 {
+		pal.Add(0.25)
+	}
+	assert.Len(t, samples.values, sampleCount-1)
+	pal.Add(0.25)
+	assert.Len(t, samples.values, sampleCount)
+	assert.LessOrEqual(t, math.Abs(samples.values[sampleCount-1]-0.25), 1e-12)
+}
+
+func TestAddDoesNotDriftOverTime(t *testing.T) {
+	const cycles, rate = 4_410_000, 44_100
+	samples := collect()
+	s := New(rate, samples.add)
 
 	for range cycles {
 		s.Add(0.25)
 	}
 
-	expected := int(float64(cycles) / s.cyclesPerSample)
+	expected := int(math.Floor(float64(cycles) * rate / ntscCPURate))
 	assert.LessOrEqual(t, math.Abs(float64(len(samples.values)-expected)), 1)
 }
 
@@ -81,7 +96,7 @@ func TestFrequencyResponse(t *testing.T) {
 		for _, frequency := range []float64{1000, 10000, 15000, 24000, 27965.199, 30000, 55930.398} {
 			samples := collect()
 			s := New(rate, samples.add)
-			cycles := int(float64(rate/5) * s.cyclesPerSample)
+			cycles := int(math.Floor(ntscCPURate / 5))
 			for index := range cycles {
 				s.Add(math.Sin(2 * math.Pi * frequency * float64(index) / ntscCPURate))
 			}
@@ -156,9 +171,4 @@ func collect() *sampleSink {
 
 func (s *sampleSink) add(level float64) {
 	s.values = append(s.values, level)
-}
-
-func round(value float64, digits int) float64 {
-	factor := math.Pow(10, float64(digits))
-	return math.Round(value*factor) / factor
 }

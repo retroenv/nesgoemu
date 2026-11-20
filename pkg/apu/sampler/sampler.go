@@ -6,33 +6,29 @@ package sampler
 import (
 	"math"
 	"sync"
+
+	"github.com/retroenv/retrogolib/arch/system/nes"
 )
 
-// ntscCPURate is the NTSC CPU clock rate in Hz: six times the 315/88 MHz
-// colorburst, divided by 12.
-// https://www.nesdev.org/wiki/Cycle_reference_chart
 const (
-	ntscClockNumerator   = 19_687_500
-	ntscClockDenominator = 11
-	ntscCPURate          = float64(ntscClockNumerator) / ntscClockDenominator
-	filterPhases         = 32
-	filterHalfWidth      = 24
-	maxExactPhases       = 512
-	maxExactWeights      = 1 << 20 // Limit each combined filter table to 8 MiB.
+	filterPhases    = 32
+	filterHalfWidth = 24
+	maxExactPhases  = 512
+	maxExactWeights = 1 << 20 // Limit each combined filter table to 8 MiB.
 )
 
 var (
 	kernelMutex      sync.Mutex
-	kernelCache      = make(map[int][][]float64)
-	exactKernelCache = make(map[int][][]float64)
+	kernelCache      = make(map[sampleTiming][][]float64)
+	exactKernelCache = make(map[sampleTiming][][]float64)
 )
 
 // Sampler converts the mixed signal of the APU to the output sample rate and
 // calls a sink for every sample. Only the emulation goroutine calls Add.
 type Sampler struct {
-	accumulator     uint64
-	cyclesPerSample float64
-	increment       uint64
+	accumulator    uint64
+	clockNumerator uint64
+	increment      uint64
 
 	coefficients [][]float64 // Shared, immutable fractional-delay filters.
 	exactPhases  [][]float64 // Combined filters for a short, repeating sample schedule.
@@ -45,30 +41,26 @@ type Sampler struct {
 	worker *worker
 }
 
-// New returns a new sampler that calls the sink once per output sample period.
+// New returns an NTSC sampler that calls the sink once per output sample period.
 // The filter delays the signal by approximately 24 output samples. It preserves
 // frequencies through 15 kHz at 44.1 and 48 kHz output rates.
 // The sample rate must be positive and must not exceed the NTSC CPU rate.
 func New(sampleRate int, sink func(level float64)) *Sampler {
-	if sampleRate <= 0 || sampleRate > ntscClockNumerator/ntscClockDenominator {
-		panic("sample rate must be between 1 Hz and the NTSC CPU rate")
-	}
+	return newSampler(sampleTiming{
+		clockDenominator: nes.NTSCCPUClockDenominator,
+		clockNumerator:   nes.NTSCCPUClockNumerator,
+		rate:             sampleRate,
+	}, sink)
+}
 
-	coefficients := filterCoefficients(sampleRate)
-	exactPhases, phaseStep := exactCoefficients(sampleRate, coefficients)
-
-	return &Sampler{
-		cyclesPerSample: ntscCPURate / float64(sampleRate),
-		increment:       uint64(sampleRate) * ntscClockDenominator,
-
-		coefficients: coefficients,
-		exactPhases:  exactPhases,
-		phaseStep:    phaseStep,
-
-		history: make([]float64, len(coefficients[0])),
-
-		sink: sink,
-	}
+// NewPAL returns a sampler for the PAL CPU clock. The sample rate must be
+// positive and must not exceed the PAL CPU rate.
+func NewPAL(sampleRate int, sink func(level float64)) *Sampler {
+	return newSampler(sampleTiming{
+		clockDenominator: nes.PALCPUClockDenominator,
+		clockNumerator:   nes.PALCPUClockNumerator,
+		rate:             sampleRate,
+	}, sink)
 }
 
 // Add adds the mixed signal level of one CPU cycle.
@@ -89,11 +81,11 @@ func (s *Sampler) add(level float64) {
 
 	s.history[s.position] = level
 	s.accumulator += s.increment
-	if s.accumulator < ntscClockNumerator {
+	if s.accumulator < s.clockNumerator {
 		return
 	}
 
-	s.accumulator -= ntscClockNumerator
+	s.accumulator -= s.clockNumerator
 	s.sink(s.filtered())
 }
 
@@ -127,6 +119,36 @@ func (s *Sampler) filtered() float64 {
 	return left + (right-left)*fraction
 }
 
+type sampleTiming struct {
+	clockDenominator uint64
+	clockNumerator   uint64
+	rate             int
+}
+
+func newSampler(timing sampleTiming, sink func(level float64)) *Sampler {
+	if timing.rate <= 0 || uint64(timing.rate) > timing.clockNumerator/timing.clockDenominator {
+		panic("sample rate must be between 1 Hz and the CPU rate")
+	}
+
+	cpuRate := float64(timing.clockNumerator) / float64(timing.clockDenominator)
+	increment := uint64(timing.rate) * timing.clockDenominator
+	coefficients := filterCoefficients(timing, cpuRate)
+	exactPhases, phaseStep := exactCoefficients(timing, increment, coefficients)
+
+	return &Sampler{
+		clockNumerator: timing.clockNumerator,
+		increment:      increment,
+
+		coefficients: coefficients,
+		exactPhases:  exactPhases,
+		phaseStep:    phaseStep,
+
+		history: make([]float64, len(coefficients[0])),
+
+		sink: sink,
+	}
+}
+
 // dot processes four samples per iteration to reduce loop overhead in debug builds.
 func dot(samples, weights []float64) float64 {
 	var sum float64
@@ -145,10 +167,9 @@ func dot(samples, weights []float64) float64 {
 
 // exactCoefficients combines adjacent filters once for each reachable sample time.
 // Rates with long schedules use interpolation during playback to limit memory use.
-func exactCoefficients(sampleRate int, coefficients [][]float64) ([][]float64, uint64) {
-	increment := uint64(sampleRate) * ntscClockDenominator
+func exactCoefficients(timing sampleTiming, increment uint64, coefficients [][]float64) ([][]float64, uint64) {
 	step := increment
-	divisor := uint64(ntscClockNumerator)
+	divisor := timing.clockNumerator
 	for divisor != 0 {
 		remainder := step % divisor
 		step = divisor
@@ -162,7 +183,7 @@ func exactCoefficients(sampleRate int, coefficients [][]float64) ([][]float64, u
 
 	kernelMutex.Lock()
 	defer kernelMutex.Unlock()
-	if weights, ok := exactKernelCache[sampleRate]; ok {
+	if weights, ok := exactKernelCache[timing]; ok {
 		return weights, step
 	}
 
@@ -181,7 +202,7 @@ func exactCoefficients(sampleRate int, coefficients [][]float64) ([][]float64, u
 		weights[phase] = combined
 	}
 
-	exactKernelCache[sampleRate] = weights
+	exactKernelCache[timing] = weights
 
 	return weights, step
 }
@@ -189,15 +210,15 @@ func exactCoefficients(sampleRate int, coefficients [][]float64) ([][]float64, u
 // filterCoefficients constructs a Blackman-windowed sinc filter. The cutoff is
 // below the output Nyquist frequency so the transition band cannot alias into
 // the passband. Each phase has unit DC gain.
-func filterCoefficients(sampleRate int) [][]float64 {
+func filterCoefficients(timing sampleTiming, cpuRate float64) [][]float64 {
 	kernelMutex.Lock()
 	defer kernelMutex.Unlock()
-	if coefficients, ok := kernelCache[sampleRate]; ok {
+	if coefficients, ok := kernelCache[timing]; ok {
 		return coefficients
 	}
 
-	half := int(math.Ceil(filterHalfWidth * ntscCPURate / float64(sampleRate)))
-	cutoff := 0.42 * float64(sampleRate) / ntscCPURate
+	half := int(math.Ceil(filterHalfWidth * cpuRate / float64(timing.rate)))
+	cutoff := 0.42 * float64(timing.rate) / cpuRate
 	coefficients := make([][]float64, filterPhases+1)
 	for phase := range coefficients {
 		weights := make([]float64, 2*half+1)
@@ -222,7 +243,7 @@ func filterCoefficients(sampleRate int) [][]float64 {
 		coefficients[phase] = weights
 	}
 
-	kernelCache[sampleRate] = coefficients
+	kernelCache[timing] = coefficients
 
 	return coefficients
 }
