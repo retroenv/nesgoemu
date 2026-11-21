@@ -15,9 +15,8 @@
 // Bits 1-0 of that byte select the pattern bank for the next pattern fetches,
 // and PPU address bit 12 has no effect. Bits 7-6 or bits 5-4 are the palette
 // number, as $6000 selects. The game changes $6000 on each frame to mix colors.
-// Thus the bit of $6000 is the blend phase. The phase also selects the palette
-// table. The decompiled Verilog of the bittrace project calls this bit "field".
-// The original names are not known.
+// Bit 0 of $6000 selects the blend phase and the palette table.
+// See the N8 PRO release at https://somethingnerdy.com/downloads/.
 //
 // The game has two brightness modes. In dim mode, the NMI handler sets all three
 // color emphasis bits of PPUMASK and writes 1 to $6002. Then palette entry 1 of
@@ -48,9 +47,10 @@ const (
 	prgSize = 0x8000
 	chrSize = 0x6000
 
-	regPhase   = 0x6000
-	regCheck   = 0x6001
-	regDimMode = 0x6002
+	regPhase       = 0x6000
+	regCheck       = 0x6001
+	regDimMode     = 0x6002
+	writeValueMask = 0x01 // The write registers use bit 0.
 
 	paletteRegFirst  = 0x6010
 	paletteRegLast   = 0x601F
@@ -60,7 +60,6 @@ const (
 	dimEntry1Color = 0x1C
 
 	patternTableEnd = 0x2000
-	paletteRAMStart = 0x3F00
 	// Hardware decodes an attribute fetch from PPU A9-A6 only. PPU A13 selects
 	// the nametable space.
 	attributeMask = 0x03C0
@@ -74,12 +73,10 @@ const (
 	fineYMask         = 0x07
 
 	// phase0Shift and phase1Shift are the positions of the palette number in
-	// an attribute byte. attributeCopies repeats the number in all four
-	// quadrants of the byte for the PPU.
+	// an attribute byte.
 	phase0Shift       = 6
 	phase1Shift       = 4
 	paletteNumberMask = 0x03
-	attributeCopies   = 0x55
 
 	// fetchesPerLine is the count of PPU reads on a scanline with rendering on.
 	fetchesPerLine = 170
@@ -107,8 +104,8 @@ type Mapper struct {
 
 	chr []byte
 
-	dimMode bool
-	phase   int // 0 or 1
+	dimMode    bool
+	blendPhase int // 0 or 1
 
 	fetchCount  int
 	fineY       uint16
@@ -168,19 +165,19 @@ func (m *Mapper) Read(address uint16) byte {
 
 // Write handles the registers. CHR ROM and PRG ROM ignore writes.
 func (m *Mapper) Write(address uint16, value byte) {
-	set := value&1 != 0
+	value &= writeValueMask
 
 	switch address {
 	case regPhase:
-		m.phase = int(value & 1)
+		m.blendPhase = int(value)
 
 	case regCheck:
-		if set {
+		if value != 0 {
 			m.MarkFeature(feature.CRCCheck)
 		}
 
 	case regDimMode:
-		m.dimMode = set
+		m.dimMode = value != 0
 	}
 }
 
@@ -211,7 +208,7 @@ func (m *Mapper) InspectMemory(address uint16) (byte, bool) {
 	switch {
 	case address < patternTableEnd:
 		return m.InspectCHR(address), true
-	case address >= paletteRAMStart || !isAttribute(address):
+	case address >= register.PALETTE_START || !isAttribute(address):
 		return 0, false
 	}
 
@@ -287,11 +284,11 @@ func (m *Mapper) rowAttribute() byte {
 
 func (m *Mapper) paletteAttribute(value byte) byte {
 	shift := phase0Shift
-	if m.phase == 1 {
+	if m.blendPhase == 1 {
 		shift = phase1Shift
 	}
 
-	return (value >> shift & paletteNumberMask) * attributeCopies
+	return mapperbase.RepeatAttributePalette(value >> shift & paletteNumberMask)
 }
 
 func (m *Mapper) countFetch() {
@@ -305,11 +302,11 @@ func (m *Mapper) countFetch() {
 
 func (m *Mapper) paletteByte(address uint16) byte {
 	index := address & paletteIndexMask
-	if m.phase == 0 && m.dimMode && index == dimEntryIndex {
+	if m.blendPhase == 0 && m.dimMode && index == dimEntryIndex {
 		return dimEntry1Color
 	}
 
-	return paletteTable[m.phase][index]
+	return paletteTable[m.blendPhase][index]
 }
 
 func isAttribute(address uint16) bool {

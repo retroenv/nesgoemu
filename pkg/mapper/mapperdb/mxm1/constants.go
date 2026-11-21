@@ -6,10 +6,11 @@ package mxm1
 const name = "MXM-1"
 
 const (
-	// "Identity" is a descriptive name. Reads of $5000-$5005 return these six
-	// fixed bytes. The meaning of each byte is not known. Do not change them,
-	// for compatibility.
-	identityResponse = "\x9f\x00\x17\x14\x17\x14"
+	// The Former Dawn v3.2 MesenMXM release returns six fixed bytes at
+	// $5000-$5005. The released EverDrive FPGA configurations return a
+	// different set. See https://somethingnerdy.com/former-dawn-playable-demo-downloads/.
+	emulatorIdentityResponse = "\x9f\x00\x17\x14\x17\x14"
+	fpgaIdentityResponse     = "\x8c\x00\x00\x00\x00\x00"
 
 	registerGroupMask = 0xfff0 // The decoder dispatches blocks of 16 addresses.
 
@@ -183,8 +184,6 @@ const (
 	alternateSlot  = 3      // $C000-$DFFF.
 	lastPRGBank    = 0xffff // Bank -1 as a signed 16-bit number. See mapCPU.
 	defaultCHRRAM  = 0x2000
-	nmiVectorLow   = 0xfffa
-	nmiVectorHigh  = 0xfffb
 	irqPhaseMask   = 0x0f // Four-bit counter, advanced once per CPU cycle.
 	irqAssertPhase = 3    // Reloaded on the first CPU clock observing pending IRQ.
 	byteMask       = 0x00ff
@@ -206,7 +205,6 @@ const (
 	patternTableEnd       = 0x2000
 	nameTableStart        = 0x2000
 	nameTableFetchEnd     = 0x3000
-	paletteStart          = 0x3f00
 	attributeTableOffset  = 0x03c0
 	attributeTableBase    = nameTableStart | attributeTableOffset
 	nameTableSelectMask   = 0x0c00
@@ -221,12 +219,6 @@ const (
 	paletteNumberMask     = 0x03
 	packedRowMask         = 0x03 // Row in a packed attribute byte. Each byte holds four rows.
 
-	// The PPU selects one of four two-bit fields from an attribute fetch.
-	// Multiplication by binary 01010101 repeats a palette number in all fields:
-	// 0, 1, 2, 3 become $00, $55, $AA, $FF. These are NES palette selectors.
-	// They are not RGB colors or entries in a .pal display file.
-	paletteRepeat = 0x55
-
 	descriptorSize     = 2 // Big-endian word: high-byte palette bits and low 12-bit bank.
 	descriptorBankSize = 0x0800
 	patternPageSize    = 0x1000
@@ -240,16 +232,16 @@ const (
 	fetchPhaseOffset     = 2
 	backgroundFetchCount = 33 // Also advances the mapper's vertical position.
 	postNameFetchCount   = 3  // Attribute, pattern low, pattern high.
-	remapPageSize        = 256
-	remapPageCount       = 4
-	remapTableSize       = remapPageSize * remapPageCount
-	writeBankShift       = 16
-	ppuRegisterCount     = 8
-	ppuRegisterMask      = ppuRegisterCount - 1
-	ppuScrollIndex       = 5
 
-	visibleScanlines  = 240
-	preRenderScanline = 261
+	remapPageSize  = 256
+	remapPageCount = 4
+	remapTableSize = remapPageSize * remapPageCount
+
+	writeBankShift = 16
+
+	ppuRegisterCount = 8
+	ppuRegisterMask  = ppuRegisterCount - 1
+	ppuScrollIndex   = 5
 
 	// The demo expects an attribute fetch in the second dummy fetch of each
 	// sprite slot. The mapper treats the second dummy nametable read of nesgoemu

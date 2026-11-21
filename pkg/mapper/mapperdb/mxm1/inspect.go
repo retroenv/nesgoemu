@@ -1,6 +1,9 @@
 package mxm1
 
-import "github.com/retroenv/nesgoemu/pkg/bus"
+import (
+	"github.com/retroenv/nesgoemu/pkg/bus"
+	"github.com/retroenv/retrogolib/arch/system/nes/register"
+)
 
 // InspectCPU reads the effective cartridge mapping. It does not latch graphics
 // data, acknowledge interrupts, or reset the frame detector at the vectors.
@@ -41,8 +44,8 @@ func (m *Mapper) PRGROMOffset(address uint16) (int, bool) {
 	}
 
 	slot := int(address-cpuWindowBase) / prgBankSize
-	w := m.cpuWindows[slot]
-	if w.writable || m.prgFlags[slot]&prgGraphicsLatch != 0 || !w.prg {
+	w := m.cpuReadWindow(slot)
+	if m.prgFlags[slot]&prgGraphicsLatch != 0 || !w.prg {
 		return 0, false
 	}
 
@@ -53,7 +56,7 @@ func (m *Mapper) PRGROMOffset(address uint16) (int, bool) {
 // state. The same address can give different bytes after different bus
 // accesses, so it does not simulate an extended background fetch.
 func (m *Mapper) InspectMemory(address uint16) (byte, bool) {
-	if address >= paletteStart {
+	if address >= register.PALETTE_START {
 		return 0, false
 	}
 
@@ -64,7 +67,7 @@ func (m *Mapper) InspectMemory(address uint16) (byte, bool) {
 // modes depend on the bus history and can generate bytes. WorkRam is not a
 // GraphicsMemory source kind. In these cases the function reports false.
 func (m *Mapper) PPUReadMapping(address uint16) (bus.GraphicsMapping, bool) {
-	if address >= nameTableStart || m.readInhibit != 0 || m.descriptorEnabled ||
+	if address >= nameTableStart || m.readInhibit != 0 || m.descriptor.enabled ||
 		m.metatileEnabled || m.remapEnabled || (m.spriteMode && m.spriteSecondPlane) {
 
 		return bus.GraphicsMapping{}, false

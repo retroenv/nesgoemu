@@ -1,6 +1,7 @@
-// Package mxm1 implements mapper 800 for Former Dawn Demo v3.2 and mapper 801
-// for Former Dawn Hover Boots Demo. Both use submapper 0. Each board has
-// separate bank registers. Both use the PPU fetch sequence to select graphics.
+// Package mxm1 implements mapper 800 for Former Dawn Demo v3.2, mapper 801
+// for Former Dawn Hover Boots Demo, and mapper 128 for Bad Apple Ultimate NES
+// Demake. All three use submapper 0. Mapper 128 reads graphics and PCM data
+// from a file that the ROM selects.
 // The package does not implement expansion audio or CRT display effects.
 //
 // The older MXM-0 board (220, submapper 1, the House of Truth minimapper) uses
@@ -8,12 +9,11 @@
 // configurations are evidence for that board. They are not a specification for
 // this mapper.
 //
-// The CPU banks PRG ROM and WorkRam. It uploads graphics descriptors and
-// predecoded tiles into WorkRam. On the PPU side, the mapper finds the normal
-// name, attribute, and pattern fetch sequence. It replaces the bytes of these
-// fetches with bytes from the tables. The PPU still renders ordinary NES
-// pixels. There is no separate framebuffer. The extra graphics come from the
-// data that each fetch sees.
+// On mappers 800 and 801, the CPU banks PRG ROM and WorkRam. It uploads
+// graphics descriptors and predecoded tiles into WorkRam. The mapper detects
+// the PPU sequence of name, attribute, and pattern fetches. It replaces the
+// bytes of these fetches with bytes from the tables. The PPU uses those bytes
+// to render the graphics.
 //
 // The mapper bitstream in the Hover Boots release is the reference for the
 // mapper 801 bank ports and descriptor fetches. This implementation updates the
@@ -28,6 +28,8 @@ import (
 	"github.com/retroenv/nesgoemu/pkg/bus"
 	"github.com/retroenv/nesgoemu/pkg/feature"
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
+	"github.com/retroenv/nesgoemu/pkg/ppu/renderstate"
+	"github.com/retroenv/retrogolib/arch/cpu/cpu6502"
 	"github.com/retroenv/retrogolib/arch/system/nes/register"
 )
 
@@ -65,73 +67,92 @@ type window struct {
 }
 
 type registers struct {
-	prgMode, prgSelect byte
-	prgFlags           [cpuWindowCount]byte
-	prgBanks           [cpuWindowCount]uint16
-	readLatch          byte
+	prgBanks  [cpuWindowCount]uint16
+	prgFlags  [cpuWindowCount]byte
+	prgMode   byte
+	prgSelect byte
+	readLatch byte
 
+	altBank    uint16
 	altEnabled bool
 	altRAM     bool
-	altBank    uint16
 
-	chrMode, chrSelect byte
-	chrRAM             [chrWindowCount]bool
-	chrBanks           [chrWindowCount]uint16
+	chrBanks  [chrWindowCount]uint16
+	chrMode   byte
+	chrRAM    [chrWindowCount]bool
+	chrSelect byte
 
-	irqEnabled                     bool
-	irqTarget, irqOffset, scanline byte
-	irqPending, previousPending    bool
-	irqPhase                       byte
+	irqEnabled      bool
+	irqOffset       byte
+	irqPending      bool
+	irqPhase        byte
+	irqTarget       byte
+	previousPending bool
+	scanline        byte
 
-	descriptorEnabled               bool
-	attributeMode, descriptorSelect byte
-	descriptorRAM, patternRAM       [ntWindowCount]bool
-	descriptorBanks                 [ntWindowCount]uint16
+	attributeMode byte
+	descriptor    graphicsBanks
+	descriptorRAM [ntWindowCount]bool
+	patternRAM    [ntWindowCount]bool
 
-	ntEnabled        bool
-	ntMode, ntSelect byte
-	ntRAM            [ntWindowCount]bool
-	ntBanks          [ntWindowCount]uint16
+	nametable graphicsBanks
+	ntMode    byte
+	ntRAM     [ntWindowCount]bool
 
-	wideBanks, spriteMode, secondPlane, spriteSecondPlane bool
-	readInhibit                                           byte
-	writeBank                                             uint16
+	secondPlane       bool
+	spriteMode        bool
+	spriteSecondPlane bool
+	wideBanks         bool
 
-	copySource, copyDestination byte
-	copyFrom, copyTo            uint16
+	readInhibit byte
+	writeBank   uint16
 
-	metatileEnabled               bool
-	metatileTables                [ntWindowCount]byte
-	metatileStride, metatileFrame byte
+	copyDestination byte
+	copySource      byte
+	copyFrom        uint16
+	copyTo          uint16
 
-	remapEnabled bool
-	remapTable   [remapTableSize]byte
+	metatileEnabled bool
+	metatileFrame   byte
+	metatileStride  byte
+	metatileTables  [ntWindowCount]byte
+
 	remapCursor  uint16
+	remapEnabled bool
 	remapPage    byte
+	remapTable   [remapTableSize]byte
 
+	remapNTFlip801   bool
 	remapOffset801   byte
 	remapPosition801 byte
-	remapNTFlip801   bool
 
 	streamCursor byte
 
-	ppuRegisters                   [ppuRegisterCount]byte
-	scrollDirty                    bool
-	manualScroll, verticalPosition byte
+	manualScroll     byte
+	ppuRegisters     [ppuRegisterCount]byte
+	scrollDirty      bool
+	verticalPosition byte
+}
 
-	lastAddress         uint16
-	repeatCount         byte
-	frameStart, inFrame bool
-	nameReads           uint32
-	previousNameReads   byte
-	dummyAttribute      bool
+// fetchState tracks PPU fetch sequences and the data latched for each tile.
+type fetchState struct {
+	dummyAttribute    bool
+	frameStart        bool
+	inFrame           bool
+	lastAddress       uint16
+	nameReads         uint32
+	previousNameReads byte
+	repeatCount       byte
 
-	metatileFetchesLeft                        byte
-	metatileLow, metatileHigh, metatilePalette byte
+	metatileFetchesLeft byte
+	metatileHigh        byte
+	metatileLow         byte
+	metatilePalette     byte
 
 	descriptorFetchesLeft byte
+	tileFineY             byte
 	tileOffset            uint16
-	tileTable, tileFineY  byte
+	tileTable             byte
 }
 
 // Mapper supplies the CPU windows, PPU fetch substitutions, and scanline IRQ
@@ -141,6 +162,7 @@ type Mapper struct {
 	isMapper801 bool
 
 	registers
+	fetch fetchState
 
 	prgROM, chrROM, ram, chrMemory []byte
 
@@ -157,6 +179,7 @@ func New800(base *mapperbase.Base) (bus.Mapper, error) {
 
 // Reset restores the mapper registers. It does not erase cartridge RAM.
 func (m *Mapper) Reset() {
+	m.fetch = fetchState{}
 	m.registers = registers{
 		prgBanks:        [cpuWindowCount]uint16{0, 0, 1, 2, lastPRGBank},
 		metatileStride:  metatileDefaultStride,
@@ -193,7 +216,8 @@ func (m *Mapper) Reset() {
 // it as an attribute read, so the phase gate keeps the timing that the demo
 // expects. This applies only to this mapper.
 func (m *Mapper) TickPPU(cycle, scanLine int, rendering bool) {
-	m.dummyAttribute = rendering && (scanLine < visibleScanlines || scanLine == preRenderScanline) &&
+	renderLine := scanLine < renderstate.VisibleScanlines || scanLine == renderstate.PreRenderScanline
+	m.fetch.dummyAttribute = rendering && renderLine &&
 		cycle >= firstDummyAttribute && cycle <= lastDummyAttribute && (cycle-firstDummyAttribute)%spriteFetchSlotDots == 0
 }
 
@@ -205,12 +229,12 @@ func (m *Mapper) Read(address uint16) byte {
 		return m.readVRAM(address)
 	}
 
-	if address == nmiVectorLow || address == nmiVectorHigh {
+	if address == cpu6502.NMIAddress || address == cpu6502.NMIAddress+1 {
 		// The demo uses reads of the NMI vector as the frame boundary for the
 		// scanline detector. Debugger peeks must not cause this side effect.
-		m.inFrame = false
-		m.lastAddress = 0
-		m.repeatCount = 0
+		m.fetch.inFrame = false
+		m.fetch.lastAddress = 0
+		m.fetch.repeatCount = 0
 		m.scanline = 0
 		m.irqPending = false
 		m.SetMapperIRQ(false)
@@ -290,8 +314,11 @@ func (m *Mapper) State() bus.MapperState {
 		ChrWindows: make([]int, chrWindowCount),
 	}
 
-	for i, w := range m.cpuWindows[1:] {
-		state.PrgWindows[i] = w.offset / prgBankSize
+	for i := range state.PrgWindows {
+		w := m.cpuReadWindow(i + 1)
+		if len(w.data) != 0 {
+			state.PrgWindows[i] = w.offset % len(w.data) / prgBankSize
+		}
 	}
 
 	for i, w := range m.ppuWindows {
@@ -327,6 +354,7 @@ func (m *Mapper) cpuReadWindow(slot int) window {
 	return window{
 		data:   data,
 		offset: int(m.altBank) * prgBankSize,
+		prg:    !m.altRAM,
 	}
 }
 

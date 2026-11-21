@@ -30,3 +30,10 @@ func (b *Base) notifyCHRMapping(window, bank int) {
 		Slot: uint16(window * b.chrWindowSize),
 	})
 }
+
+// RepeatAttributePalette puts a two-bit palette number in all four quadrants
+// of a PPU attribute byte.
+func RepeatAttributePalette(palette byte) byte {
+	const quadrantLowBits = 0b01010101
+	return palette * quadrantLowBits
+}

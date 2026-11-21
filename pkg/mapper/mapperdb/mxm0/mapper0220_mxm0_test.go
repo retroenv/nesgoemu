@@ -10,6 +10,11 @@ import (
 	"github.com/retroenv/retrogolib/assert"
 )
 
+const (
+	testNameTableBase = 0x2000
+	testAttributeBase = 0x23c0
+)
+
 // syntheticCHR returns CHR ROM data in which all byte values occur.
 func syntheticCHR() []byte {
 	data := make([]byte, chrSize)
@@ -73,8 +78,9 @@ func TestCheckMarksFeature(t *testing.T) {
 }
 
 func TestPowerOnDimMode(t *testing.T) {
+	const dimColor = 0x1c
 	m := newMapper(t, syntheticCHR())
-	assert.Equal(t, byte(dimEntry1Color), m.Read(paletteRegFirst+dimEntryIndex))
+	assert.Equal(t, byte(dimColor), m.Read(paletteRegFirst+dimEntryIndex))
 }
 
 func TestRegisterDecoding(t *testing.T) {
@@ -83,37 +89,38 @@ func TestRegisterDecoding(t *testing.T) {
 	assert.Equal(t, mappertest.OpenBusValue, m.Read(paletteRegLast+1))
 
 	// Only bit 0 of a write matters, and only these three addresses decode.
-	m.Write(0x6003, 0)
-	m.Write(0x6004, 0)
-	m.Write(0x6007, 0)
+	m.Write(regDimMode+1, 0)
+	m.Write(regDimMode+2, 0)
+	m.Write(regDimMode+5, 0)
 	assert.True(t, m.dimMode)
-	m.Write(regPhase, 0xFE)
-	assert.Equal(t, 0, m.phase)
-	m.Write(regPhase, 0x01)
-	assert.Equal(t, 1, m.phase)
+	m.Write(regPhase, 0b1111_1110)
+	assert.Equal(t, 0, m.blendPhase)
+	m.Write(regPhase, 1)
+	assert.Equal(t, 1, m.blendPhase)
 }
 
 func TestInspectionHasNoEffects(t *testing.T) {
+	const tileOffset = 0x0123
 	chr := syntheticCHR()
 	m := newMapper(t, chr)
 
-	_, handled := m.readNameTable(0x2123)
+	_, handled := m.readNameTable(testNameTableBase + tileOffset)
 	assert.False(t, handled)
-	_, handled = m.readNameTable(0x23C0)
+	_, handled = m.readNameTable(testAttributeBase)
 	assert.True(t, handled)
 
 	bank := m.patternBank
 	count := m.fetchCount
-	offset := int(bank)<<patternBankShift | 0x0123
+	offset := int(bank)<<patternBankShift | tileOffset
 
-	assert.Equal(t, chr[offset], m.InspectCHR(0x1123))
-	mapping, ok := m.PPUReadMapping(0x0123)
+	assert.Equal(t, chr[offset], m.InspectCHR(1<<patternBankShift|tileOffset))
+	mapping, ok := m.PPUReadMapping(tileOffset)
 	assert.True(t, ok)
 	assert.Equal(t, offset, mapping.Offset)
 
-	_, ok = m.InspectMemory(0x23C1)
+	_, ok = m.InspectMemory(testAttributeBase + 1)
 	assert.True(t, ok)
-	_, ok = m.InspectMemory(0x2000)
+	_, ok = m.InspectMemory(testNameTableBase)
 	assert.False(t, ok)
 	_, ok = m.PPUWriteMapping(0)
 	assert.False(t, ok)
@@ -126,14 +133,14 @@ func TestInspectionHasNoEffects(t *testing.T) {
 
 func TestAttributeWritesAreDiscarded(t *testing.T) {
 	m := newMapper(t, syntheticCHR())
-	assert.True(t, m.writeNameTable(0x23C0, 1))
-	assert.False(t, m.writeNameTable(0x2000, 1))
+	assert.True(t, m.writeNameTable(testAttributeBase, 1))
+	assert.False(t, m.writeNameTable(testNameTableBase, 1))
 }
 
 func TestFeatures(t *testing.T) {
 	m := newMapper(t, syntheticCHR())
 	assert.False(t, usedFeature(m, feature.RowAttributes))
 
-	_, _ = m.readNameTable(0x23C0)
+	_, _ = m.readNameTable(testAttributeBase)
 	assert.True(t, usedFeature(m, feature.RowAttributes))
 }

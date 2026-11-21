@@ -58,13 +58,7 @@ func (m *Mapper) writeCPURegisters(address uint16, value byte) {
 		m.prgFlags[m.prgSelect] = value & prgFlagsMask
 
 	case regPRGBankHigh, regPRGBankLow:
-		m.MarkFeature(feature.PRGBanking)
-		if m.prgSelect == 0 {
-			m.MarkFeature(feature.LowBankMapping)
-		}
-
-		setBankByte(&m.prgBanks[m.prgSelect], address == regPRGBankHigh, value)
-		m.mapSelectedCPU()
+		m.writePRGBank(address == regPRGBankHigh, value)
 
 	case regAlternateMode:
 		if enabled := value&controlEnable != 0; enabled != m.altEnabled {
@@ -87,6 +81,16 @@ func (m *Mapper) writeCPURegisters(address uint16, value byte) {
 	}
 }
 
+func (m *Mapper) writePRGBank(high bool, value byte) {
+	m.MarkFeature(feature.PRGBanking)
+	if m.prgSelect == 0 {
+		m.MarkFeature(feature.LowBankMapping)
+	}
+
+	setBankByte(&m.prgBanks[m.prgSelect], high, value)
+	m.mapSelectedCPU()
+}
+
 func (m *Mapper) writePatternRegisters(address uint16, value byte) {
 	switch address {
 	case regCHRMode:
@@ -98,20 +102,23 @@ func (m *Mapper) writePatternRegisters(address uint16, value byte) {
 		m.chrRAM[m.chrSelect] = value&bankSourceRAM != 0
 
 	case regCHRBankHigh, regCHRBankLow:
-		m.MarkFeature(feature.CHRBanking)
-		slot := int(m.chrSelect)
-		setBankByte(&m.chrBanks[slot], address == regCHRBankHigh, value)
-		w := window{
-			data:   m.chrROM,
-			offset: int(m.chrBanks[slot]) * chrBankSize,
-		}
-		if m.chrRAM[slot] {
-			w.data = m.ram
-			w.writable = true
-		}
-
-		m.ppuWindows[slot] = w
+		m.writeCHRBank(m.chrSelect, address == regCHRBankHigh, value, m.chrRAM[m.chrSelect])
 	}
+}
+
+func (m *Mapper) writeCHRBank(slot byte, high bool, value byte, ram bool) {
+	m.MarkFeature(feature.CHRBanking)
+	setBankByte(&m.chrBanks[slot], high, value)
+	w := window{
+		data:   m.chrROM,
+		offset: int(m.chrBanks[slot]) * chrBankSize,
+	}
+	if ram {
+		w.data = m.ram
+		w.writable = true
+	}
+
+	m.ppuWindows[slot] = w
 }
 
 func (m *Mapper) writeIRQRegisters(address uint16, value byte) {
@@ -129,19 +136,15 @@ func (m *Mapper) writeIRQRegisters(address uint16, value byte) {
 }
 
 func (m *Mapper) writeDescriptorRegisters(address uint16, value byte) {
+	m.descriptor.write(address, value)
 	switch address {
 	case regDescriptorMode:
-		m.descriptorEnabled = value&extendedModeEnable != 0
 		m.attributeMode = value & modeMask
 		m.markGraphicsModes()
 
 	case regDescriptorSelect:
-		m.descriptorSelect = value & ntSelectMask
-		m.descriptorRAM[m.descriptorSelect] = value&bankSourceRAM != 0
-		m.patternRAM[m.descriptorSelect] = value&descriptorPatternRAM != 0
-
-	case regDescriptorHigh, regDescriptorLow:
-		setBankByte(&m.descriptorBanks[m.descriptorSelect], address == regDescriptorHigh, value)
+		m.descriptorRAM[m.descriptor.selected] = value&bankSourceRAM != 0
+		m.patternRAM[m.descriptor.selected] = value&descriptorPatternRAM != 0
 
 	case regManualScroll:
 		m.manualScroll = value
@@ -152,27 +155,25 @@ func (m *Mapper) writeDescriptorRegisters(address uint16, value byte) {
 }
 
 func (m *Mapper) writeNametableRegisters(address uint16, value byte) {
+	m.nametable.write(address, value)
 	switch address {
 	case regNametableMode:
-		m.ntEnabled = value&extendedModeEnable != 0
 		m.ntMode = value & modeMask
-		if !m.ntEnabled {
+		if !m.nametable.enabled {
 			// Empty windows use the ordinary mirrored nametables of the PPU.
 			m.ntWindows = [ntWindowCount]window{}
 		}
 
 	case regNametableSelect:
-		m.ntSelect = value & ntSelectMask
-		m.ntRAM[m.ntSelect] = value&bankSourceRAM != 0
+		m.ntRAM[m.nametable.selected] = value&bankSourceRAM != 0
 
 	case regNametableHigh, regNametableLow:
 		m.MarkFeature(feature.NameTableBanking)
-		slot := int(m.ntSelect)
-		setBankByte(&m.ntBanks[slot], address == regNametableHigh, value)
-		if m.ntEnabled {
+		slot := int(m.nametable.selected)
+		if m.nametable.enabled {
 			w := window{
 				data:   m.chrROM,
-				offset: int(m.ntBanks[slot]) * ntBankSize,
+				offset: int(m.nametable.banks[slot]) * ntBankSize,
 			}
 			if m.ntRAM[slot] {
 				w.data = m.ram
@@ -293,11 +294,11 @@ func (m *Mapper) writeRemapRegisters(address uint16, value byte) {
 // metatile mode also gives 8x1 attributes. In attribute mode 3, the attribute
 // fetch reads pattern data, so this mode gives no attributes.
 func (m *Mapper) markGraphicsModes() {
-	descriptorAttributes := m.descriptorEnabled && m.attributeMode != attributeModePatternOnly
-	rowAttributes := m.descriptorEnabled &&
+	descriptorAttributes := m.descriptor.enabled && m.attributeMode != attributeModePatternOnly
+	rowAttributes := m.descriptor.enabled &&
 		(m.attributeMode == attributeModeFineY || m.attributeMode == attributeModePackedRows)
 
-	if m.descriptorEnabled || m.metatileEnabled {
+	if m.descriptor.enabled || m.metatileEnabled {
 		m.MarkFeature(feature.BGExtendedMode)
 		if m.wideBanks {
 			m.MarkFeature(feature.GraphicsSets)
@@ -369,28 +370,30 @@ func (m *Mapper) readBankStatus(address uint16) (byte, bool) {
 	}
 
 	if address >= regIdentityStart && address <= regIdentityEnd {
-		return identityResponse[address-regIdentityStart], true
+		return emulatorIdentityResponse[address-regIdentityStart], true
 	}
 
 	if address >= regPRGReadback && address <= regPRGReadbackEnd {
-		// Decode the readback record. Do not use the write-register meanings
-		// of these addresses. The first byte includes the window index.
-		slot := (address - regPRGReadback) / prgReadbackStride
-		part := (address - regPRGReadback) % prgReadbackStride
-
-		switch part {
-		case 0:
-			return byte(slot) | m.prgFlags[slot], true
-
-		case 1:
-			return byte(m.prgBanks[slot] >> 8), true
-
-		default:
-			return byte(m.prgBanks[slot]), true
-		}
+		return m.readPRGBankRecord(address), true
 	}
 
 	return 0, false
+}
+
+// readPRGBankRecord returns one byte of a PRG window's readback record.
+func (m *Mapper) readPRGBankRecord(address uint16) byte {
+	offset := address - regPRGReadback
+	slot := offset / prgReadbackStride
+	switch offset % prgReadbackStride {
+	case 0:
+		return byte(slot) | m.prgFlags[slot]
+
+	case 1:
+		return byte(m.prgBanks[slot] >> 8)
+
+	default:
+		return byte(m.prgBanks[slot])
+	}
 }
 
 // copyBlocks copies 8 KiB blocks at once. The mapper keeps the destination
@@ -446,13 +449,13 @@ func (m *Mapper) streamValue(cursor byte) byte {
 		return byte(m.prgBanks[0])
 
 	case stateDescriptor:
-		return m.descriptorSelect
+		return m.descriptor.selected
 
 	case stateDescriptorHigh:
-		return byte(m.descriptorBanks[0] >> 8)
+		return byte(m.descriptor.banks[0] >> 8)
 
 	case stateDescriptorLow:
-		return byte(m.descriptorBanks[0])
+		return byte(m.descriptor.banks[0])
 
 	case stateWide:
 		return boolByte(m.wideBanks)

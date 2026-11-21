@@ -3,6 +3,8 @@ package mxm1
 import (
 	"github.com/retroenv/nesgoemu/pkg/bus"
 	"github.com/retroenv/nesgoemu/pkg/feature"
+	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
+	"github.com/retroenv/retrogolib/arch/system/nes/register"
 )
 
 // metatileTableBases are the WorkRam offsets of the nine metatile tables. A
@@ -25,17 +27,17 @@ var metatileTableBases = [...]int{
 func (m *Mapper) observeFetch(address uint16) bool {
 	name := address >= nameTableStart && address < nameTableFetchEnd && address&ntOffsetMask < attributeTableOffset
 	if name {
-		m.nameReads++
-		if !m.inFrame && m.frameStart {
-			m.frameStart = false
-			m.inFrame = true
+		m.fetch.nameReads++
+		if !m.fetch.inFrame && m.fetch.frameStart {
+			m.fetch.frameStart = false
+			m.fetch.inFrame = true
 		}
 	}
 
 	m.trackRepeated(address)
-	m.lastAddress = address
+	m.fetch.lastAddress = address
 
-	if m.nameReads == backgroundFetchCount && m.previousNameReads != backgroundFetchCount {
+	if m.fetch.nameReads == backgroundFetchCount && m.fetch.previousNameReads != backgroundFetchCount {
 		// Advance once, when the count reaches the checkpoint. Do not advance
 		// on the attribute and pattern reads that follow, while the name count
 		// does not change.
@@ -54,7 +56,7 @@ func (m *Mapper) observeFetch(address uint16) bool {
 		m.scrollDirty = false
 	}
 
-	m.previousNameReads = byte(m.nameReads)
+	m.fetch.previousNameReads = byte(m.fetch.nameReads)
 
 	return name
 }
@@ -63,21 +65,21 @@ func (m *Mapper) observeFetch(address uint16) bool {
 // two reads at the end of a scanline and the first tile read after them make
 // this sequence. The detector does not use a PPU scanline number.
 func (m *Mapper) trackRepeated(address uint16) {
-	if address < patternTableEnd || address >= nameTableFetchEnd || address != m.lastAddress {
-		m.repeatCount = 0
+	if address < patternTableEnd || address >= nameTableFetchEnd || address != m.fetch.lastAddress {
+		m.fetch.repeatCount = 0
 		return
 	}
 
-	m.repeatCount++
-	if m.repeatCount <= 1 {
+	m.fetch.repeatCount++
+	if m.fetch.repeatCount <= 1 {
 		return
 	}
 
 	m.MarkFeature(feature.PPUBusTiming)
-	m.nameReads = 0
+	m.fetch.nameReads = 0
 
-	if !m.inFrame && !m.frameStart {
-		m.frameStart = true
+	if !m.fetch.inFrame && !m.fetch.frameStart {
+		m.fetch.frameStart = true
 		m.scanline = 0
 		return
 	}
@@ -92,7 +94,7 @@ func (m *Mapper) trackRepeated(address uint16) {
 }
 
 func (m *Mapper) readVRAM(address uint16) byte {
-	if m.dummyAttribute && address >= nameTableStart && address < nameTableFetchEnd {
+	if m.fetch.dummyAttribute && address >= nameTableStart && address < nameTableFetchEnd {
 		address = attributeTableBase | address&nameTableSelectMask | address>>4&attributeRowMask | address>>2&fineYMask
 	}
 
@@ -114,7 +116,7 @@ func (m *Mapper) readVRAM(address uint16) byte {
 		return 0
 	}
 
-	eligible := (m.nameReads+fetchPhaseOffset)%fetchPhaseCount < backgroundFetchCount
+	eligible := (m.fetch.nameReads+fetchPhaseOffset)%fetchPhaseCount < backgroundFetchCount
 	if eligible {
 		if value, handled := m.readBackground(address, mapped, y, name); handled {
 			return value
@@ -143,13 +145,13 @@ func (m *Mapper) readBackground(address, mapped uint16, y byte, name bool) (byte
 			m.fetchMetatile(mapped, y&fineYMask)
 			return 0, true
 		}
-		if m.metatileFetchesLeft != 0 {
-			m.metatileFetchesLeft--
-			return [postNameFetchCount]byte{m.metatileHigh, m.metatileLow, m.metatilePalette}[m.metatileFetchesLeft], true
+		if m.fetch.metatileFetchesLeft != 0 {
+			m.fetch.metatileFetchesLeft--
+			return [postNameFetchCount]byte{m.fetch.metatileHigh, m.fetch.metatileLow, m.fetch.metatilePalette}[m.fetch.metatileFetchesLeft], true
 		}
 	}
 
-	if m.descriptorEnabled {
+	if m.descriptor.enabled {
 		return m.readDescriptor(address, mapped, y, name)
 	}
 
@@ -161,24 +163,24 @@ func (m *Mapper) readDescriptor(address, mapped uint16, y byte, name bool) (byte
 		// Capture the nametable, tile offset, and fine Y once. Later PPU
 		// pattern addresses do not contain enough information to find them
 		// again.
-		m.descriptorFetchesLeft = postNameFetchCount
-		m.tileTable = byte(mapped/ntBankSize) & ntSelectMask
-		m.tileOffset = mapped & ntOffsetMask
-		m.tileFineY = y & fineYMask
+		m.fetch.descriptorFetchesLeft = postNameFetchCount
+		m.fetch.tileTable = byte(mapped/ntBankSize) & ntSelectMask
+		m.fetch.tileOffset = mapped & ntOffsetMask
+		m.fetch.tileFineY = y & fineYMask
 
-		if m.ntEnabled && m.ntRAM[m.tileTable] {
-			return readWrapped(m.ram, int(m.ntBanks[m.tileTable])*ntBankSize+int(m.tileOffset), 0), true
+		if m.nametable.enabled && m.ntRAM[m.fetch.tileTable] {
+			return readWrapped(m.ram, int(m.nametable.banks[m.fetch.tileTable])*ntBankSize+int(m.fetch.tileOffset), 0), true
 		}
 
 		return m.mappedVRAM(mapped), true
 	}
 
-	if m.descriptorFetchesLeft == 0 {
+	if m.fetch.descriptorFetchesLeft == 0 {
 		return 0, false
 	}
 
-	m.descriptorFetchesLeft--
-	if m.descriptorFetchesLeft == 2 && (m.isMapper801 || m.attributeMode != attributeModePatternOnly) {
+	m.fetch.descriptorFetchesLeft--
+	if m.fetch.descriptorFetchesLeft == postNameFetchCount-1 && (m.isMapper801 || m.attributeMode != attributeModePatternOnly) {
 		return m.fetchAttribute(y), true
 	}
 
@@ -194,20 +196,20 @@ func (m *Mapper) patternMemory(ram bool) []byte {
 }
 
 func (m *Mapper) descriptorByte(offset int) byte {
-	return readWrapped(m.patternMemory(m.descriptorRAM[m.tileTable]), offset, 0)
+	return readWrapped(m.patternMemory(m.descriptorRAM[m.fetch.tileTable]), offset, 0)
 }
 
 func (m *Mapper) fetchAttribute(y byte) byte {
 	// "8x1 attributes" change the palette choice on each pixel row of an 8x8
 	// tile. The tile size stays 8x8. The author of MXM explains this here:
 	// https://forums.nesdev.org/viewtopic.php?p=276887
-	base := int(m.descriptorBanks[m.tileTable])*descriptorBankSize + int(m.tileOffset)*descriptorSize
+	base := descriptorOffset(m.descriptor.banks[m.fetch.tileTable], m.fetch.tileOffset)
 	var palette byte
 
 	switch m.attributeMode {
 	case attributeModeTile, attributeModeFineY, attributeModePatternOnly:
 		if m.attributeMode == attributeModeFineY {
-			base += int(m.tileFineY) * descriptorBankSize
+			base += int(m.fetch.tileFineY) * descriptorBankSize
 		}
 
 		value := m.descriptorByte(base)
@@ -222,28 +224,26 @@ func (m *Mapper) fetchAttribute(y byte) byte {
 		// from the high bits to the low bits.
 		if m.isMapper801 {
 			// Mapper 801 uses the latched row for both selections.
-			y = m.tileFineY
+			y = m.fetch.tileFineY
 		}
 
 		value := m.descriptorByte(base + descriptorBankSize + int((y&fineYMask)>>2))
 		palette = value >> uint(6-2*(y&packedRowMask)) & paletteNumberMask
 	}
 
-	// Put the chosen palette in every quadrant of the attribute byte. Then
-	// the ordinary PPU attribute shifter selects it for this tile.
-	return palette * paletteRepeat
+	return mapperbase.RepeatAttributePalette(palette)
 }
 
 func (m *Mapper) fetchPattern(address uint16) byte {
-	base := int(m.descriptorBanks[m.tileTable])*descriptorBankSize + int(m.tileOffset)*descriptorSize
+	base := descriptorOffset(m.descriptor.banks[m.fetch.tileTable], m.fetch.tileOffset)
 	if m.isMapper801 && m.attributeMode == attributeModeFineY {
-		base += int(m.tileFineY) * descriptorBankSize
+		base += int(m.fetch.tileFineY) * descriptorBankSize
 	}
 
 	descriptor := uint16(m.descriptorByte(base))<<8 | uint16(m.descriptorByte(base+1))
 
 	if m.remapEnabled {
-		address = address&patternFineYKeepMask | uint16(m.tileFineY)
+		address = address&patternFineYKeepMask | uint16(m.fetch.tileFineY)
 	}
 
 	// The descriptor gives the large bank number. The PPU gives the tile and
@@ -266,7 +266,7 @@ func (m *Mapper) fetchPattern(address uint16) byte {
 		offset &= chrAddressMask801
 	}
 
-	return readWrapped(m.patternMemory(m.patternRAM[m.tileTable]), offset+int(address&patternPageMask), 0)
+	return readWrapped(m.patternMemory(m.patternRAM[m.fetch.tileTable]), offset+int(address&patternPageMask), 0)
 }
 
 func (m *Mapper) fetchMetatile(address uint16, fineY byte) {
@@ -305,10 +305,10 @@ func (m *Mapper) fetchMetatile(address uint16, fineY byte) {
 		shift -= 2
 	}
 
-	m.metatileLow = m.ramByte(data)
-	m.metatileHigh = m.ramByte(data + 1)
-	m.metatilePalette = (packed >> shift & paletteNumberMask) * paletteRepeat
-	m.metatileFetchesLeft = postNameFetchCount
+	m.fetch.metatileLow = m.ramByte(data)
+	m.fetch.metatileHigh = m.ramByte(data + 1)
+	m.fetch.metatilePalette = mapperbase.RepeatAttributePalette(packed >> shift & paletteNumberMask)
+	m.fetch.metatileFetchesLeft = postNameFetchCount
 }
 
 func (m *Mapper) ramByte(offset int) byte {
@@ -325,7 +325,7 @@ func (m *Mapper) mappedVRAM(address uint16) byte {
 		return readWrapped(w.data, w.offset+int(address&chrOffsetMask), byte(address))
 	}
 
-	if address < paletteStart {
+	if address < register.PALETTE_START {
 		w := m.ntWindows[address/ntBankSize&ntSelectMask]
 		if w.data != nil {
 			return readWrapped(w.data, w.offset+int(address&ntOffsetMask), byte(address))
@@ -339,7 +339,7 @@ func (m *Mapper) mappedVRAM(address uint16) byte {
 }
 
 func (m *Mapper) writeVRAM(address uint16, value byte) {
-	if m.ntEnabled {
+	if m.nametable.enabled {
 		// In extended-NT mode, PPUDATA uploads ignore the CHR and NT read
 		// mappings. The raw PPU address is the low 16 bits of the WorkRam
 		// destination. Registers $5092 and $5093 give the high segment number.

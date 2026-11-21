@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/retroenv/nesgoemu/pkg/bus"
-	"github.com/retroenv/nesgoemu/pkg/feature"
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 )
@@ -57,18 +56,11 @@ func (m *Mapper) writeBank801(address uint16, value byte) bool {
 		m.mapSelectedCPU()
 
 	case reg801PRGBankHigh, reg801PRGBankLow:
-		slot := m.prgSelect
-		m.MarkFeature(feature.PRGBanking)
-		if slot == 0 {
-			m.MarkFeature(feature.LowBankMapping)
-		}
-
 		if address == reg801PRGBankHigh {
 			value &= prgBankHighMask801
 		}
 
-		setBankByte(&m.prgBanks[slot], address == reg801PRGBankHigh, value)
-		m.mapSelectedCPU()
+		m.writePRGBank(address == reg801PRGBankHigh, value)
 
 	case reg801CHRSelect:
 		m.chrSelect = value & chrSelectMask801
@@ -79,16 +71,11 @@ func (m *Mapper) writeBank801(address uint16, value byte) bool {
 			return true
 		}
 
-		m.MarkFeature(feature.CHRBanking)
 		if address == reg801CHRBankHigh {
 			value &= chrBankHighMask801
 		}
 
-		setBankByte(&m.chrBanks[slot], address == reg801CHRBankHigh, value)
-		m.ppuWindows[slot] = window{
-			data:   m.chrROM,
-			offset: int(m.chrBanks[slot]) * chrBankSize,
-		}
+		m.writeCHRBank(slot, address == reg801CHRBankHigh, value, false)
 
 	case regPRGBankHigh, regCHRBankLow:
 		// These addresses have no bank-write function on mapper 801.
@@ -112,7 +99,7 @@ func (m *Mapper) writeBank801(address uint16, value byte) bool {
 func (m *Mapper) readBankStatus801(address uint16) (byte, bool) {
 	switch {
 	case address >= regIdentityStart && address <= regIdentityEnd:
-		return "\x8c\x00\x00\x00\x00\x00"[address-regIdentityStart], true
+		return fpgaIdentityResponse[address-regIdentityStart], true
 
 	case address == regPRGReadback:
 		return m.prgFlags[0], true
@@ -121,17 +108,7 @@ func (m *Mapper) readBankStatus801(address uint16) (byte, bool) {
 		return 0, true
 
 	case address > reg801ZeroStatusEnd && address <= regPRGReadbackEnd:
-		slot := (address - regPRGReadback) / prgReadbackStride
-		switch (address - regPRGReadback) % prgReadbackStride {
-		case 0:
-			return byte(slot) | m.prgFlags[slot], true
-
-		case 1:
-			return byte(m.prgBanks[slot] >> 8), true
-
-		default:
-			return byte(m.prgBanks[slot]), true
-		}
+		return m.readPRGBankRecord(address), true
 
 	case address == reg801PRGBankHigh:
 		return byte(m.prgBanks[0]), true
