@@ -3,6 +3,7 @@ package camerica
 import (
 	"fmt"
 
+	"github.com/retroenv/nesgoemu/internal/stateio"
 	"github.com/retroenv/nesgoemu/pkg/bus"
 	"github.com/retroenv/nesgoemu/pkg/feature"
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
@@ -47,6 +48,21 @@ type mapper232 struct {
 	block   int
 	page    int
 	aladdin bool
+}
+
+// SnapshotFormat identifies the direct mapper state format.
+func (*mapper232) SnapshotFormat() string { return "camerica-mapper232-v1" }
+
+// TransferState transfers registers and mutable cartridge memory.
+func (m *mapper232) TransferState(archive *stateio.Archive) error {
+	if err := m.Base.TransferState(archive); err != nil {
+		return fmt.Errorf("transferring camerica: %w", err)
+	}
+
+	if err := archive.Values(&m.block, &m.page); err != nil {
+		return fmt.Errorf("transferring camerica: %w", err)
+	}
+	return nil
 }
 
 func (m *mapper232) selectPRG(address uint16, value byte) error {

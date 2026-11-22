@@ -1,6 +1,7 @@
 package mapperbase
 
 import (
+	"github.com/retroenv/nesgoemu/pkg/bus"
 	"github.com/retroenv/nesgoemu/pkg/feature"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 )
@@ -38,6 +39,30 @@ func (b *Base) SetPrgRAM(ram []byte) {
 	}
 
 	b.DeclareFeature(feature.PRGRAM)
+}
+
+// WritePRGRAM changes one physical RAM byte without mapper bus effects.
+func (b *Base) WritePRGRAM(offset int, value byte) bool {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if offset < 0 || offset >= len(b.prgRAM) {
+		return false
+	}
+	b.prgRAM[offset] = value
+
+	return true
+}
+
+// CPURAMOffset reports plain RAM when no hook replaces its bus mapping.
+// Boards with a custom CPU inspector must provide their own RAM write mapping.
+func (b *Base) CPURAMOffset(address uint16) (int, bool) {
+	if !b.hasPrgRAM(address) || b.readHookReplaces(address) || b.writeHookReplaces(address) {
+		return 0, false
+	}
+	if _, custom := b.bus.Mapper.(bus.CPUMemoryInspector); custom {
+		return 0, false
+	}
+	return b.prgRAMOffset(address), true
 }
 
 // setDefaultPrgBankSizes creates the banks with default lengths set based on the PRG and PRG window size.

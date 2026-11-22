@@ -2,8 +2,11 @@
 package screen
 
 import (
+	"fmt"
 	"image"
 	"image/color"
+
+	"github.com/retroenv/nesgoemu/internal/stateio"
 )
 
 const (
@@ -47,4 +50,15 @@ func (s *Screen) Image() *image.RGBA {
 // FinishRendering finishes rendering by switching the visible image with the rendered one.
 func (s *Screen) FinishRendering() {
 	s.front, s.back = s.back, s.front
+}
+
+// TransferState transfers stopped Screen state. The system owns the record version.
+func (s *Screen) TransferState(archive *stateio.Archive) error {
+	if err := archive.Bytes(s.front.Pix); err != nil {
+		return fmt.Errorf("transferring screen state: %w", err)
+	}
+	if err := archive.Bytes(s.back.Pix); err != nil {
+		return fmt.Errorf("transferring screen state: %w", err)
+	}
+	return nil
 }

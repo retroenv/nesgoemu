@@ -3,6 +3,12 @@
 // https://www.nesdev.org/wiki/APU_Envelope
 package envelope
 
+import (
+	"fmt"
+
+	"github.com/retroenv/nesgoemu/internal/stateio"
+)
+
 // Envelope provides a decreasing volume level with an optional loop.
 type Envelope struct {
 	start    bool
@@ -11,6 +17,18 @@ type Envelope struct {
 	loop     bool
 	constant bool
 	volume   byte
+}
+
+// Snapshot reports the decoded channel state without bus effects.
+// Read it while emulation is stopped.
+type Snapshot struct {
+	Constant bool `json:"constant"`
+	Loop     bool `json:"loop"`
+	Volume   byte `json:"volume"`
+
+	Decay   byte `json:"decay"`
+	Divider byte `json:"divider"`
+	Start   bool `json:"start"`
 }
 
 // New returns a new envelope.
@@ -77,4 +95,25 @@ func (e *Envelope) Write(value byte) {
 	e.loop = value&0x20 != 0
 	e.constant = value&0x10 != 0
 	e.volume = value & 0x0f
+}
+
+// TransferState transfers stopped Envelope state. The system owns the record version.
+func (e *Envelope) TransferState(archive *stateio.Archive) error {
+	if err := archive.Values(&e.start, &e.divider, &e.decay, &e.loop, &e.constant, &e.volume); err != nil {
+		return fmt.Errorf("transferring envelope state: %w", err)
+	}
+	return nil
+}
+
+// Snapshot returns an independent copy of the current state.
+func (e *Envelope) Snapshot() Snapshot {
+	return Snapshot{
+		Constant: e.constant,
+		Loop:     e.loop,
+		Volume:   e.volume,
+
+		Decay:   e.decay,
+		Divider: e.divider,
+		Start:   e.start,
+	}
 }

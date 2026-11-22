@@ -2,6 +2,10 @@
 package tiles
 
 import (
+	"fmt"
+	"sync/atomic"
+
+	"github.com/retroenv/nesgoemu/internal/stateio"
 	"github.com/retroenv/nesgoemu/pkg/bus"
 	"github.com/retroenv/retrogolib/arch/cpu/cpu6502"
 )
@@ -26,7 +30,7 @@ type Tiles struct {
 	highByte               byte
 	data                   uint64
 
-	patternReadObserver bus.PPUPatternReadObserver
+	patternReadObserver atomic.Pointer[bus.PPUPatternReadObserver]
 }
 
 // New returns a new tiles manager.
@@ -58,16 +62,16 @@ func (t *Tiles) FetchCycle(cycle int) {
 
 	case 5:
 		address := t.tileAddress()
-		if t.patternReadObserver != nil {
-			t.patternReadObserver(address)
+		if observer := t.patternReadCallback(); observer != nil {
+			observer(address)
 		}
 
 		t.lowByte = t.memory.Read(address)
 
 	case 7:
 		address := t.tileAddress() + patternPlaneOffset
-		if t.patternReadObserver != nil {
-			t.patternReadObserver(address)
+		if observer := t.patternReadCallback(); observer != nil {
+			observer(address)
 		}
 
 		t.highByte = t.memory.Read(address)
@@ -77,7 +81,12 @@ func (t *Tiles) FetchCycle(cycle int) {
 // ObservePatternReads sets a callback that runs before each pattern read.
 // A nil callback disables observation.
 func (t *Tiles) ObservePatternReads(observer bus.PPUPatternReadObserver) {
-	t.patternReadObserver = observer
+	var next *bus.PPUPatternReadObserver
+	if observer != nil {
+		next = &observer
+	}
+
+	t.patternReadObserver.Store(next)
 }
 
 // SetBackgroundPatternTable sets the temp register nametable from the passed PPU control byte.
@@ -93,6 +102,21 @@ func (t *Tiles) BackgroundPixel(fineX uint16) byte {
 	data &= 0x0F
 
 	return byte(data)
+}
+
+// TransferState transfers stopped Tiles state. The system owns the record version.
+func (t *Tiles) TransferState(archive *stateio.Archive) error {
+	if err := archive.Values(&t.attribute, &t.backgroundPatternTable, &t.lowByte, &t.highByte, &t.data); err != nil {
+		return fmt.Errorf("transferring tiles state: %w", err)
+	}
+	return nil
+}
+
+func (t *Tiles) patternReadCallback() bus.PPUPatternReadObserver {
+	if observer := t.patternReadObserver.Load(); observer != nil {
+		return *observer
+	}
+	return nil
 }
 
 func (t *Tiles) fetchAttributeTableByte() {

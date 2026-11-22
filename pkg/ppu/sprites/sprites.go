@@ -2,6 +2,11 @@
 package sprites
 
 import (
+	"errors"
+	"fmt"
+	"sync/atomic"
+
+	"github.com/retroenv/nesgoemu/internal/stateio"
 	"github.com/retroenv/nesgoemu/pkg/bus"
 	"github.com/retroenv/retrogolib/arch/cpu/cpu6502"
 )
@@ -43,7 +48,7 @@ type Sprites struct {
 	patterns           [maxSpritesOnScreen]uint32
 	fetchLow           byte
 
-	patternReadObserver bus.PPUPatternReadObserver
+	patternReadObserver atomic.Pointer[bus.PPUPatternReadObserver]
 }
 
 // New returns a new sprites manager.
@@ -77,7 +82,12 @@ func (s *Sprites) SetSpritePatternTable(table uint16) {
 // ObservePatternReads sets a callback that runs before each pattern read,
 // with the mapper sprite context active. A nil callback disables observation.
 func (s *Sprites) ObservePatternReads(observer bus.PPUPatternReadObserver) {
-	s.patternReadObserver = observer
+	var next *bus.PPUPatternReadObserver
+	if observer != nil {
+		next = &observer
+	}
+
+	s.patternReadObserver.Store(next)
 }
 
 // Data returns a copy of primary OAM.
@@ -191,8 +201,8 @@ func (s *Sprites) Render() {
 		address += patternPlaneOffset
 	}
 
-	if s.patternReadObserver != nil {
-		s.patternReadObserver(address)
+	if observer := s.patternReadCallback(); observer != nil {
+		observer(address)
 	}
 
 	if phase == 4 {
@@ -240,6 +250,32 @@ func (s *Sprites) Pixel() (bool, bool, byte) {
 	}
 
 	return false, false, 0
+}
+
+// TransferState transfers stopped Sprites state. The system owns the record version.
+func (s *Sprites) TransferState(archive *stateio.Archive) error {
+	if err := archive.Values(&s.spriteSize, &s.spritePatternTable, &s.address, &s.visibleSprites, &s.visibleSpriteCount, &s.patterns, &s.fetchLow); err != nil {
+		return fmt.Errorf("transferring sprites state: %w", err)
+	}
+
+	for i := range s.sprites {
+		v := &s.sprites[i]
+		if err := archive.Values(&v.y, &v.index, &v.attributes, &v.x); err != nil {
+			return fmt.Errorf("transferring sprites state: %w", err)
+		}
+	}
+
+	if archive.Reading() && (s.visibleSpriteCount < 0 || s.visibleSpriteCount > len(s.visibleSprites) || (s.spriteSize != defaultSpriteSize && s.spriteSize != defaultSpriteSize*2)) {
+		return errors.New("invalid sprite snapshot")
+	}
+
+	for _, index := range s.visibleSprites[:s.visibleSpriteCount] {
+		if index < 0 || index >= len(s.sprites) {
+			return errors.New("invalid sprite snapshot index")
+		}
+	}
+
+	return nil
 }
 
 // Sprite evaluation does not cause sprite 0 hit. This is handled by sprite rendering instead.
@@ -297,6 +333,13 @@ func (s *Sprites) spritePatternAddress(sprite *Sprite, row int) uint16 {
 	}
 
 	return address
+}
+
+func (s *Sprites) patternReadCallback() bus.PPUPatternReadObserver {
+	if observer := s.patternReadObserver.Load(); observer != nil {
+		return *observer
+	}
+	return nil
 }
 
 func spritePattern(sprite *Sprite, lowTileByte, highTileByte byte) uint32 {

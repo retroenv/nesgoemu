@@ -1,7 +1,12 @@
 // Package controller provides hardware controller functionality.
 package controller
 
-import "sync/atomic"
+import (
+	"fmt"
+	"sync/atomic"
+
+	"github.com/retroenv/nesgoemu/internal/stateio"
+)
 
 // Button defines a button on the controller.
 type Button uint64
@@ -77,6 +82,23 @@ func (c *Controller) SetButtonState(key Button, pressed bool) {
 	}
 
 	atomic.StoreUint64(&c.buttons, state)
+}
+
+// TransferState transfers stopped Controller state. The system owns the record version.
+func (c *Controller) TransferState(archive *stateio.Archive) error {
+	if err := archive.Values(&c.strobeMode, &c.index); err != nil {
+		return fmt.Errorf("transferring controller state: %w", err)
+	}
+
+	buttons := atomic.LoadUint64(&c.buttons)
+	if err := archive.Values(&buttons); err != nil {
+		return fmt.Errorf("transferring controller state: %w", err)
+	}
+	if archive.Reading() {
+		atomic.StoreUint64(&c.buttons, buttons)
+	}
+
+	return nil
 }
 
 func (c *Controller) reset() {

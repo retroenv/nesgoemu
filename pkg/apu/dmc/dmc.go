@@ -4,6 +4,12 @@
 // https://www.nesdev.org/wiki/APU_DMC
 package dmc
 
+import (
+	"fmt"
+
+	"github.com/retroenv/nesgoemu/internal/stateio"
+)
+
 // ntscRateTable contains the sample rates in APU cycles. The source table gives
 // CPU cycles, which are twice the APU cycles.
 // https://www.nesdev.org/wiki/APU_DMC
@@ -12,6 +18,8 @@ var ntscRateTable = [16]uint16{
 }
 
 const (
+	sampleAddressStep = 64
+	sampleLengthStep  = 16
 	// sampleBaseAddress is the first address that a sample can use.
 	// The sample address register selects 64 byte steps above it.
 	// https://www.nesdev.org/wiki/APU_DMC
@@ -62,6 +70,20 @@ type DMC struct {
 	output byte
 
 	irq bool
+}
+
+// Snapshot reports the sample reader and output unit without bus effects.
+// Read it while emulation is stopped.
+type Snapshot struct {
+	Address   uint16 `json:"address"`
+	Remaining uint16 `json:"remaining"`
+
+	Loop          bool   `json:"loop"`
+	SampleAddress uint16 `json:"sample_address"`
+	SampleLength  uint16 `json:"sample_length"`
+
+	IRQ    bool `json:"irq"`
+	Output byte `json:"output"`
 }
 
 // New returns a new delta modulation channel. The system supplies sample bytes
@@ -221,6 +243,29 @@ func (d *DMC) Write(address uint16, value byte) {
 	}
 }
 
+// Snapshot returns the current reader and output state.
+func (d *DMC) Snapshot() Snapshot {
+	return Snapshot{
+		Address:   d.address,
+		Remaining: d.remaining,
+
+		Loop:          d.loop,
+		SampleAddress: sampleBaseAddress + uint16(d.sampleAddr)*sampleAddressStep,
+		SampleLength:  uint16(d.sampleLen)*sampleLengthStep + 1,
+
+		IRQ:    d.irq,
+		Output: d.output,
+	}
+}
+
+// TransferState transfers stopped DMC state. The system owns the record version.
+func (d *DMC) TransferState(archive *stateio.Archive) error {
+	if err := archive.Values(&d.cycle, &d.irqEnabled, &d.loop, &d.sampleAddr, &d.sampleLen, &d.timer, &d.counter, &d.address, &d.remaining, &d.load, &d.loadDelay, &d.sample, &d.sampleFull, &d.bits, &d.shift, &d.silence, &d.output, &d.irq); err != nil {
+		return fmt.Errorf("transferring dmc state: %w", err)
+	}
+	return nil
+}
+
 // clockOutput advances the output unit by one step of the current output cycle.
 // Each step consumes one sample bit, and a new cycle loads eight bits from the
 // sample buffer.
@@ -262,6 +307,6 @@ func (d *DMC) changeLevel(bit byte) {
 
 // restart sets the address and the bytes remaining counter from the registers.
 func (d *DMC) restart() {
-	d.address = sampleBaseAddress + uint16(d.sampleAddr)*64
-	d.remaining = uint16(d.sampleLen)*16 + 1
+	d.address = sampleBaseAddress + uint16(d.sampleAddr)*sampleAddressStep
+	d.remaining = uint16(d.sampleLen)*sampleLengthStep + 1
 }

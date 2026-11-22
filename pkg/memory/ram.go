@@ -1,7 +1,10 @@
 package memory
 
 import (
+	"fmt"
 	"sync"
+
+	"github.com/retroenv/nesgoemu/internal/stateio"
 )
 
 // RAM implements the Random-access memory.
@@ -43,4 +46,16 @@ func (r *RAM) Write(address uint16, value byte) {
 	r.mu.Lock()
 	r.data[address-r.offset] = value
 	r.mu.Unlock()
+}
+
+// TransferState transfers stopped RAM state. The system owns the record version.
+func (r *RAM) TransferState(archive *stateio.Archive) error {
+	if err := archive.Values(&r.offset, &r.size); err != nil {
+		return fmt.Errorf("transferring memory state: %w", err)
+	}
+
+	if err := archive.Bytes(r.data); err != nil {
+		return fmt.Errorf("transferring memory state: %w", err)
+	}
+	return nil
 }

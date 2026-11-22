@@ -5,6 +5,9 @@
 package noise
 
 import (
+	"fmt"
+
+	"github.com/retroenv/nesgoemu/internal/stateio"
 	"github.com/retroenv/nesgoemu/pkg/apu/envelope"
 	"github.com/retroenv/nesgoemu/pkg/apu/lengthcounter"
 )
@@ -29,6 +32,20 @@ type Noise struct {
 	counter uint16
 	shift   uint16
 	mode    bool
+}
+
+// Snapshot reports the decoded channel state without bus effects.
+// Read it while emulation is stopped.
+type Snapshot struct {
+	Counter uint16 `json:"counter"`
+	Mode    bool   `json:"mode"`
+	Shift   uint16 `json:"shift"`
+	Timer   uint16 `json:"timer"`
+
+	Envelope envelope.Snapshot `json:"envelope"`
+
+	Length byte `json:"length"`
+	Output byte `json:"output"`
 }
 
 // New returns a new noise channel.
@@ -121,6 +138,35 @@ func (n *Noise) Write(address uint16, value byte) {
 	default: // length counter load and envelope restart
 		n.length.Load(value)
 		n.envelope.Start()
+	}
+}
+
+// Length returns the current length counter without changing it.
+func (n *Noise) Length() byte { return n.length.Value() }
+
+// TransferState transfers stopped Noise state. The system owns the record version.
+func (n *Noise) TransferState(archive *stateio.Archive) error {
+	if err := archive.Values(&n.timer, &n.counter, &n.shift, &n.mode); err != nil {
+		return fmt.Errorf("transferring noise state: %w", err)
+	}
+	if err := archive.Devices(n.envelope, n.length); err != nil {
+		return fmt.Errorf("transferring noise state: %w", err)
+	}
+	return nil
+}
+
+// Snapshot returns an independent copy of the current state.
+func (n *Noise) Snapshot() Snapshot {
+	return Snapshot{
+		Counter: n.counter,
+		Mode:    n.mode,
+		Shift:   n.shift,
+		Timer:   n.timer,
+
+		Envelope: n.envelope.Snapshot(),
+
+		Length: n.Length(),
+		Output: n.Output(),
 	}
 }
 

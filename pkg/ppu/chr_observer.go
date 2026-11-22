@@ -13,14 +13,20 @@ type CHRRead struct {
 // ObserveCHRReads sets a callback for mapped pattern-table reads.
 // A nil callback disables observation. Set it while emulation is stopped.
 func (p *PPU) ObserveCHRReads(observer func(CHRRead)) {
-	p.chrReadObserver = observer
-	var renderingObserver bus.PPUPatternReadObserver
-	if observer != nil {
-		renderingObserver = p.observeRenderingCHR
-	}
+	p.chrReadObserver.Set(observer)
 
-	p.tiles.ObservePatternReads(renderingObserver)
-	p.sprites.ObservePatternReads(renderingObserver)
+	p.tiles.ObservePatternReads(p.observeRenderingCHR)
+	p.sprites.ObservePatternReads(p.observeRenderingCHR)
+}
+
+// AddCHRReadObserver registers an independent callback. Removal is concurrency-safe.
+func (p *PPU) AddCHRReadObserver(call func(CHRRead)) func() {
+	remove := p.chrReadObserver.Add(call)
+
+	p.tiles.ObservePatternReads(p.observeRenderingCHR)
+	p.sprites.ObservePatternReads(p.observeRenderingCHR)
+
+	return remove
 }
 
 func (p *PPU) observeRenderingCHR(address uint16) {
@@ -28,7 +34,7 @@ func (p *PPU) observeRenderingCHR(address uint16) {
 }
 
 func (p *PPU) observeCHRRead(address uint16, rendering bool) {
-	if p.chrReadObserver == nil {
+	if !p.chrReadObserver.Active() {
 		return
 	}
 	inspector, ok := p.bus.Mapper.(bus.PPUMappingInspector)
@@ -39,7 +45,7 @@ func (p *PPU) observeCHRRead(address uint16, rendering bool) {
 	if !ok {
 		return
 	}
-	p.chrReadObserver(CHRRead{
+	p.chrReadObserver.Send(CHRRead{
 		Mapping:   mapping,
 		Rendering: rendering,
 	})

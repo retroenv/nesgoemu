@@ -45,6 +45,9 @@ type mapperAxROM struct {
 	*mapperbase.Base
 }
 
+// SnapshotFormat identifies the direct mapper state format.
+func (*mapperAxROM) SnapshotFormat() string { return "axrom-mapperAxROM-v1" }
+
 func (m *mapperAxROM) setPrgWindow(_ uint16, value uint8) error {
 	m.MarkFeature(feature.PRGBanking)
 	m.MarkFeature(feature.SingleScreenMirroring)

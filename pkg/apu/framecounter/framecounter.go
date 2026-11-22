@@ -4,6 +4,13 @@
 // https://www.nesdev.org/wiki/APU_Frame_Counter
 package framecounter
 
+import (
+	"errors"
+	"fmt"
+
+	"github.com/retroenv/nesgoemu/internal/stateio"
+)
+
 // resetDelayCycles is the number of CPU cycles between a write to $4017 and the
 // reset of the sequencer. The hardware uses three or four cycles, depending on
 // the APU cycle of the write.
@@ -53,6 +60,16 @@ type FrameCounter struct {
 
 	inhibit bool
 	irq     bool
+}
+
+// Snapshot reports the current sequencer mode and interrupt state.
+// Read it while emulation is stopped.
+type Snapshot struct {
+	Cycles   uint64 `json:"cycles"`
+	FiveStep bool   `json:"five_step"`
+
+	IRQ          bool `json:"irq"`
+	IRQInhibited bool `json:"irq_inhibited"`
 }
 
 // New returns a new frame counter.
@@ -123,6 +140,29 @@ func (f *FrameCounter) Write(value byte) {
 	}
 
 	f.delay = resetDelayCycles + byte(f.elapsed&1)
+}
+
+// Snapshot returns the current sequencer state without clearing its IRQ.
+func (f *FrameCounter) Snapshot() Snapshot {
+	return Snapshot{
+		Cycles:   f.cycles,
+		FiveStep: f.mode,
+
+		IRQ:          f.irq,
+		IRQInhibited: f.inhibit,
+	}
+}
+
+// TransferState transfers stopped FrameCounter state. The system owns the record version.
+func (f *FrameCounter) TransferState(archive *stateio.Archive) error {
+	if err := archive.Values(&f.cycles, &f.step, &f.mode, &f.elapsed, &f.block, &f.delay, &f.pending, &f.inhibit, &f.irq); err != nil {
+		return fmt.Errorf("transferring framecounter state: %w", err)
+	}
+	if archive.Reading() && (f.step < 0 || f.step >= f.sequenceLength()) {
+		return errors.New("invalid frame counter snapshot")
+	}
+
+	return nil
 }
 
 // clockSequence advances the current mode while a register write is pending.

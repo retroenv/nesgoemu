@@ -4,9 +4,12 @@
 package sampler
 
 import (
+	"errors"
+	"fmt"
 	"math"
 	"sync"
 
+	"github.com/retroenv/nesgoemu/internal/stateio"
 	"github.com/retroenv/retrogolib/arch/system/nes"
 )
 
@@ -71,6 +74,23 @@ func (s *Sampler) Add(level float64) {
 	}
 
 	s.add(level)
+}
+
+// TransferState transfers stopped Sampler state. The system owns the record version.
+func (s *Sampler) TransferState(archive *stateio.Archive) error {
+	if err := archive.Values(&s.accumulator, &s.position); err != nil {
+		return fmt.Errorf("transferring sampler state: %w", err)
+	}
+	historySize := len(s.history)
+
+	if err := archive.Values(&s.history); err != nil {
+		return fmt.Errorf("transferring sampler state: %w", err)
+	}
+	if archive.Reading() && (s.position < 0 || s.position >= len(s.history) || len(s.history) != historySize) {
+		return errors.New("invalid sampler snapshot")
+	}
+
+	return nil
 }
 
 func (s *Sampler) add(level float64) {

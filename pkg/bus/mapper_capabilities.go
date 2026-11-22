@@ -45,6 +45,13 @@ type MemoryInspector interface {
 	InspectPRGRAM(offset int) (byte, bool)
 }
 
+// CPURAMEditor provides a checked RAM destination without mapper bus effects.
+// A false result means that the CPU address does not map writable PRG-RAM.
+type CPURAMEditor interface {
+	CPURAMOffset(address uint16) (int, bool)
+	WritePRGRAM(offset int, value byte) bool
+}
+
 // CPUMemoryInspector exposes cartridge CPU mappings without bus effects.
 // For $4020-$FFFF, it has priority over the PRG-RAM and PRG-ROM inspectors.
 // A board that maps RAM above $8000 or ROM below $8000 needs it.

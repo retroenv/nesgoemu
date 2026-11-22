@@ -55,6 +55,9 @@ type mapper71 struct {
 	legacyMirroring bool
 }
 
+// SnapshotFormat identifies the direct mapper state format.
+func (*mapper71) SnapshotFormat() string { return "camerica-mapper71-v1" }
+
 func (m *mapper71) selectPRG(_ uint16, value byte) error {
 	m.SetPrgWindow(0, int(value&m.bankMask))
 	m.MarkFeature(feature.PRGBanking)

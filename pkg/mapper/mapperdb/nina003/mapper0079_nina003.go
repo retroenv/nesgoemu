@@ -40,6 +40,9 @@ func New(base *mapperbase.Base) (bus.Mapper, error) {
 
 type mapperNINA003 struct{ *mapperbase.Base }
 
+// SnapshotFormat identifies the direct mapper state format.
+func (*mapperNINA003) SnapshotFormat() string { return "nina003-mapperNINA003-v1" }
+
 func (m *mapperNINA003) selectBanks(address uint16, value byte) error {
 	if address&0xe100 != bankRegisterBase {
 		return nil

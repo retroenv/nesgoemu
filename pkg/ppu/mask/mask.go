@@ -1,6 +1,12 @@
 // Package mask contains the PPU mask.
 package mask
 
+import (
+	"fmt"
+
+	"github.com/retroenv/nesgoemu/internal/stateio"
+)
+
 // Mask implements a PPU mask fields manager.
 type Mask struct {
 	value byte // cached value since the fields are never modified directly
@@ -57,4 +63,12 @@ func (m *Mask) RenderBackgroundLeft() bool {
 // RenderSpritesLeft returns a flag whether the sprites should be rendered in leftmost 8 pixels of screen.
 func (m *Mask) RenderSpritesLeft() bool {
 	return m.renderSpritesLeft
+}
+
+// TransferState transfers stopped Mask state. The system owns the record version.
+func (m *Mask) TransferState(archive *stateio.Archive) error {
+	if err := archive.Values(&m.value, &m.Grayscale, &m.renderBackgroundLeft, &m.renderSpritesLeft, &m.renderBackground, &m.renderSprites, &m.EnhanceRed, &m.EnhanceGreen, &m.EnhanceBlue); err != nil {
+		return fmt.Errorf("transferring mask state: %w", err)
+	}
+	return nil
 }

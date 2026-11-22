@@ -3,6 +3,12 @@
 // https://www.nesdev.org/wiki/APU_Length_Counter
 package lengthcounter
 
+import (
+	"fmt"
+
+	"github.com/retroenv/nesgoemu/internal/stateio"
+)
+
 // lengthLoadTable contains the counter load values for the five high bits of a
 // length register. The unit is half frames.
 // https://www.nesdev.org/wiki/APU_Length_Counter
@@ -90,4 +96,15 @@ func (l *LengthCounter) SetEnabled(enabled bool) {
 // SetHalt schedules the halt input for the next Commit.
 func (l *LengthCounter) SetHalt(halt bool) {
 	l.nextHalt = halt
+}
+
+// Value returns the current length counter without changing it.
+func (l *LengthCounter) Value() byte { return l.counter }
+
+// TransferState transfers stopped LengthCounter state. The system owns the record version.
+func (l *LengthCounter) TransferState(archive *stateio.Archive) error {
+	if err := archive.Values(&l.counter, &l.enabled, &l.halt, &l.load, &l.previous, &l.reload, &l.nextHalt); err != nil {
+		return fmt.Errorf("transferring lengthcounter state: %w", err)
+	}
+	return nil
 }

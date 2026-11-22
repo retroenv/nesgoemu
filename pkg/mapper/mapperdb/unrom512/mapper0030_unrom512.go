@@ -97,6 +97,9 @@ const (
 	mirrorSwitchable                      // Bit 7 selects horizontal or vertical mirroring.
 )
 
+// SnapshotFormat identifies the direct mapper state format.
+func (*mapperUNROM512) SnapshotFormat() string { return "unrom512-mapperUNROM512-v1" }
+
 // setBanks decodes the bank register NCCP PPPP: bits 4-0 select the 16 KB PRG
 // ROM bank at $8000, bits 6-5 select the 8 KB CHR RAM bank, and bit 7 controls
 // the nametables when the board allows it.

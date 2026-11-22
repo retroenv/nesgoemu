@@ -2,6 +2,9 @@
 package bus
 
 import (
+	"fmt"
+
+	"github.com/retroenv/nesgoemu/internal/stateio"
 	"github.com/retroenv/retrogolib/arch/cpu/cpu6502"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 )
@@ -49,6 +52,14 @@ func (b *Bus) SetAPUIRQ(active bool) {
 func (b *Bus) SetMapperIRQ(active bool) {
 	b.mapperIRQ = active
 	b.updateIRQ()
+}
+
+// TransferState transfers the IRQ source levels while emulation is stopped.
+func (b *Bus) TransferState(archive *stateio.Archive) error {
+	if err := archive.Values(&b.apuIRQ, &b.mapperIRQ); err != nil {
+		return fmt.Errorf("transferring bus state: %w", err)
+	}
+	return nil
 }
 
 func (b *Bus) updateIRQ() {

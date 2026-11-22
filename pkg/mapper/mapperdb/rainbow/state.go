@@ -72,6 +72,9 @@ func (m *Mapper) LoadState(reader io.Reader) error {
 	return nil
 }
 
+// SnapshotFormat identifies the direct mapper state format.
+func (*Mapper) SnapshotFormat() string { return "rainbow-v3" }
+
 // stateFields defines the version 3 record order. Keep private state private:
 // encode its fields explicitly instead of exposing registers as a public API.
 // A change to this order or its types requires a new state format version.

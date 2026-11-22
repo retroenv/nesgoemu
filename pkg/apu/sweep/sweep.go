@@ -4,6 +4,12 @@
 // https://www.nesdev.org/wiki/APU_Sweep
 package sweep
 
+import (
+	"fmt"
+
+	"github.com/retroenv/nesgoemu/internal/stateio"
+)
+
 // NegateMode selects how the unit subtracts the change amount. The two pulse
 // channels have the carry inputs of their adders wired differently.
 // https://www.nesdev.org/wiki/APU_Sweep
@@ -27,6 +33,18 @@ type Sweep struct {
 	enabled bool
 	negate  bool
 	reload  bool
+}
+
+// Snapshot reports the decoded channel state without bus effects.
+// Read it while emulation is stopped.
+type Snapshot struct {
+	Enabled bool `json:"enabled"`
+	Negate  bool `json:"negate"`
+	Period  byte `json:"period"`
+	Shift   byte `json:"shift"`
+
+	Divider byte `json:"divider"`
+	Reload  bool `json:"reload"`
 }
 
 // New returns a new sweep unit for the given negation mode.
@@ -81,6 +99,27 @@ func (s *Sweep) Write(value byte) {
 	s.negate = value&0x08 != 0
 	s.shift = value & 0x07
 	s.reload = true
+}
+
+// TransferState transfers stopped Sweep state. The system owns the record version.
+func (s *Sweep) TransferState(archive *stateio.Archive) error {
+	if err := archive.Values(&s.mode, &s.divider, &s.period, &s.shift, &s.enabled, &s.negate, &s.reload); err != nil {
+		return fmt.Errorf("transferring sweep state: %w", err)
+	}
+	return nil
+}
+
+// Snapshot returns an independent copy of the current state.
+func (s *Sweep) Snapshot() Snapshot {
+	return Snapshot{
+		Enabled: s.enabled,
+		Negate:  s.negate,
+		Period:  s.period,
+		Shift:   s.shift,
+
+		Divider: s.divider,
+		Reload:  s.reload,
+	}
 }
 
 // target returns the period that the unit selects next. A negative sum is

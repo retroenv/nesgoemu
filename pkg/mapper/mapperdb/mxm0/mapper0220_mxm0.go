@@ -32,8 +32,10 @@
 package mxm0
 
 import (
+	"errors"
 	"fmt"
 
+	"github.com/retroenv/nesgoemu/internal/stateio"
 	"github.com/retroenv/nesgoemu/pkg/bus"
 	"github.com/retroenv/nesgoemu/pkg/feature"
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
@@ -230,6 +232,24 @@ func (m *Mapper) PPUReadMapping(address uint16) (bus.GraphicsMapping, bool) {
 // PPUWriteMapping reports false because the board has no CHR RAM.
 func (*Mapper) PPUWriteMapping(uint16) (bus.GraphicsMapping, bool) {
 	return bus.GraphicsMapping{}, false
+}
+
+// SnapshotFormat identifies the direct mapper state format.
+func (*Mapper) SnapshotFormat() string { return "mxm0-Mapper-v1" }
+
+// TransferState transfers registers and mutable cartridge memory.
+func (m *Mapper) TransferState(archive *stateio.Archive) error {
+	if err := m.Base.TransferState(archive); err != nil {
+		return fmt.Errorf("transferring mxm0: %w", err)
+	}
+
+	if err := archive.Values(&m.dimMode, &m.blendPhase, &m.fetchCount, &m.fineY, &m.nameLatch, &m.patternBank); err != nil {
+		return fmt.Errorf("transferring mxm0: %w", err)
+	}
+	if m.blendPhase < 0 || m.blendPhase >= len(paletteTable) || m.patternBank > bankMask {
+		return errors.New("invalid MXM-0 snapshot state")
+	}
+	return nil
 }
 
 func (m *Mapper) readPattern(address uint16) byte {

@@ -1,5 +1,15 @@
 package mmc3
 
+import (
+	"fmt"
+
+	"github.com/retroenv/nesgoemu/internal/stateio"
+	"github.com/retroenv/nesgoemu/pkg/bus"
+	"github.com/retroenv/nesgoemu/pkg/feature"
+	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
+	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
+)
+
 /*
 Boards: TGROM, TKROM, TLROM, TSROM, TVROM, TR1ROM
 Revision: Sharp MMC3, NES 2.0 submapper 0
@@ -9,15 +19,6 @@ PRG RAM capacity: 8K
 CHR capacity: 256K
 CHR window: 2K + 2K + 1K + 1K + 1K + 1K
 */
-
-import (
-	"fmt"
-
-	"github.com/retroenv/nesgoemu/pkg/bus"
-	"github.com/retroenv/nesgoemu/pkg/feature"
-	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
-	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
-)
 
 const (
 	chrWindowSize = 0x0400 // 1K
@@ -119,6 +120,26 @@ func (m *mapperMMC3) TickPPU(_, _ int, _ bool) {
 	}
 
 	m.a12LowDots++
+}
+
+// SnapshotFormat identifies the direct mapper state format.
+func (*mapperMMC3) SnapshotFormat() string { return "mmc3-mapperMMC3-v1" }
+
+// TransferState transfers registers and mutable cartridge memory.
+func (m *mapperMMC3) TransferState(archive *stateio.Archive) error {
+	if err := m.Base.TransferState(archive); err != nil {
+		return fmt.Errorf("transferring mmc3: %w", err)
+	}
+
+	if err := archive.Values(&m.registers, &m.bankSelect, &m.prgMode, &m.chrMode, &m.wramEnabled, &m.wramWriteProtect, &m.irqLatch, &m.irqCounter, &m.irqReload, &m.irqEnabled, &m.a12Low, &m.a12LowDots); err != nil {
+		return fmt.Errorf("transferring mmc3: %w", err)
+	}
+	if archive.Reading() {
+		m.wramReadHook.SetProxyOnly(m.wramEnabled)
+		m.wramWriteHook.SetProxyOnly(m.wramEnabled && !m.wramWriteProtect)
+	}
+
+	return nil
 }
 
 func (m *mapperMMC3) writeRegister(address uint16, value uint8) error {

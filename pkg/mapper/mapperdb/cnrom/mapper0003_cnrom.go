@@ -1,13 +1,6 @@
 // Package cnrom implements CNROM cartridge boards.
 package cnrom
 
-/*
-Boards: CNROM "and similar"
-PRG ROM capacity: 16K or 32K
-CHR capacity: 32K (2M oversize version)
-CHR window: 8K
-*/
-
 import (
 	"fmt"
 
@@ -15,6 +8,13 @@ import (
 	"github.com/retroenv/nesgoemu/pkg/feature"
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
 )
+
+/*
+Boards: CNROM "and similar"
+PRG ROM capacity: 16K or 32K
+CHR capacity: 32K (2M oversize version)
+CHR window: 8K
+*/
 
 // New returns a new CNROM mapper.
 func New(base *mapperbase.Base) (bus.Mapper, error) {
@@ -35,6 +35,9 @@ func New(base *mapperbase.Base) (bus.Mapper, error) {
 type mapperCNROM struct {
 	*mapperbase.Base
 }
+
+// SnapshotFormat identifies the direct mapper state format.
+func (*mapperCNROM) SnapshotFormat() string { return "cnrom-mapperCNROM-v1" }
 
 func (m *mapperCNROM) setChrWindow(_ uint16, value uint8) error {
 	m.MarkFeature(feature.CHRBanking)

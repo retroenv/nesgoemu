@@ -3,7 +3,9 @@ package memory
 
 import (
 	"fmt"
+	"sync/atomic"
 
+	"github.com/retroenv/nesgoemu/internal/stateio"
 	"github.com/retroenv/nesgoemu/pkg/bus"
 	"github.com/retroenv/nesgoemu/pkg/controller"
 	"github.com/retroenv/retrogolib/arch/system/nes"
@@ -14,6 +16,9 @@ import (
 // internal RAM. The RAM mirrors at $0800, $1000, and $1800.
 // https://www.nesdev.org/wiki/CPU_memory_map
 const internalRAMMask uint16 = 0x07ff
+
+// ReadObserver receives completed CPU and DMA reads.
+type ReadObserver func(uint16, byte, bool)
 
 // Memory represents the memory controller.
 type Memory struct {
@@ -31,11 +36,13 @@ type Memory struct {
 	// https://www.nesdev.org/wiki/Open_bus_behavior#CPU_open_bus
 	openBus byte
 
+	readObserver         atomic.Pointer[ReadObserver]
+	suppressReadObserver bool
+	dmaAccess            bool // the current read belongs to a DMA transfer
+
 	writeObserver func(WriteEvent)
 	printf        *printfWriter // optional text output of the program
-
-	counts    *AccessCounts // optional bus access counters
-	dmaAccess bool          // the current read belongs to a DMA transfer
+	counts        *AccessCounts // optional bus access counters
 }
 
 // New returns a new memory instance, embedded it has
@@ -123,8 +130,24 @@ func (m *Memory) Read(address uint16) byte {
 	}
 
 	m.openBus = m.read(address)
+	if observer := m.readCallback(); observer != nil && !m.suppressReadObserver {
+		observer(address, m.openBus, m.dmaAccess)
+	}
 
 	return m.openBus
+}
+
+// SuppressReadObserver excludes repeated DMA halt reads from access observers.
+func (m *Memory) SuppressReadObserver(suppress bool) { m.suppressReadObserver = suppress }
+
+// ObserveReads replaces the callback. A callback in progress can finish.
+func (m *Memory) ObserveReads(call ReadObserver) {
+	var next *ReadObserver
+	if call != nil {
+		next = &call
+	}
+
+	m.readObserver.Store(next)
 }
 
 // OpenBus returns the value of the CPU data bus.
@@ -139,6 +162,25 @@ func (m *Memory) InspectRAM(address uint16) (byte, bool) {
 	}
 
 	return m.ram.Read(address & internalRAMMask), true
+}
+
+// TransferState transfers stopped Memory state. The system owns the record version.
+func (m *Memory) TransferState(archive *stateio.Archive) error {
+	if err := archive.Values(&m.cycle, &m.controllerAddress, &m.controllerCycle, &m.controllerValue, &m.openBus); err != nil {
+		return fmt.Errorf("transferring memory state: %w", err)
+	}
+
+	if err := archive.Devices(m.ram); err != nil {
+		return fmt.Errorf("transferring memory state: %w", err)
+	}
+	return nil
+}
+
+func (m *Memory) readCallback() ReadObserver {
+	if observer := m.readObserver.Load(); observer != nil {
+		return *observer
+	}
+	return nil
 }
 
 // read returns the value of a memory address without updating the data bus.

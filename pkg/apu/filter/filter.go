@@ -4,7 +4,12 @@
 // https://www.nesdev.org/wiki/APU_Mixer
 package filter
 
-import "math"
+import (
+	"fmt"
+	"math"
+
+	"github.com/retroenv/nesgoemu/internal/stateio"
+)
 
 // HighPass is a first-order high-pass filter.
 type HighPass struct {
@@ -43,4 +48,20 @@ func (f *LowPass) Apply(sample float64) float64 {
 	f.lastOutput += f.coefficient * (sample - f.lastOutput)
 
 	return f.lastOutput
+}
+
+// TransferState transfers stopped HighPass state. The system owns the record version.
+func (f *HighPass) TransferState(archive *stateio.Archive) error {
+	if err := archive.Values(&f.coefficient, &f.lastInput, &f.lastOutput); err != nil {
+		return fmt.Errorf("transferring filter state: %w", err)
+	}
+	return nil
+}
+
+// TransferState transfers stopped LowPass state. The system owns the record version.
+func (f *LowPass) TransferState(archive *stateio.Archive) error {
+	if err := archive.Values(&f.coefficient, &f.lastOutput); err != nil {
+		return fmt.Errorf("transferring filter state: %w", err)
+	}
+	return nil
 }

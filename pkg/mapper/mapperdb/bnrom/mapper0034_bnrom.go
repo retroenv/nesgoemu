@@ -79,6 +79,9 @@ type mapper34 struct {
 	*mapperbase.Base
 }
 
+// SnapshotFormat identifies the direct mapper state format.
+func (*mapper34) SnapshotFormat() string { return "bnrom-mapper34-v1" }
+
 func (m *mapper34) selectBNROM(address uint16, value byte) error {
 	value &= m.Read(address)
 	m.SetPrgWindow(0, int(value))

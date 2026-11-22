@@ -2,8 +2,11 @@
 package feature
 
 import (
+	"fmt"
 	"slices"
 	"sync/atomic"
+
+	"github.com/retroenv/nesgoemu/internal/stateio"
 )
 
 // ID identifies one emulated hardware feature.
@@ -246,4 +249,19 @@ func (s *Set) Features() []Usage {
 	}
 
 	return usage
+}
+
+// TransferState transfers stopped Set state. The system owns the record version.
+func (s *Set) TransferState(archive *stateio.Archive) error {
+	for i := range s.used {
+		v := s.used[i].Load()
+		if err := archive.Values(&v); err != nil {
+			return fmt.Errorf("transferring feature state: %w", err)
+		}
+		if archive.Reading() {
+			s.used[i].Store(v)
+		}
+	}
+
+	return nil
 }

@@ -1,6 +1,12 @@
 // Package status handles PPU status fields.
 package status
 
+import (
+	"fmt"
+
+	"github.com/retroenv/nesgoemu/internal/stateio"
+)
+
 // Status implements a PPU status fields manager.
 type Status struct {
 	spriteOverflow bool // 0010 0000
@@ -45,4 +51,12 @@ func (s *Status) SetSpriteZeroHit(value bool) {
 // SetVerticalBlank sets the vertical blank flag.
 func (s *Status) SetVerticalBlank(value bool) {
 	s.verticalBlank = value
+}
+
+// TransferState transfers stopped Status state. The system owns the record version.
+func (s *Status) TransferState(archive *stateio.Archive) error {
+	if err := archive.Values(&s.spriteOverflow, &s.spriteZeroHit, &s.verticalBlank); err != nil {
+		return fmt.Errorf("transferring status state: %w", err)
+	}
+	return nil
 }

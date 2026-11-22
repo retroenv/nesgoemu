@@ -5,6 +5,10 @@
 package pulse
 
 import (
+	"errors"
+	"fmt"
+
+	"github.com/retroenv/nesgoemu/internal/stateio"
 	"github.com/retroenv/nesgoemu/pkg/apu/envelope"
 	"github.com/retroenv/nesgoemu/pkg/apu/lengthcounter"
 	"github.com/retroenv/nesgoemu/pkg/apu/sweep"
@@ -31,6 +35,21 @@ type Pulse struct {
 	sequence byte
 	timer    uint16
 	counter  uint16
+}
+
+// Snapshot reports the decoded channel state without bus effects.
+// Read it while emulation is stopped.
+type Snapshot struct {
+	Counter  uint16 `json:"counter"`
+	Duty     byte   `json:"duty"`
+	Sequence byte   `json:"sequence"`
+	Timer    uint16 `json:"timer"`
+
+	Envelope envelope.Snapshot `json:"envelope"`
+	Sweep    sweep.Snapshot    `json:"sweep"`
+
+	Length byte `json:"length"`
+	Output byte `json:"output"`
 }
 
 // New returns a new pulse channel. The negation mode selects the sweep
@@ -127,5 +146,39 @@ func (p *Pulse) Write(address uint16, value byte) {
 		p.length.Load(value)
 		p.sequence = 0
 		p.envelope.Start()
+	}
+}
+
+// Length returns the current length counter without changing it.
+func (p *Pulse) Length() byte { return p.length.Value() }
+
+// TransferState transfers stopped Pulse state. The system owns the record version.
+func (p *Pulse) TransferState(archive *stateio.Archive) error {
+	if err := archive.Values(&p.duty, &p.sequence, &p.timer, &p.counter); err != nil {
+		return fmt.Errorf("transferring pulse state: %w", err)
+	}
+	if archive.Reading() && (p.duty >= byte(len(dutySequences)) || p.sequence >= byte(len(dutySequences[0]))) {
+		return errors.New("invalid pulse snapshot")
+	}
+
+	if err := archive.Devices(p.envelope, p.length, p.sweep); err != nil {
+		return fmt.Errorf("transferring pulse state: %w", err)
+	}
+	return nil
+}
+
+// Snapshot returns an independent copy of the current state.
+func (p *Pulse) Snapshot() Snapshot {
+	return Snapshot{
+		Counter:  p.counter,
+		Duty:     p.duty,
+		Sequence: p.sequence,
+		Timer:    p.timer,
+
+		Envelope: p.envelope.Snapshot(),
+		Sweep:    p.sweep.Snapshot(),
+
+		Length: p.Length(),
+		Output: p.Output(),
 	}
 }

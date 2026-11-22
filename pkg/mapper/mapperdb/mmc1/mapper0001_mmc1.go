@@ -1,6 +1,17 @@
 // Package mmc1 implements MMC1 cartridge boards.
 package mmc1
 
+import (
+	"errors"
+	"fmt"
+
+	"github.com/retroenv/nesgoemu/internal/stateio"
+	"github.com/retroenv/nesgoemu/pkg/bus"
+	"github.com/retroenv/nesgoemu/pkg/feature"
+	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
+	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
+)
+
 /*
 Boards: SKROM, SLROM, SNROM, others
 PRG ROM capacity: 256K (512K)
@@ -11,19 +22,12 @@ CHR capacity: 128K
 CHR window: 4K + 4K or 8K
 */
 
-import (
-	"fmt"
-
-	"github.com/retroenv/nesgoemu/pkg/bus"
-	"github.com/retroenv/nesgoemu/pkg/feature"
-	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
-	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
-)
-
 const (
 	// prgModeFixLast is the control register value of PRG mode 3, which fixes the
 	// last bank at $C000.
 	prgModeFixLast = 0x0C
+
+	shiftRegisterBits = 5
 
 	chrBank0RegisterStart = 0xa000
 	chrBank1RegisterStart = 0xc000
@@ -83,6 +87,24 @@ type mapperMMC1 struct {
 	lastWriteValid bool // lastWriteCycle holds the cycle of a write
 }
 
+// SnapshotFormat identifies the direct mapper state format.
+func (*mapperMMC1) SnapshotFormat() string { return "mmc1-mapperMMC1-v1" }
+
+// TransferState transfers registers and mutable cartridge memory.
+func (m *mapperMMC1) TransferState(archive *stateio.Archive) error {
+	if err := m.Base.TransferState(archive); err != nil {
+		return fmt.Errorf("transferring mmc1: %w", err)
+	}
+
+	if err := archive.Values(&m.shiftCount, &m.shiftRegister, &m.control, &m.chrBank0, &m.chrBank1, &m.prgBank, &m.lastWriteCycle, &m.lastWriteValid); err != nil {
+		return fmt.Errorf("transferring mmc1: %w", err)
+	}
+	if m.shiftCount >= shiftRegisterBits || m.shiftRegister >= 1<<shiftRegisterBits {
+		return errors.New("invalid MMC1 snapshot shift state")
+	}
+	return nil
+}
+
 // resetShift clears the shift register and applies the control register.
 func (m *mapperMMC1) resetShift() error {
 	m.shiftCount = 0
@@ -115,7 +137,7 @@ func (m *mapperMMC1) writeShiftBit(address uint16, value uint8) error {
 	m.shiftRegister |= bit
 
 	m.shiftCount++
-	if m.shiftCount < 5 {
+	if m.shiftCount < shiftRegisterBits {
 		return nil
 	}
 

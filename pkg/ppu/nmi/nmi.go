@@ -1,7 +1,12 @@
 // Package nmi contains the PPU NMI manager.
 package nmi
 
-import "github.com/retroenv/nesgoemu/pkg/bus"
+import (
+	"fmt"
+
+	"github.com/retroenv/nesgoemu/internal/stateio"
+	"github.com/retroenv/nesgoemu/pkg/bus"
+)
 
 // Nmi implements a PPU NMI manager.
 type Nmi struct {
@@ -50,4 +55,12 @@ func (n *Nmi) Trigger(cpu bus.CPU) {
 		cpu.TriggerNMI()
 		n.triggered = true
 	}
+}
+
+// TransferState transfers stopped Nmi state. The system owns the record version.
+func (n *Nmi) TransferState(archive *stateio.Archive) error {
+	if err := archive.Values(&n.enabled, &n.occurred, &n.triggered); err != nil {
+		return fmt.Errorf("transferring nmi state: %w", err)
+	}
+	return nil
 }

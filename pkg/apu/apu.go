@@ -21,6 +21,10 @@
 package apu
 
 import (
+	"fmt"
+
+	"github.com/retroenv/nesgoemu/internal/observer"
+	"github.com/retroenv/nesgoemu/internal/stateio"
 	"github.com/retroenv/nesgoemu/pkg/apu/dmc"
 	"github.com/retroenv/nesgoemu/pkg/apu/framecounter"
 	"github.com/retroenv/nesgoemu/pkg/apu/mixer"
@@ -32,6 +36,7 @@ import (
 	"github.com/retroenv/nesgoemu/pkg/apu/triangle"
 	"github.com/retroenv/nesgoemu/pkg/bus"
 	"github.com/retroenv/nesgoemu/pkg/feature"
+	"github.com/retroenv/retrogolib/arch/system/nes/register"
 )
 
 // SampleRate is the output sample rate of the APU in samples per second.
@@ -54,11 +59,12 @@ type APU struct {
 	sampler *sampler.Sampler
 	output  *output.Stage
 
+	registers   [register.APU_FRAME - register.APU_PL1_VOL + 1]byte
 	cycle       uint64
 	irqAsserted bool
 
 	writeObserver func(RegisterWrite)
-	dmcObserver   func(DMCFetch)
+	dmcObserver   observer.Group[DMCFetch]
 }
 
 // DMCFetch records one DMC sample DMA read at an APU cycle.
@@ -102,8 +108,8 @@ func (a *APU) CompleteDMCTransfer(value byte, stallCycles uint16) {
 	a.dmc.CompleteDMA(value)
 	a.markDMCFetch()
 	a.updateIRQ()
-	if a.dmcObserver != nil {
-		a.dmcObserver(DMCFetch{
+	if a.dmcObserver.Active() {
+		a.dmcObserver.Send(DMCFetch{
 			Cycle:       a.cycle,
 			Address:     request.Address,
 			StallCycles: stallCycles,
@@ -124,8 +130,23 @@ func (a *APU) ObserveRegisterWrites(observer func(RegisterWrite)) {
 
 // ObserveDMCFetches replaces the optional DMC sample DMA observer.
 func (a *APU) ObserveDMCFetches(observer func(DMCFetch)) {
-	a.dmcObserver = observer
+	a.dmcObserver.Set(observer)
 }
+
+// TransferState transfers stopped APU state. The system owns the record version.
+func (a *APU) TransferState(archive *stateio.Archive) error {
+	if err := archive.Values(&a.registers, &a.cycle, &a.irqAsserted); err != nil {
+		return fmt.Errorf("transferring apu state: %w", err)
+	}
+
+	if err := archive.Devices(a.pulse1, a.pulse2, a.triangle, a.noise, a.dmc, a.frame, a.sampler, a.output, a.features); err != nil {
+		return fmt.Errorf("transferring apu state: %w", err)
+	}
+	return nil
+}
+
+// AddDMCFetchObserver registers an independent callback. Removal is concurrency-safe.
+func (a *APU) AddDMCFetchObserver(call func(DMCFetch)) func() { return a.dmcObserver.Add(call) }
 
 // DMCIRQ reports whether the DMC currently asserts its interrupt flag.
 func (a *APU) DMCIRQ() bool {

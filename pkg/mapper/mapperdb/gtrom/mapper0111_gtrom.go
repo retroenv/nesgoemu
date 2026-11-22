@@ -1,6 +1,15 @@
 // Package gtrom implements GTROM cartridge boards.
 package gtrom
 
+import (
+	"errors"
+	"fmt"
+
+	"github.com/retroenv/nesgoemu/pkg/bus"
+	"github.com/retroenv/nesgoemu/pkg/feature"
+	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
+)
+
 /*
 Boards: GTROM
 PRG ROM capacity: 512K
@@ -10,15 +19,6 @@ CHR window: 8K
 
 32K CHR RAM used as two 8K CHR RAM and two 8K nametables
 */
-
-import (
-	"errors"
-	"fmt"
-
-	"github.com/retroenv/nesgoemu/pkg/bus"
-	"github.com/retroenv/nesgoemu/pkg/feature"
-	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
-)
 
 const (
 	controlLowStart  = 0x5000
@@ -58,6 +58,9 @@ func New(base *mapperbase.Base) (bus.Mapper, error) {
 type mapperGTROM struct {
 	*mapperbase.Base
 }
+
+// SnapshotFormat identifies the direct mapper state format.
+func (*mapperGTROM) SnapshotFormat() string { return "gtrom-mapperGTROM-v1" }
 
 func (m *mapperGTROM) getControl(_ uint16) (uint8, error) {
 	return m.OpenBus(), nil

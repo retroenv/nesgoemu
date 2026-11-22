@@ -1,6 +1,12 @@
 // Package addressing handles PPU addressing of X/Y coordinates and nametables.
 package addressing
 
+import (
+	"fmt"
+
+	"github.com/retroenv/nesgoemu/internal/stateio"
+)
+
 // Addressing handles PPU addressing of X/Y coordinates and nametables.
 type Addressing struct {
 	latch bool // address latch toggle for high/low byte
@@ -108,4 +114,12 @@ func (a *Addressing) CopyY() {
 	a.vram.NameTableY = a.temp.NameTableY
 	a.vram.CoarseY = a.temp.CoarseY
 	a.vram.FineY = a.temp.FineY
+}
+
+// TransferState transfers stopped Addressing state. The system owns the record version.
+func (a *Addressing) TransferState(archive *stateio.Archive) error {
+	if err := archive.Values(&a.latch, &a.vram, &a.temp); err != nil {
+		return fmt.Errorf("transferring addressing state: %w", err)
+	}
+	return nil
 }

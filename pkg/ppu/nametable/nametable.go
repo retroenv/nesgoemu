@@ -2,9 +2,11 @@
 package nametable
 
 import (
+	"fmt"
 	"sync"
 	"sync/atomic"
 
+	"github.com/retroenv/nesgoemu/internal/stateio"
 	"github.com/retroenv/retrogolib/arch/system/nes"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 )
@@ -173,6 +175,33 @@ func (n *NameTable) Fetch(address uint16) {
 // Value returns the earlier fetched value.
 func (n *NameTable) Value() byte {
 	return byte(n.value.Load())
+}
+
+// TransferState transfers stopped NameTable state. The system owns the record version.
+func (n *NameTable) TransferState(archive *stateio.Archive) error {
+	if err := archive.Values(&n.mirrorMode); err != nil {
+		return fmt.Errorf("transferring nametable state: %w", err)
+	}
+
+	if err := archive.Bytes(n.vram); err != nil {
+		return fmt.Errorf("transferring nametable state: %w", err)
+	}
+
+	v := n.value.Load()
+	if err := archive.Values(&v); err != nil {
+		return fmt.Errorf("transferring nametable state: %w", err)
+	}
+	if archive.Reading() {
+		n.value.Store(v)
+	}
+
+	return nil
+}
+
+// UsesVRAM reports whether data is the current nametable backing buffer.
+// Call it while emulation is stopped.
+func (n *NameTable) UsesVRAM(data []byte) bool {
+	return len(data) == len(n.vram) && len(data) > 0 && &data[0] == &n.vram[0]
 }
 
 func (n *NameTable) mirroredNameTableAddressToBase(address uint16) uint16 {

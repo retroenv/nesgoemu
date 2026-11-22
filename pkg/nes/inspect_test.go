@@ -41,7 +41,7 @@ func TestPeekReadsPRGRAMBoundaries(t *testing.T) {
 	for _, address := range []uint16{0x6000, 0x7fff} {
 		value, ok := sys.Peek(address)
 		assert.True(t, ok)
-		assert.Equal(t, byte(0), value)
+		assert.Equal(t, cart.PRG[int(address)-mapperbase.PRGRAMStart], value)
 	}
 
 	_, ok := sys.Peek(0x5fff)

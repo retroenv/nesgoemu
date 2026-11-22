@@ -44,6 +44,36 @@ func TestInspectRAMReadsWithoutBusAccess(t *testing.T) {
 	assert.False(t, ok)
 }
 
+func TestReadObserverReplacementAndSuppression(t *testing.T) {
+	const (
+		testAddress = 7
+		testValue   = 0xa5
+	)
+	memory := New(&bus.Bus{})
+	memory.Write(testAddress, testValue)
+	assert.Nil(t, memory.readCallback())
+	var first, second int
+	memory.ObserveReads(func(address uint16, value byte, dma bool) {
+		first++
+		assert.Equal(t, uint16(testAddress), address)
+		assert.Equal(t, byte(testValue), value)
+		assert.False(t, dma)
+	})
+	memory.Read(testAddress)
+	memory.ObserveReads(func(uint16, byte, bool) {
+		second++
+	})
+	memory.Read(testAddress)
+	memory.SuppressReadObserver(true)
+	memory.Read(testAddress)
+	memory.SuppressReadObserver(false)
+	memory.ObserveReads(nil)
+	memory.Read(testAddress)
+	assert.Equal(t, 1, first)
+	assert.Equal(t, 1, second)
+	assert.Nil(t, memory.readCallback())
+}
+
 func TestInternalRAMMirrorsEveryTwoKiB(t *testing.T) {
 	memory := New(&bus.Bus{})
 	memory.Write(0x0007, 0xa5)

@@ -4,7 +4,13 @@
 // https://www.nesdev.org/wiki/APU_Triangle
 package triangle
 
-import "github.com/retroenv/nesgoemu/pkg/apu/lengthcounter"
+import (
+	"errors"
+	"fmt"
+
+	"github.com/retroenv/nesgoemu/internal/stateio"
+	"github.com/retroenv/nesgoemu/pkg/apu/lengthcounter"
+)
 
 // sequenceTable contains the output of the 32-step sequencer.
 // https://www.nesdev.org/wiki/APU_Triangle
@@ -24,6 +30,22 @@ type Triangle struct {
 	reloadValue byte
 	control     bool
 	reload      bool
+}
+
+// Snapshot reports the decoded channel state without bus effects.
+// Read it while emulation is stopped.
+type Snapshot struct {
+	Counter  uint16 `json:"counter"`
+	Sequence byte   `json:"sequence"`
+	Timer    uint16 `json:"timer"`
+
+	Control     bool `json:"control"`
+	Linear      byte `json:"linear"`
+	Reload      bool `json:"reload"`
+	ReloadValue byte `json:"reload_value"`
+
+	Length byte `json:"length"`
+	Output byte `json:"output"`
 }
 
 // New returns a new triangle channel.
@@ -122,5 +144,40 @@ func (t *Triangle) Write(address uint16, value byte) {
 		t.timer = t.timer&0x0ff | uint16(value&0x07)<<8
 		t.length.Load(value)
 		t.reload = true
+	}
+}
+
+// Length returns the current length counter without changing it.
+func (t *Triangle) Length() byte { return t.length.Value() }
+
+// TransferState transfers stopped Triangle state. The system owns the record version.
+func (t *Triangle) TransferState(archive *stateio.Archive) error {
+	if err := archive.Values(&t.timer, &t.counter, &t.sequence, &t.linear, &t.reloadValue, &t.control, &t.reload); err != nil {
+		return fmt.Errorf("transferring triangle state: %w", err)
+	}
+	if archive.Reading() && (t.sequence >= byte(len(sequenceTable))) {
+		return errors.New("invalid triangle snapshot")
+	}
+
+	if err := archive.Devices(t.length); err != nil {
+		return fmt.Errorf("transferring triangle state: %w", err)
+	}
+	return nil
+}
+
+// Snapshot returns an independent copy of the current state.
+func (t *Triangle) Snapshot() Snapshot {
+	return Snapshot{
+		Counter:  t.counter,
+		Sequence: t.sequence,
+		Timer:    t.timer,
+
+		Control:     t.control,
+		Linear:      t.linear,
+		Reload:      t.reload,
+		ReloadValue: t.reloadValue,
+
+		Length: t.Length(),
+		Output: t.Output(),
 	}
 }

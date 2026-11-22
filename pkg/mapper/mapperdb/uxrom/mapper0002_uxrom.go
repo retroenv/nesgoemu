@@ -81,6 +81,9 @@ func newMapperUxROM(base *mapperbase.Base) (*mapperUxROM, error) {
 	return m, nil
 }
 
+// SnapshotFormat identifies the direct mapper state format.
+func (*mapperUxROM) SnapshotFormat() string { return "uxrom-mapperUxROM-v1" }
+
 func (m *mapperUxROM) setPrgWindow(_ uint16, value uint8) error {
 	m.MarkFeature(feature.PRGBanking)
 

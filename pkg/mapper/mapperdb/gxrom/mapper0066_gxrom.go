@@ -44,6 +44,9 @@ type mapperGxROM struct {
 	*mapperbase.Base
 }
 
+// SnapshotFormat identifies the direct mapper state format.
+func (*mapperGxROM) SnapshotFormat() string { return "gxrom-mapperGxROM-v1" }
+
 func (m *mapperGxROM) selectBanks(address uint16, value byte) error {
 	// The ROM and CPU both drive the bus. Apply the conflict before the
 	// bank changes. Only bits 5-4 and 1-0 connect to the bank latch.

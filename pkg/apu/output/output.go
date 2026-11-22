@@ -7,9 +7,12 @@ package output
 
 import (
 	"encoding/binary"
+	"errors"
+	"fmt"
 	"math"
 	"sync"
 
+	"github.com/retroenv/nesgoemu/internal/stateio"
 	"github.com/retroenv/nesgoemu/pkg/apu/filter"
 )
 
@@ -116,6 +119,25 @@ func (s *Stage) Write(level float64) {
 	defer s.mu.Unlock()
 
 	s.push(int16(math.Round(min(max(level, -1), 1) * fullScale)))
+}
+
+// TransferState transfers stopped Stage state. The system owns the record version.
+func (s *Stage) TransferState(archive *stateio.Archive) error {
+	if err := archive.Values(&s.head, &s.tail, &s.size, &s.produced, &s.dropped, &s.silence); err != nil {
+		return fmt.Errorf("transferring output state: %w", err)
+	}
+
+	if err := archive.Values(&s.ring); err != nil {
+		return fmt.Errorf("transferring output state: %w", err)
+	}
+	if archive.Reading() && (len(s.ring) != ringFrames || s.head < 0 || s.head >= len(s.ring) || s.tail < 0 || s.tail >= len(s.ring) || s.size < 0 || s.size > len(s.ring)) {
+		return errors.New("invalid output snapshot")
+	}
+
+	if err := archive.Devices(s.highPass1, s.highPass2, s.lowPass); err != nil {
+		return fmt.Errorf("transferring output state: %w", err)
+	}
+	return nil
 }
 
 func (s *Stage) fill(destination []byte, playback bool) int {

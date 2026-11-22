@@ -9,6 +9,12 @@
 //   - https://github.com/christopherpow/nes-test-roms/blob/master/ppu_open_bus/readme.txt
 package openbus
 
+import (
+	"fmt"
+
+	"github.com/retroenv/nesgoemu/internal/stateio"
+)
+
 // DecayCycles is the number of PPU cycles after which a bit decays to zero
 // when it is not refreshed with a one. The value is 600 milliseconds at the
 // NTSC PPU clock of 5.369318 MHz.
@@ -70,4 +76,12 @@ func (r *Register) Value() byte {
 	}
 
 	return r.value
+}
+
+// TransferState transfers stopped Register state. The system owns the record version.
+func (r *Register) TransferState(archive *stateio.Archive) error {
+	if err := archive.Values(&r.value, &r.stamps, &r.clock); err != nil {
+		return fmt.Errorf("transferring openbus state: %w", err)
+	}
+	return nil
 }

@@ -2,6 +2,10 @@
 package ppu
 
 import (
+	"fmt"
+
+	"github.com/retroenv/nesgoemu/internal/observer"
+	"github.com/retroenv/nesgoemu/internal/stateio"
 	"github.com/retroenv/nesgoemu/pkg/bus"
 	"github.com/retroenv/nesgoemu/pkg/feature"
 	"github.com/retroenv/nesgoemu/pkg/ppu/addressing"
@@ -57,7 +61,7 @@ type PPU struct {
 	registerObserver bus.PPURegisterObserver // optional mapper hook for register writes
 	ticker           bus.PPUTicker           // optional mapper hook for each PPU cycle
 
-	chrReadObserver   func(CHRRead)
+	chrReadObserver   observer.Group[CHRRead]
 	vramWriteObserver VRAMWriteObserver
 	writeObserver     func(WriteEvent)
 
@@ -145,6 +149,18 @@ func (p *PPU) Reset() {
 	p.addressing.Reset()
 
 	p.dataReadBuffer = 0
+}
+
+// TransferState transfers stopped PPU state. The system owns the record version.
+func (p *PPU) TransferState(archive *stateio.Archive) error {
+	if err := archive.Values(&p.dataReadBuffer, &p.fineX); err != nil {
+		return fmt.Errorf("transferring ppu state: %w", err)
+	}
+
+	if err := archive.Devices(p.features, p.addressing, p.control, p.mask, p.nmi, p.openBus, p.palette, p.renderState, p.screen, p.sprites, p.status, p.tiles); err != nil {
+		return fmt.Errorf("transferring ppu state: %w", err)
+	}
+	return nil
 }
 
 func (p *PPU) reset() {

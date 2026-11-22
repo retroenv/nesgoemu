@@ -1,6 +1,13 @@
 // Package renderstate handles PPU render handling of cycles, scan lines and frames.
 package renderstate
 
+import (
+	"errors"
+	"fmt"
+
+	"github.com/retroenv/nesgoemu/internal/stateio"
+)
+
 const (
 	// FirstVisibleDot and LastVisibleDot bound the visible dots of a scanline.
 	FirstVisibleDot = 1
@@ -18,6 +25,8 @@ const (
 	PreRenderScanline = 261
 )
 
+const lastScanlineDot = 340
+
 type mask interface {
 	RenderBackground() bool
 	RenderSprites() bool
@@ -33,7 +42,7 @@ type RenderState struct {
 // New returns a new render state manager.
 func New() *RenderState {
 	return &RenderState{
-		cycle:    340,
+		cycle:    lastScanlineDot,
 		scanLine: VisibleScanlines,
 	}
 }
@@ -54,7 +63,7 @@ func (r *RenderState) TickRendering(rendering bool) {
 	}
 
 	r.cycle++
-	if r.cycle <= 340 {
+	if r.cycle <= lastScanlineDot {
 		return
 	}
 
@@ -81,6 +90,18 @@ func (r *RenderState) ScanLine() int {
 // Frame returns the number of frames that reached the first visible scanline.
 func (r *RenderState) Frame() uint64 {
 	return r.frame
+}
+
+// TransferState transfers stopped RenderState state. The system owns the record version.
+func (r *RenderState) TransferState(archive *stateio.Archive) error {
+	if err := archive.Values(&r.cycle, &r.scanLine, &r.frame); err != nil {
+		return fmt.Errorf("transferring renderstate state: %w", err)
+	}
+	if archive.Reading() && (r.cycle < 0 || r.cycle > lastScanlineDot || r.scanLine < 0 || r.scanLine > PreRenderScanline) {
+		return errors.New("invalid PPU position snapshot")
+	}
+
+	return nil
 }
 
 func (r *RenderState) nextFrame() {

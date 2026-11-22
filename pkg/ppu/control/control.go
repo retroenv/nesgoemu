@@ -1,6 +1,12 @@
 // Package control contains the PPU control manager.
 package control
 
+import (
+	"fmt"
+
+	"github.com/retroenv/nesgoemu/internal/stateio"
+)
+
 type addressing interface {
 	SetTempNameTables(nameTableX, nameTableY byte)
 }
@@ -83,4 +89,12 @@ func (c *Control) Set(value byte) {
 // Value returns the control fields encoded as byte.
 func (c *Control) Value() byte {
 	return c.value
+}
+
+// TransferState transfers stopped Control state. The system owns the record version.
+func (c *Control) TransferState(archive *stateio.Archive) error {
+	if err := archive.Values(&c.value, &c.BaseNameTable, &c.VRAMIncrement, &c.SpritePatternTable, &c.BackgroundPatternTable, &c.SpriteSize, &c.MasterSlave); err != nil {
+		return fmt.Errorf("transferring control state: %w", err)
+	}
+	return nil
 }

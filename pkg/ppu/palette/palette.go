@@ -2,8 +2,10 @@
 package palette
 
 import (
+	"fmt"
 	"sync/atomic"
 
+	"github.com/retroenv/nesgoemu/internal/stateio"
 	"github.com/retroenv/retrogolib/arch/system/nes"
 )
 
@@ -38,6 +40,21 @@ func (p *Palette) Data() [nes.PaletteSize]byte {
 	}
 
 	return data
+}
+
+// TransferState transfers stopped Palette state. The system owns the record version.
+func (p *Palette) TransferState(archive *stateio.Archive) error {
+	for i := range p.data {
+		v := p.data[i].Load()
+		if err := archive.Values(&v); err != nil {
+			return fmt.Errorf("transferring palette state: %w", err)
+		}
+		if archive.Reading() {
+			p.data[i].Store(v)
+		}
+	}
+
+	return nil
 }
 
 func mirroredPaletteAddressToBase(address uint16) uint16 {
