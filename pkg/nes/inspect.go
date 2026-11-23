@@ -11,6 +11,33 @@ import (
 // prgWindowSize is the size of the CPU PRG address window $8000-$FFFF.
 const prgWindowSize = math.MaxUint16 - nes.CodeBaseAddress + 1
 
+// CanPokeRAM checks whether an address has a RAM write path without bus effects.
+func (sys *System) CanPokeRAM(address uint16) bool {
+	if _, ok := sys.InspectRAM(address); ok {
+		return true
+	}
+	if editor, ok := sys.Bus.Mapper.(bus.CPURAMEditor); ok {
+		_, writable := editor.CPURAMOffset(address)
+		return writable
+	}
+
+	return false
+}
+
+// PokeRAM changes a RAM byte. It does not write mapper registers or ROM.
+func (sys *System) PokeRAM(address uint16, value byte) bool {
+	if _, ok := sys.InspectRAM(address); ok {
+		sys.Bus.Memory.Write(address, value)
+		return true
+	}
+	if editor, ok := sys.Bus.Mapper.(bus.CPURAMEditor); ok {
+		offset, writable := editor.CPURAMOffset(address)
+		return writable && editor.WritePRGRAM(offset, value)
+	}
+
+	return false
+}
+
 // Peek reads one byte of CPU address space without emulated bus side effects.
 // A mapper CPUMemoryInspector takes precedence for cartridge addresses.
 // Otherwise it reads internal RAM directly, physical PRG-RAM through a mapper

@@ -38,9 +38,16 @@ type System struct {
 	audioReady atomic.Bool    // Playback starts after the initial sample buffer is ready.
 	audioInfo  *renderer.Info // Renderer of the started audio output, nil without audio.
 
-	hookMu  sync.Mutex              // Guards the modification of the hook set.
-	hooks   atomic.Pointer[hookSet] // Runtime hooks, nil when none are installed.
-	hookSeq uint64                  // Allocates runtime hook identifiers.
+	hookMu       sync.Mutex              // Guards the modification of the hook set.
+	hooks        atomic.Pointer[hookSet] // Runtime hooks, nil when none are installed.
+	hookSeq      uint64                  // Allocates runtime hook identifiers.
+	cpuPreHook   cpu6502.PreExecutionHook
+	cpuStackHook cpu6502.StackEventHook
+
+	dmaReadActive bool
+	readCycle     cpu6502.BusCycle
+
+	frameBoundary bool
 }
 
 // StepResult reports the time advanced by one system step.
@@ -122,6 +129,9 @@ func (sys *System) WindowTitle() string {
 	return "nesgoemu"
 }
 
+// AtFrameBoundary reports whether the last step crossed a PPU frame boundary.
+func (sys *System) AtFrameBoundary() bool { return sys.frameBoundary }
+
 // InspectRAM reads internal CPU RAM without emulated bus side effects.
 func (sys *System) InspectRAM(address uint16) (byte, bool) {
 	return sys.memory.InspectRAM(address)
@@ -171,8 +181,8 @@ func (sys *System) StepSystem() (StepResult, error) {
 	cyclesBefore := sys.CPU.Cycles()
 	frameBefore := sys.Bus.PPU.Frame()
 
-	instructionExecuted := !sys.CPU.CheckInterrupts()
-	if instructionExecuted {
+	instructionExecuted := !sys.CPU.Jammed() && !sys.CPU.CheckInterrupts()
+	if instructionExecuted || sys.CPU.Jammed() {
 		if err := sys.CPU.Step(); err != nil {
 			return StepResult{}, fmt.Errorf("executing CPU step at 0x%04x: %w", sys.PC, err)
 		}
@@ -180,6 +190,7 @@ func (sys *System) StepSystem() (StepResult, error) {
 
 	cpuCycles := sys.CPU.Cycles() - cyclesBefore
 	frame := sys.Bus.PPU.Frame()
+	sys.frameBoundary = frame != frameBefore
 
 	return StepResult{
 		CPUCycles:           cpuCycles,
@@ -316,11 +327,28 @@ func (sys *System) setupGUI(backend gui.Backend) (func() (bool, error), func(), 
 func (sys *System) clockCPUCycle(cycle cpu6502.BusCycle) bool {
 	taken := clockDeviceCycle(sys.Bus, sys.apu, &sys.dma, sys.memory, sys.CPU.Cycles(), cycle)
 	if !taken {
-		// A read that DMA takes is repeated by the CPU. Observe only the access that completes.
-		sys.observeBusCycle(cycle)
+		if cycle.Write {
+			sys.observeBusCycle(cycle)
+		} else {
+			sys.readCycle = cycle
+		}
 	}
 
 	return taken
+}
+
+func (sys *System) observeMemoryRead(address uint16, value byte, dma bool) {
+	sys.dmaReadActive = dma
+	defer func() { sys.dmaReadActive = false }()
+	cycle := sys.readCycle
+	cycle.Address = address
+	cycle.Value = value
+	cycle.Write = false
+	if dma {
+		cycle.Kind = cpu6502.BusCycleData
+	}
+
+	sys.observeBusCycle(cycle)
 }
 
 func (sys *System) initializeCPU(mem *cpu6502.Memory) error {
@@ -328,8 +356,6 @@ func (sys *System) initializeCPU(mem *cpu6502.Memory) error {
 	cpuOpts := []cpu6502.Option{
 		cpu6502.WithVariant(cpu6502.VariantNES6502),
 		cpu6502.WithCycleHook(sys.clockCPUCycle),
-		cpu6502.WithPreExecutionHook(sys.runPreExecutionHooks),
-		cpu6502.WithStackEventHook(sys.runStackHooks),
 	}
 	if opts.tracing {
 		cpuOpts = append(cpuOpts, cpu6502.WithTracing())
@@ -342,7 +368,13 @@ func (sys *System) initializeCPU(mem *cpu6502.Memory) error {
 	}
 
 	sys.CPU = cpu
+	sys.cpuPreHook = cpu.PreExecutionHook()
+	sys.cpuStackHook = cpu.StackEventHook()
 	sys.Bus.CPU = sys.CPU
+	sys.refreshHooks()
+	if opts.traceRing != nil {
+		opts.traceRing.setOnChange(sys.refreshHooks)
+	}
 
 	return nil
 }

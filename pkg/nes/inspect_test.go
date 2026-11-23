@@ -10,6 +10,8 @@ import (
 	"github.com/retroenv/retrogolib/assert"
 )
 
+const mmc3RAMProtectionRegister = 0xa001
+
 func TestPeekReadsRAM(t *testing.T) {
 	sys, err := NewSystem(NewOptions(WithCartridge(cartridge.New())))
 	assert.NoError(t, err)
@@ -94,4 +96,30 @@ func TestPRGLocation(t *testing.T) {
 
 	assert.True(t, ok)
 	assert.Equal(t, 0, offset)
+}
+
+func TestPokeRAMRespectsMapperWriteProtection(t *testing.T) {
+	const (
+		ramEnabled    = 0x80
+		ramProtected  = 0xc0
+		ramValue      = 0x42
+		rejectedValue = 0xff
+	)
+
+	cart := cartridge.New()
+	cart.Mapper = 4
+	sys, err := NewSystem(NewOptions(WithCartridge(cart)))
+	assert.NoError(t, err)
+
+	sys.Bus.Mapper.Write(mmc3RAMProtectionRegister, ramEnabled)
+	assert.True(t, sys.CanPokeRAM(mapperbase.PRGRAMStart))
+	assert.True(t, sys.PokeRAM(mapperbase.PRGRAMStart, ramValue))
+	value := sys.Bus.Mapper.Read(mapperbase.PRGRAMStart)
+	assert.Equal(t, byte(ramValue), value)
+
+	sys.Bus.Mapper.Write(mmc3RAMProtectionRegister, ramProtected)
+	assert.False(t, sys.CanPokeRAM(mapperbase.PRGRAMStart))
+	assert.False(t, sys.PokeRAM(mapperbase.PRGRAMStart, rejectedValue))
+	value = sys.Bus.Mapper.Read(mapperbase.PRGRAMStart)
+	assert.Equal(t, byte(ramValue), value)
 }

@@ -30,7 +30,7 @@ type BreakpointID int
 
 // Breakpoint describes one execution or memory breakpoint. Start and End
 // select an inclusive address range. Bank limits a match to one PRG bank.
-// Value limits a write to one byte. Once removes the breakpoint after its
+// Value limits a write or a read breakpoint to one byte. Once removes the breakpoint after its
 // first hit.
 type Breakpoint struct {
 	Bank  *int
@@ -79,23 +79,30 @@ type RunUntilReason string
 const (
 	// StopBreakpoint means a breakpoint matched.
 	StopBreakpoint RunUntilReason = "breakpoint"
+	// StopCondition means that the requested state condition is true.
+	StopCondition RunUntilReason = "condition"
+	// StopContext means the caller cancelled the run.
+	StopContext RunUntilReason = "context"
+	// StopCycles means the cycle limit was reached.
+	StopCycles RunUntilReason = "cycles"
 	// StopFrames means the frame limit was reached.
 	StopFrames RunUntilReason = "frames"
 	// StopInstructions means the instruction limit was reached.
 	StopInstructions RunUntilReason = "instructions"
-	// StopCycles means the cycle limit was reached.
-	StopCycles RunUntilReason = "cycles"
-	// StopTimeout means the wall-clock limit was reached.
-	StopTimeout RunUntilReason = "timeout"
-	// StopContext means the caller cancelled the run.
-	StopContext RunUntilReason = "context"
 	// StopInvalidInstruction means the CPU returned an error or panicked.
 	StopInvalidInstruction RunUntilReason = "invalid_instruction"
+	// StopJam means that KIL stopped CPU instruction execution.
+	StopJam RunUntilReason = "jam"
+	// StopTimeout means the wall-clock limit was reached.
+	StopTimeout RunUntilReason = "timeout"
 )
 
 // RunUntilOptions defines inputs and independent limits for a debug run.
 type RunUntilOptions struct {
 	Boot BootPolicy
+
+	// Condition inspects the stopped boundary. It must not change system state.
+	Condition func(*System) (bool, error)
 
 	Frames          uint64
 	MaxCycles       uint64
@@ -149,8 +156,14 @@ func (k BreakpointKind) String() string {
 	}
 }
 
-// Add stores a breakpoint and returns its identifier.
+// Add stores a breakpoint. Invalid kinds, ranges, banks, or exec values return zero.
 func (s *BreakpointSet) Add(bp Breakpoint) BreakpointID {
+	if bp.Kind > BreakpointAccess || bp.Start > bp.End || (bp.Bank != nil && *bp.Bank < 0) ||
+		(bp.Kind == BreakpointExec && bp.Value != nil) {
+
+		return 0
+	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -265,20 +278,11 @@ func (sys *System) runUntil(ctx context.Context, opts RunUntilOptions) (result R
 		}
 	}()
 
-	if opts.Boot == BootReset {
-		sys.Reset()
-		run.startCycles = sys.CPU.Cycles()
+	if err := validateDebugInputs(opts.Inputs, opts.Frames); err != nil {
+		return run.finish(sys, run.current, StopInvalidInstruction, err), nil
 	}
-
-	runContext := ctx
-	cancel := func() {}
-	if opts.Timeout > 0 {
-		runContext, cancel = context.WithTimeout(ctx, opts.Timeout)
-	}
-
+	runContext, cancel, inputIndex := sys.prepareDebugRun(ctx, opts, &run)
 	defer cancel()
-
-	inputIndex := applyInputEvents(sys, opts.Inputs, 0, 0, opts.OnInput)
 	defer sys.observeBreakpoints(opts.Breakpoints, &run.current, &run.instructionPC)()
 
 	skipExec := opts.SkipExecAtStart
@@ -287,6 +291,10 @@ func (sys *System) runUntil(ctx context.Context, opts RunUntilOptions) (result R
 		reason, runErr, stop := checkUntilLimits(runContext, opts, cycles, run.instructions, run.completedFrames)
 		if stop {
 			return run.finish(sys, run.current, reason, runErr), nil
+		}
+
+		if reason, err, stop := sys.checkRunCondition(opts); stop {
+			return run.finish(sys, run.current, reason, err), nil
 		}
 
 		if !skipExec {
@@ -317,6 +325,42 @@ func (sys *System) runUntil(ctx context.Context, opts RunUntilOptions) (result R
 	}
 }
 
+func (sys *System) prepareDebugRun(ctx context.Context, opts RunUntilOptions,
+	run *untilRun) (context.Context, func(), int) {
+
+	if opts.Boot == BootReset {
+		sys.Reset()
+		run.startCycles = sys.CPU.Cycles()
+	}
+
+	runContext := ctx
+	cancel := func() {}
+	if opts.Timeout > 0 {
+		runContext, cancel = context.WithTimeout(ctx, opts.Timeout)
+	}
+
+	inputIndex := applyInputEvents(sys, opts.Inputs, 0, 0, opts.OnInput)
+
+	return runContext, cancel, inputIndex
+}
+
+func (sys *System) checkRunCondition(opts RunUntilOptions) (RunUntilReason, error, bool) {
+	if sys.CPU.Jammed() {
+		return StopJam, nil, true
+	}
+	if opts.Condition != nil {
+		matched, err := opts.Condition(sys)
+		if err != nil {
+			return StopInvalidInstruction, err, true
+		}
+		if matched {
+			return StopCondition, nil, true
+		}
+	}
+
+	return "", nil, false
+}
+
 // observeBreakpoints installs the observer for read and write breakpoints.
 // The run loop sets instructionPC to the address of the running instruction.
 func (sys *System) observeBreakpoints(breakpoints *BreakpointSet, current *RunUntilResult,
@@ -331,7 +375,8 @@ func (sys *System) observeBreakpoints(breakpoints *BreakpointSet, current *RunUn
 			return
 		}
 		bank, _, _ := sys.PRGLocation(cycle.Address)
-		hit, ok := breakpoints.matchMemory(cycle.Write, cycle.Address, cycle.Value, bank, *instructionPC,
+		value := cycle.Value
+		hit, ok := breakpoints.matchMemory(cycle.Write, cycle.Address, value, bank, *instructionPC,
 			sys.Bus.PPU.Frame())
 		if ok {
 			*current = RunUntilResult{
@@ -380,7 +425,7 @@ func (e *breakpointEntry) matches(address uint16, bank int, value byte, write bo
 	if e.bp.Bank != nil && (bank < 0 || bank != *e.bp.Bank) {
 		return false
 	}
-	if write && e.bp.Value != nil && value != *e.bp.Value {
+	if (write || e.bp.Kind == BreakpointRead) && e.bp.Value != nil && value != *e.bp.Value {
 		return false
 	}
 	return true
@@ -397,6 +442,24 @@ func (e *breakpointEntry) record(address uint16, value byte, pc uint16, frame ui
 		PC:      pc,
 		Value:   value,
 	}
+}
+
+func validateDebugInputs(events []InputEvent, frames uint64) error {
+	const controllerCount = 2
+
+	for i, event := range events {
+		if event.Controller < 0 || event.Controller > controllerCount {
+			return errors.New("controller must be 1 or 2; zero selects 1")
+		}
+		if frames > 0 && event.Frame >= frames {
+			return errors.New("input frame is outside the requested run")
+		}
+		if i > 0 && event.Frame < events[i-1].Frame {
+			return errors.New("input frames must be in increasing order")
+		}
+	}
+
+	return nil
 }
 
 // matchesKind reports whether a memory breakpoint kind matches a write flag.

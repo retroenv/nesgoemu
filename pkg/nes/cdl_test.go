@@ -3,6 +3,7 @@ package nes
 import (
 	"bytes"
 	"math"
+	"sync/atomic"
 	"testing"
 
 	"github.com/retroenv/nesgoemu/pkg/apu"
@@ -267,4 +268,36 @@ func TestCDLCoverageUsesFixedPRGSegments(t *testing.T) {
 	assert.Equal(t, 0x2000, report[1].Size)
 	assert.Equal(t, 2, report[2].Segment)
 	assert.Equal(t, 1, report[2].Size)
+}
+
+func TestConcurrentCDLRegistrationKeepsOtherObservers(t *testing.T) {
+	const (
+		jmpAbsoluteOpcode = 0x4c
+		registrationCount = 100
+		stepCount         = 1000
+	)
+
+	sys, err := NewSystem(NewOptions(WithCartridge(cartridge.New())))
+	assert.NoError(t, err)
+	var fetches atomic.Int64
+	sys.apu.ObserveDMCFetches(func(apu.DMCFetch) {
+		fetches.Add(1)
+	})
+	sys.Bus.Memory.Write(0, jmpAbsoluteOpcode)
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for range stepCount {
+			sys.PC = 0
+			_, _ = sys.StepSystem()
+		}
+	}()
+	r := sys.NewCDLRecorder()
+	for range registrationCount {
+		r.Start()
+		r.Stop()
+	}
+	<-done
+	sys.apu.CompleteDMCTransfer(0, 1)
+	assert.Equal(t, int64(1), fetches.Load())
 }

@@ -185,6 +185,7 @@ func TestCheckpointSnapshotMatchesReplayTarget(t *testing.T) {
 	})
 	machine.mu.Lock()
 	defer machine.mu.Unlock()
+	assert.NotNil(t, machine.checkpoints[id-1].snapshot)
 	events, point, err := machine.resolveTarget(replayTarget{
 		Checkpoint: &id,
 	})

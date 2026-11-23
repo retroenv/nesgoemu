@@ -87,11 +87,18 @@ func (m *Machine) eventLog(limit, offset int) []machineEvent {
 // identifier. The caller holds the machine mutex.
 func (m *Machine) addCheckpoint() (int, uint64) {
 	frame := m.sys.Bus.PPU.Frame()
+	if n := len(m.checkpoints); n > 0 {
+		m.checkpoints[n-1].snapshot = nil
+	}
+
 	m.checkpoints = append(m.checkpoints, checkpointRecord{
 		Cycles: m.sys.CPU.Cycles(),
 		Events: len(m.events),
 		Frame:  frame,
+
+		snapshot: m.captureCheckpoint(),
 	})
+
 	return len(m.checkpoints), frame
 }
 
@@ -132,8 +139,7 @@ func (m *Machine) resolveTarget(target replayTarget) ([]machineEvent, replayPoin
 	}
 }
 
-// restore replays the event log to a checkpoint or a frame and replaces the
-// system. The events after the target belong to the discarded timeline and are
+// restore replaces the system with its state at a checkpoint or a frame. The events after the target belong to the discarded timeline and are
 // dropped, with the checkpoints that point into them.
 func (m *Machine) restore(ctx context.Context, target replayTarget, timeout time.Duration) error {
 	m.mu.Lock()
@@ -147,12 +153,9 @@ func (m *Machine) restore(ctx context.Context, target replayTarget, timeout time
 		return err
 	}
 
-	sys, _, err := loadSystem(ctx, m.logger, m.rom, m.romHash, m.entrypoint, m.battery, m.palette, m.traceRing, &m.batteryData)
+	ring := m.traceRing.Clone()
+	sys, _, stack, err := m.loadTarget(ctx, m.logger, target, events, point, timeout, ring)
 	if err != nil {
-		return err
-	}
-	stack := newCallStackRecorder(sys)
-	if err := replayTo(ctx, sys, events, point, timeout, stack.clear); err != nil {
 		return err
 	}
 	bytes, err := historyBytes(events)
@@ -160,6 +163,8 @@ func (m *Machine) restore(ctx context.Context, target replayTarget, timeout time
 		return err
 	}
 	m.sys = sys
+	m.traceRing = ring
+	m.stoppedAtExec = false
 	m.events = events
 	m.historyBytes = bytes
 	m.checkpoints = slices.DeleteFunc(m.checkpoints, func(record checkpointRecord) bool {
@@ -265,6 +270,8 @@ type checkpointRecord struct {
 	Cycles uint64
 	Events int
 	Frame  uint64
+
+	snapshot *checkpointSnapshot
 }
 
 // machineEvent records one input, poke, or reset of a machine.

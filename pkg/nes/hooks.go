@@ -130,9 +130,44 @@ func (sys *System) snapshotHooks() *hookSet {
 func (sys *System) storeHooks(next *hookSet) {
 	if len(next.preExecution) == 0 && len(next.stack) == 0 && len(next.busCycle) == 0 {
 		sys.hooks.Store(nil)
+		sys.refreshHooks()
 		return
 	}
 	sys.hooks.Store(next)
+	sys.refreshHooks()
+}
+
+// refreshHooks enables CPU callbacks only while a consumer needs them.
+func (sys *System) refreshHooks() {
+	if sys.CPU == nil {
+		return
+	}
+	set := sys.hooks.Load()
+	pre := sys.opts.cpuPreExecutionHook != nil || sys.cpuPreHook != nil || sys.tracingEnabled()
+	stack := sys.cpuStackHook != nil
+	if set != nil {
+		pre = pre || len(set.preExecution) > 0
+		stack = stack || len(set.stack) > 0
+	}
+
+	var preHook cpu6502.PreExecutionHook
+	if pre {
+		preHook = sys.runPreExecutionHooks
+	}
+
+	var stackHook cpu6502.StackEventHook
+	if stack {
+		stackHook = sys.runStackHooks
+	}
+
+	if set != nil && len(set.busCycle) > 0 {
+		sys.memory.ObserveReads(sys.observeMemoryRead)
+	} else {
+		sys.memory.ObserveReads(nil)
+	}
+
+	sys.CPU.SetPreExecutionHook(preHook)
+	sys.CPU.SetStackEventHook(stackHook)
 }
 
 // runPreExecutionHooks runs the tracing, construction hook, and runtime hooks.
@@ -142,6 +177,9 @@ func (sys *System) runPreExecutionHooks(cpu *cpu6502.CPU, ins *cpu6502.Instructi
 	}
 
 	sys.opts.runCPUPreExecutionHooks(cpu, ins, params...)
+	if sys.cpuPreHook != nil {
+		sys.cpuPreHook(cpu, ins, params...)
+	}
 
 	set := sys.hooks.Load()
 	if set == nil {
@@ -154,6 +192,10 @@ func (sys *System) runPreExecutionHooks(cpu *cpu6502.CPU, ins *cpu6502.Instructi
 
 // runStackHooks runs the runtime stack hooks.
 func (sys *System) runStackHooks(event cpu6502.StackEvent) {
+	if sys.cpuStackHook != nil {
+		sys.cpuStackHook(event)
+	}
+
 	set := sys.hooks.Load()
 	if set == nil {
 		return

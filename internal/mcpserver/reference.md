@@ -83,7 +83,7 @@ many frames ran and the frame where the machine stopped.
 
 | Tool | Purpose |
 | --- | --- |
-| `add_breakpoint` | Add an `exec`, `read`, `write`, or `access` breakpoint on an address range. Optional `bank`, write `value`, and `once`. Returns `id`. |
+| `add_breakpoint` | Add an `exec`, `read`, `write`, or `access` breakpoint on an address range. Optional `bank`, byte `value`, and `once`. For an `access` breakpoint, only writes must match `value`. An `exec` breakpoint cannot use `value`. Returns `id`. |
 | `remove_breakpoint`, `list_breakpoints` | Manage breakpoints. The list includes hit counts. |
 | `run_until` | Run until a breakpoint or a frame, instruction, cycle, or timeout limit. Returns the reason, the breakpoint id, `hit_pc` (the instruction), `hit_address`, `hit_value`, the CPU state, and the trace tail. A read-modify-write instruction such as `INC` writes the old value before the new value, so a write breakpoint hits with the old value first. |
 | `disassemble` | Decode instructions from a CPU address with location objects. |

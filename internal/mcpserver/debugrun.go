@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"hash/crc32"
+	"slices"
 	"strings"
 	"time"
 
@@ -234,8 +235,57 @@ func (m *Machine) checkpoint() (checkpointResult, []byte, error) {
 	}, data, nil
 }
 
-// forkMachine creates a new machine that replays the log to a checkpoint or a
-// frame.
+func (m *Machine) captureCheckpoint() *checkpointSnapshot {
+	data, err := m.sys.SaveState()
+	if err != nil || len(data) > nes.MaxStateSize {
+		return nil
+	}
+
+	return &checkpointSnapshot{
+		data: data,
+
+		frames:    m.callStack.framesCopy(),
+		lastCycle: m.callStack.lastCycle,
+	}
+}
+
+func (m *Machine) loadTarget(ctx context.Context, logger *log.Logger, target replayTarget, events []machineEvent,
+	point replayPoint, timeout time.Duration, ring *nes.TraceRing) (*nes.System, romSummary, *callStackRecorder, error) {
+
+	load := func() (*nes.System, romSummary, error) {
+		return loadSystem(ctx, logger, m.rom, m.romHash, m.entrypoint, m.battery, m.palette, ring, &m.batteryData)
+	}
+	sys, summary, err := load()
+	if err != nil {
+		return nil, romSummary{}, nil, err
+	}
+
+	if target.Checkpoint != nil {
+		if snapshot := m.checkpoints[*target.Checkpoint-1].snapshot; snapshot != nil {
+			if err := sys.LoadState(snapshot.data); err == nil {
+				stack := newCallStackRecorder(sys)
+				stack.frames = slices.Clone(snapshot.frames)
+				stack.lastCycle = snapshot.lastCycle
+
+				return sys, summary, stack, nil
+			}
+
+			sys, summary, err = load()
+			if err != nil {
+				return nil, romSummary{}, nil, err
+			}
+		}
+	}
+
+	stack := newCallStackRecorder(sys)
+	if err := replayTo(ctx, sys, events, point, timeout, stack.clear); err != nil {
+		return nil, romSummary{}, nil, err
+	}
+
+	return sys, summary, stack, nil
+}
+
+// forkMachine creates a new machine with the state at the selected point.
 func (m *Machine) forkMachine(ctx context.Context, logger *log.Logger, target replayTarget,
 	timeout time.Duration) (*Machine, romSummary, error) {
 
@@ -248,12 +298,8 @@ func (m *Machine) forkMachine(ctx context.Context, logger *log.Logger, target re
 	}
 
 	ring := nes.NewTraceRing(0)
-	sys, summary, err := loadSystem(ctx, logger, m.rom, m.romHash, m.entrypoint, m.battery, m.palette, ring, &m.batteryData)
+	sys, summary, stack, err := m.loadTarget(ctx, logger, target, events, point, timeout, ring)
 	if err != nil {
-		return nil, romSummary{}, err
-	}
-	stack := newCallStackRecorder(sys)
-	if err := replayTo(ctx, sys, events, point, timeout, stack.clear); err != nil {
 		return nil, romSummary{}, err
 	}
 
@@ -390,6 +436,13 @@ func (m *Machine) eventLogFileLocked() eventLogFile {
 	}
 
 	return logFile
+}
+
+type checkpointSnapshot struct {
+	data []byte
+
+	frames    []callFrame
+	lastCycle uint64
 }
 
 // runUntilOutcome contains a run result and the new trace lines.

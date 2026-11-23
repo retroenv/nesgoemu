@@ -25,10 +25,11 @@ const (
 type ExitReason string
 
 const (
-	ExitSuccess         ExitReason = "success"
-	ExitInvalidOptions  ExitReason = "invalid_options"
 	ExitAssertionFailed ExitReason = "assertion_failure"
+	ExitInvalidOptions  ExitReason = "invalid_options"
 	ExitInvalidStep     ExitReason = "invalid_instruction"
+	ExitJam             ExitReason = "jam"
+	ExitSuccess         ExitReason = "success"
 	ExitTimeout         ExitReason = "timeout"
 )
 
@@ -128,6 +129,9 @@ func (sys *System) Run(ctx context.Context, opts RunOptions) RunResult {
 				opts.CaptureRAM)
 		}
 
+		if sys.CPU.Jammed() {
+			return finishRun(sys, ExitJam, TimeoutNone, nil, startCycles, completedFrames, completedImage, opts.CaptureRAM)
+		}
 		step, err := sys.StepSystem()
 		if err != nil {
 			return finishRun(sys, ExitInvalidStep, TimeoutNone, err, startCycles, completedFrames, completedImage,

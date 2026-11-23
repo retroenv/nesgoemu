@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/retroenv/retrogolib/arch/cpu/cpu6502"
+	neslib "github.com/retroenv/retrogolib/arch/system/nes"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 	"github.com/retroenv/retrogolib/assert"
 	"github.com/retroenv/retrogolib/mcp/mcptest"
@@ -98,7 +99,7 @@ func TestBreakpointAndRunUntil(t *testing.T) {
 	var created createMachineResult
 	err := client.CallToolInto(t.Context(), createMachineToolName, map[string]any{
 		romKey:        romPath,
-		entrypointKey: 0x8000,
+		entrypointKey: neslib.CodeBaseAddress,
 	}, &created)
 	assert.NoError(t, err)
 
@@ -106,7 +107,15 @@ func TestBreakpointAndRunUntil(t *testing.T) {
 	err = client.CallToolInto(t.Context(), addBreakpointToolName, map[string]any{
 		machineIDKey: created.MachineID,
 		kindKey:      execKind,
-		addressKey:   0x8000,
+		addressKey:   neslib.CodeBaseAddress,
+		"value":      1,
+	}, &breakpoint)
+	assert.ErrorContains(t, err, "invalid breakpoint")
+
+	err = client.CallToolInto(t.Context(), addBreakpointToolName, map[string]any{
+		machineIDKey: created.MachineID,
+		kindKey:      execKind,
+		addressKey:   neslib.CodeBaseAddress,
 		"once":       true,
 	}, &breakpoint)
 	assert.NoError(t, err)

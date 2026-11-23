@@ -1,6 +1,7 @@
 package nes
 
 import (
+	"slices"
 	"sync"
 
 	"github.com/retroenv/nesgoemu/pkg/apu"
@@ -22,7 +23,8 @@ type TraceRing struct {
 	next     int
 	total    uint64
 
-	enabled bool
+	enabled  bool
+	onChange func()
 }
 
 // NewTraceRing creates a ring with the given capacity. A non-positive capacity
@@ -38,6 +40,21 @@ func NewTraceRing(capacity int) *TraceRing {
 	}
 }
 
+// Clone copies the ring without its system callback.
+func (r *TraceRing) Clone() *TraceRing {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return &TraceRing{
+		capacity: r.capacity,
+		count:    r.count,
+		lines:    slices.Clone(r.lines),
+		next:     r.next,
+		total:    r.total,
+
+		enabled: r.enabled,
+	}
+}
+
 // Enabled reports whether the ring captures lines.
 func (r *TraceRing) Enabled() bool {
 	r.mu.Lock()
@@ -49,9 +66,12 @@ func (r *TraceRing) Enabled() bool {
 // SetEnabled turns capture on or off.
 func (r *TraceRing) SetEnabled(enabled bool) {
 	r.mu.Lock()
-	defer r.mu.Unlock()
-
 	r.enabled = enabled
+	changed := r.onChange
+	r.mu.Unlock()
+	if changed != nil {
+		changed()
+	}
 }
 
 // Capacity returns the maximum number of stored lines.
@@ -144,6 +164,12 @@ func (sys *System) StepTraced() (StepResult, error) {
 	}
 
 	return step, err
+}
+
+func (r *TraceRing) setOnChange(call func()) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.onChange = call
 }
 
 // add appends a line and drops the oldest line when full.

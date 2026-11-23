@@ -27,6 +27,12 @@ func (sys *System) KeyUp(key input.Key) {
 	setControllerKey(sys.Bus.Controller1, key, false)
 }
 
+// ControllerButton returns the NES button for a keyboard key.
+func ControllerButton(key input.Key) (controller.Button, bool) {
+	button, ok := controllerMapping[key]
+	return button, ok
+}
+
 func setControllerKey(device bus.Controller, key input.Key, pressed bool) {
 	if button, ok := controllerMapping[key]; ok {
 		device.SetButtonState(button, pressed)

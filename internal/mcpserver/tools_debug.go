@@ -129,7 +129,7 @@ func (s *Server) registerCheckpoint() error {
 func (s *Server) registerRestore() error {
 	return addTool(s, mcp.Tool{
 		Name:        restoreToolName,
-		Description: "Replay the machine event log to a checkpoint_id or a frame. Later events are dropped.",
+		Description: "Restore the machine to a checkpoint_id or a frame. Remove later events.",
 		Annotations: writeAnnotations(),
 	}, s.restore)
 }
@@ -195,6 +195,10 @@ func (s *Server) addBreakpoint(_ context.Context, _ mcp.ToolRequest,
 		Start: uint16(in.Address),
 		Value: value,
 	})
+
+	if id == 0 {
+		return addBreakpointResult{}, errors.New("invalid breakpoint bank or value filter")
+	}
 
 	return addBreakpointResult{
 		ID: int(id),
@@ -495,7 +499,7 @@ type addBreakpointArgs struct {
 	Kind      string   `json:"kind,omitempty" description:"exec, read, write, or access. Default exec."`
 	MachineID string   `json:"machine_id" description:"Identifier returned by create_machine."`
 	Once      *bool    `json:"once,omitempty" description:"Remove the breakpoint after its first hit."`
-	Value     *int     `json:"value,omitempty" description:"Byte value that a write must match."`
+	Value     *int     `json:"value,omitempty" description:"Byte value for read or write breakpoints. For access breakpoints, only writes must match."`
 }
 
 // addBreakpointResult reports the new breakpoint.

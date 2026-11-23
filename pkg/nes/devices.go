@@ -57,7 +57,9 @@ func clockDeviceCycle(b *bus.Bus, a *apu.APU, d *dmaController, m *memory.Memory
 		return false
 
 	case repeatRead:
+		m.SuppressReadObserver(true)
 		dmaRead(b, m, cycle.Address)
+		m.SuppressReadObserver(false)
 
 	case dmcRead:
 		value := dmaRead(b, m, d.dmcAddress)

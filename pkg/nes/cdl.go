@@ -69,9 +69,9 @@ func (r *CDLRecorder) Start() {
 		r.sys.AddPreExecutionHook(r.observeInstruction),
 		r.sys.AddBusCycleObserver(r.observeCycle),
 	)
-	r.sys.apu.ObserveDMCFetches(r.observeDMCFetch)
+	r.remove = append(r.remove, r.sys.apu.AddDMCFetchObserver(r.observeDMCFetch))
 	if device, ok := r.sys.Bus.PPU.(*ppu.PPU); ok {
-		device.ObserveCHRReads(r.observeCHRRead)
+		r.remove = append(r.remove, device.AddCHRReadObserver(r.observeCHRRead))
 	}
 }
 
@@ -87,10 +87,6 @@ func (r *CDLRecorder) Stop() {
 	}
 
 	r.remove = nil
-	r.sys.apu.ObserveDMCFetches(nil)
-	if device, ok := r.sys.Bus.PPU.(*ppu.PPU); ok {
-		device.ObserveCHRReads(nil)
-	}
 }
 
 // Reset clears the recorded flags.
@@ -195,7 +191,7 @@ func (r *CDLRecorder) observeCycle(cycle cpu6502.BusCycle) {
 	r.mu.Unlock()
 
 	flag := codedatalog.Data
-	if indirect && cycle.Kind == cpu6502.BusCycleData {
+	if indirect && !r.sys.dmaReadActive && cycle.Kind == cpu6502.BusCycleData {
 		flag |= codedatalog.IndirectData
 	}
 
