@@ -126,7 +126,8 @@ func New(logger *log.Logger, opts Options) (*Server, error) {
 }
 
 // Serve reads MCP messages from r and writes the responses to w.
-func (s *Server) Serve(ctx context.Context, r io.Reader, w io.Writer) error {
+// Serve closes r. The Close method of r must stop a pending read.
+func (s *Server) Serve(ctx context.Context, r io.ReadCloser, w io.Writer) error {
 	if err := s.mcp.Serve(ctx, r, w); err != nil {
 		return fmt.Errorf("serving MCP protocol: %w", err)
 	}

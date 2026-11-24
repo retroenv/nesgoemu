@@ -2,10 +2,12 @@ package mcpserver
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/binary"
 	"encoding/json"
 	"image/png"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -65,6 +67,31 @@ func newTestServer(t *testing.T, opts Options) *Server {
 	server, err := New(log.NewTestLogger(t), opts)
 	assert.NoError(t, err)
 	return server
+}
+
+func TestServeClosesInputOnCancellation(t *testing.T) {
+	server := newTestServer(t, Options{})
+	reader, writer := io.Pipe()
+	defer func() { _ = writer.Close() }()
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	done := make(chan error, 1)
+	go func() { done <- server.Serve(ctx, reader, io.Discard) }()
+	_, err := io.WriteString(writer, "\n")
+	assert.NoError(t, err)
+	cancel()
+
+	select {
+	case err := <-done:
+		assert.NoError(t, err)
+	case <-time.After(time.Second):
+		t.Fatal("Serve did not return after cancellation")
+	}
+
+	_, err = io.WriteString(writer, "\n")
+	assert.ErrorIs(t, err, io.ErrClosedPipe)
 }
 
 func TestCreateStepReadScreenshot(t *testing.T) {

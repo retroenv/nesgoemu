@@ -184,34 +184,17 @@ func addTool[In, Out any](s *Server, tool mcp.Tool, handler func(context.Context
 		options.Content = content[0]
 	}
 
-	return registrationError(mcp.AddTool(s.mcp, tool, handler, options), tool.Name)
+	return registrationError(mcp.AddTypedTool(s.mcp, tool, handler, options), tool.Name)
 }
 
-// addImageTool checks raw image-tool arguments against the advertised schema.
+// addImageTool registers an image tool with its input schema.
 func addImageTool[In any](s *Server, tool mcp.Tool, handler mcp.ToolHandler) error {
 	schema, err := mcp.SchemaFor(reflect.TypeFor[In]())
 	if err != nil {
 		return registrationError(fmt.Errorf("generating image arguments: %w", err), tool.Name)
 	}
-	validator, err := mcp.CompileSchema(schema)
-	if err != nil {
-		return registrationError(fmt.Errorf("compiling image arguments: %w", err), tool.Name)
-	}
 	tool.InputSchema = schema
-	wrapped := s.operationMiddleware(tool.Name, handler)
-
-	err = s.mcp.AddTool(tool, func(ctx context.Context, req mcp.ToolRequest) (*mcp.ToolResult, error) {
-		arguments := req.Arguments
-		if len(arguments) == 0 {
-			arguments = json.RawMessage(`{}`)
-		}
-
-		if err := validator.Validate(arguments); err != nil {
-			return mcp.Errorf(invalidArgumentsFormat, err), nil
-		}
-
-		return wrapped(ctx, req) //nolint:wrapcheck // Preserve protocol errors.
-	})
+	err = s.mcp.AddRawTool(tool, s.operationMiddleware(tool.Name, handler))
 
 	return registrationError(err, tool.Name)
 }
