@@ -21,8 +21,8 @@ headless execution, CPU tracing, and HTTP debugging.
 
 ## Supported Mappers
 
-ROM header support is separate from mapper execution. Each supported mapper
-links to its NESdev documentation.
+ROM header support is separate from mapper execution. The table links to mapper
+documentation where available.
 
 ### iNES 1.0
 
@@ -34,13 +34,15 @@ links to its NESdev documentation.
       <td><a href="https://www.nesdev.org/wiki/UxROM">002 UxROM OR</a></td>
       <td><a href="https://www.nesdev.org/wiki/CNROM">003 CNROM</a></td>
       <td><a href="https://www.nesdev.org/wiki/MMC3">004 MMC3</a></td>
-      <td><a href="https://www.nesdev.org/wiki/AxROM">007 AxROM</a></td>
-      <td><a href="https://www.nesdev.org/wiki/UNROM_512">030 UNROM-512</a></td>
     </tr>
     <tr>
+      <td><a href="https://www.nesdev.org/wiki/AxROM">007 AxROM</a></td>
+      <td><a href="https://www.nesdev.org/wiki/UNROM_512">030 UNROM-512</a></td>
       <td><a href="https://www.nesdev.org/wiki/INES_Mapper_034">034 BNROM / NINA-001</a></td>
       <td><a href="https://www.nesdev.org/wiki/GxROM">066 GxROM</a></td>
       <td><a href="https://www.nesdev.org/wiki/INES_Mapper_071">071 Camerica</a></td>
+    </tr>
+    <tr>
       <td><a href="https://www.nesdev.org/wiki/NINA-003-006">079 NINA-003/006</a></td>
       <td><a href="https://www.nesdev.org/wiki/INES_Mapper_094">094 UN1ROM</a></td>
       <td><a href="https://www.nesdev.org/wiki/GTROM">111 GTROM</a></td>
@@ -55,12 +57,14 @@ links to its NESdev documentation.
 <table>
   <tbody>
     <tr>
+      <td>128 MXM-1 (Bad Apple Ultimate NES Demake, N8 Pro)</td>
       <td>220 MXM-0 (House of Truth, N8 PRO)</td>
       <td><a href="https://www.nesdev.org/wiki/NES_2.0_Mapper_682">682 Rainbow</a></td>
-      <td>800 MXM-1 (Former Dawn Demo v3.2)</td>
     </tr>
     <tr>
+      <td>800 MXM-1 (Former Dawn Demo v3.2)</td>
       <td>801 MXM-1 (Former Dawn Hover Boots Demo)</td>
+      <td></td>
     </tr>
   </tbody>
 </table>

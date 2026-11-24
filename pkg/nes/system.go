@@ -69,7 +69,7 @@ func NewSystem(opts *Options) (*System, error) {
 		cart = cartridge.New()
 	}
 
-	systemBus, systemMemory, mem, err := initializeDevices(cart)
+	systemBus, systemMemory, mem, err := initializeDevices(cart, opts.openMedia)
 	if err != nil {
 		return nil, err
 	}
@@ -185,6 +185,12 @@ func (sys *System) StepSystem() (StepResult, error) {
 	if instructionExecuted || sys.CPU.Jammed() {
 		if err := sys.CPU.Step(); err != nil {
 			return StepResult{}, fmt.Errorf("executing CPU step at 0x%04x: %w", sys.PC, err)
+		}
+	}
+
+	if source, ok := sys.Bus.Mapper.(bus.MapperErrorSource); ok {
+		if err := source.MapperError(); err != nil {
+			return StepResult{}, fmt.Errorf("executing mapper access: %w", err)
 		}
 	}
 

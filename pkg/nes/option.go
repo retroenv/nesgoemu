@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/retroenv/nesgoemu/pkg/bus"
 	"github.com/retroenv/nesgoemu/pkg/ppu"
 	"github.com/retroenv/retrogolib/arch/cpu/cpu6502"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
@@ -13,7 +14,9 @@ import (
 
 // Options contains options for the nesgoemu system.
 type Options struct {
-	cartridge   *cartridge.Cartridge
+	cartridge *cartridge.Cartridge
+	openMedia bus.CartridgeMediaOpener
+
 	batteryData []byte
 	savePath    string
 
@@ -93,6 +96,13 @@ func WithCartridge(cart *cartridge.Cartridge) func(*Options) {
 	return func(options *Options) {
 		options.cartridge = cart
 	}
+}
+
+// WithCartridgeMediaOpener supplies files requested by the cartridge.
+// The caller keeps each reader open until the next open request or until the
+// system stops using it. The system does not close readers.
+func WithCartridgeMediaOpener(open bus.CartridgeMediaOpener) Option {
+	return func(opts *Options) { opts.openMedia = open }
 }
 
 // WithDebug enables the debugging mode and webserver.

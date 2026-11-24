@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/retroenv/nesgoemu/internal/mcpserver"
 	"github.com/retroenv/nesgoemu/pkg/nes"
@@ -109,8 +110,14 @@ func emulateFile(ctx context.Context, options optionFlags, input string) error {
 		return err
 	}
 
+	media := romMedia{
+		dir: filepath.Dir(input),
+	}
+	defer media.close()
+	mediaOption := nes.WithCartridgeMediaOpener(media.open)
+
 	if options.WAV != "" {
-		return recordWAV(ctx, cart, options)
+		return recordWAV(ctx, cart, mediaOption, options)
 	}
 
 	opts, err := emulatorOptions(options, cart, input)
@@ -118,7 +125,7 @@ func emulateFile(ctx context.Context, options optionFlags, input string) error {
 		return err
 	}
 
-	if err := nes.Start(ctx, opts...); err != nil {
+	if err := nes.Start(ctx, append(opts, mediaOption)...); err != nil {
 		return fmt.Errorf("starting emulator: %w", err)
 	}
 
@@ -192,8 +199,8 @@ func readCartridge(path string) (*cartridge.Cartridge, error) {
 	return cart, nil
 }
 
-func recordWAV(ctx context.Context, cart *cartridge.Cartridge, options optionFlags) error {
-	sys, err := nes.NewSystem(nes.NewOptions(nes.WithCartridge(cart), nes.WithSavePath("")))
+func recordWAV(ctx context.Context, cart *cartridge.Cartridge, mediaOption nes.Option, options optionFlags) error {
+	sys, err := nes.NewSystem(nes.NewOptions(nes.WithCartridge(cart), mediaOption, nes.WithSavePath("")))
 	if err != nil {
 		return fmt.Errorf("creating recording system: %w", err)
 	}

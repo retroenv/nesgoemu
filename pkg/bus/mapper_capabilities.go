@@ -32,6 +32,11 @@ type MapperResetter interface {
 	Reset()
 }
 
+// MapperErrorSource reports an error from a mapper bus access.
+type MapperErrorSource interface {
+	MapperError() error
+}
+
 // MemoryInspector exposes mapper memory without emulated bus effects.
 // The queries do not advance mapper state, count PPU bus reads, or mark
 // features as used.

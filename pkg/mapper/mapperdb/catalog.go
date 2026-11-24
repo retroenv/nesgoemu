@@ -59,6 +59,7 @@ var constructors = map[uint16]constructor{
 	79:  nina003.New,
 	94:  uxrom.NewUN1,
 	111: gtrom.New,
+	128: mxm1.New128,
 	180: uxrom.NewAND,
 	220: mxm0.New,
 	232: camerica.NewQuattro,

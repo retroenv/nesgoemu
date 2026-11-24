@@ -223,6 +223,11 @@ func (b *Base) Cartridge() *cartridge.Cartridge {
 	return b.bus.Cartridge
 }
 
+// CartridgeMediaOpener returns the cartridge file opener, if present.
+func (b *Base) CartridgeMediaOpener() bus.CartridgeMediaOpener {
+	return b.bus.OpenCartridgeMedia
+}
+
 // NameTableMemory returns the PPU name-table memory.
 func (b *Base) NameTableMemory() bus.NameTable {
 	return b.bus.NameTable

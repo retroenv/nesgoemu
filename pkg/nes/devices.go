@@ -13,13 +13,18 @@ import (
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 )
 
-func initializeDevices(cart *cartridge.Cartridge) (*bus.Bus, *memory.Memory, *cpu6502.Memory, error) {
+func initializeDevices(cart *cartridge.Cartridge,
+	openMedia bus.CartridgeMediaOpener) (*bus.Bus, *memory.Memory, *cpu6502.Memory, error) {
+
 	b := &bus.Bus{
-		Cartridge:   cart,
+		Cartridge:          cart,
+		OpenCartridgeMedia: openMedia,
+
 		Controller1: controller.New(),
 		Controller2: controller.New(),
 		NameTable:   nametable.New(cart.Mirror),
 	}
+
 	memory, mem, err := initializeMemory(b)
 	if err != nil {
 		return nil, nil, nil, err

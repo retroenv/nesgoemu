@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -51,4 +52,53 @@ func TestEmulatorOptionsRejectsMissingPalette(t *testing.T) {
 		Palette: filepath.Join(t.TempDir(), "missing.pal"),
 	}, cartridge.New(), "game.nes")
 	assert.ErrorIs(t, err, os.ErrNotExist)
+}
+
+func TestEmulateFileRejectsInvalidMapper128Layout(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "game.nes")
+	cart := cartridge.New()
+	cart.Mapper = 128
+	cart.NES2 = &cartridge.NES2Metadata{
+		Submapper: 1,
+	}
+
+	file, err := os.Create(path)
+	assert.NoError(t, err)
+	assert.NoError(t, cart.Save(file))
+	assert.NoError(t, file.Close())
+
+	err = emulateFile(t.Context(), optionFlags{}, path)
+	assert.ErrorContains(t, err, "submapper 0 layout")
+}
+
+func TestROMMediaOpensRequestedPath(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "video")
+	assert.NoError(t, os.MkdirAll(filepath.Join(dir, "streams"), 0o755))
+	assert.NoError(t, os.WriteFile(filepath.Join(dir, "frames.dat"), []byte("sidecar"), 0o644))
+	assert.NoError(t, os.WriteFile(filepath.Join(dir, "streams", "frames.dat"), []byte("nested"), 0o644))
+
+	media := romMedia{
+		dir: dir,
+	}
+	defer media.close()
+
+	for _, test := range []struct {
+		request string
+		want    string
+	}{
+		{request: "streams/frames.dat", want: "nested"},
+		{request: "video/frames.dat", want: "sidecar"},
+	} {
+		reader, err := media.open(test.request)
+		assert.NoError(t, err)
+		got := make([]byte, len(test.want))
+		_, err = io.ReadFull(io.NewSectionReader(reader, 0, int64(len(got))), got)
+		assert.NoError(t, err)
+		assert.Equal(t, test.want, string(got))
+	}
+
+	_, err := media.open("missing/frames.dat")
+	assert.ErrorIs(t, err, os.ErrNotExist)
+	_, err = media.open("../frames.dat")
+	assert.ErrorContains(t, err, "invalid media path")
 }

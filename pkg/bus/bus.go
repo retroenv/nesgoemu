@@ -3,18 +3,24 @@ package bus
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/retroenv/nesgoemu/internal/stateio"
 	"github.com/retroenv/retrogolib/arch/cpu/cpu6502"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 )
 
+// CartridgeMediaOpener opens a file by its cartridge path. The caller of the
+// emulator owns the reader.
+type CartridgeMediaOpener func(path string) (io.ReaderAt, error)
+
 // Bus contains all NES sub system components.
 // Since many components access other components, this structure
 // allows an easy access and reduces the import dependencies and
 // initialization order issues.
 type Bus struct {
-	Cartridge *cartridge.Cartridge // used by Mapper
+	Cartridge          *cartridge.Cartridge // used by Mapper
+	OpenCartridgeMedia CartridgeMediaOpener // Optional file access for the mapper.
 
 	APU         APU
 	Controller1 Controller          // used by Memory

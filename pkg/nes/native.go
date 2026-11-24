@@ -77,7 +77,7 @@ func NewNative(opts NativeOptions) (*Native, error) {
 	}
 
 	// The CPU-memory wrapper stays in bus.Memory; no CPU interpreter is created.
-	b, m, _, err := initializeDevices(cart)
+	b, m, _, err := initializeDevices(cart, nil)
 	if err != nil {
 		return nil, fmt.Errorf("unsupported native board: %w", err)
 	}
