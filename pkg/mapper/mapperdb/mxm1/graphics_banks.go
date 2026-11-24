@@ -27,3 +27,7 @@ func (b *graphicsBanks) write(address uint16, value byte) {
 func descriptorOffset(bank, tile uint16) int {
 	return int(bank)*descriptorBankSize + int(tile)*descriptorSize
 }
+
+func nametableSlot(address uint16) byte {
+	return byte(address/ntBankSize) & ntSelectMask
+}

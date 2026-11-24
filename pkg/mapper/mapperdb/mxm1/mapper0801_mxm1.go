@@ -98,9 +98,6 @@ func (m *Mapper) writeBank801(address uint16, value byte) bool {
 
 func (m *Mapper) readBankStatus801(address uint16) (byte, bool) {
 	switch {
-	case address >= regIdentityStart && address <= regIdentityEnd:
-		return fpgaIdentityResponse[address-regIdentityStart], true
-
 	case address == regPRGReadback:
 		return m.prgFlags[0], true
 

@@ -164,7 +164,7 @@ func (m *Mapper) readDescriptor(address, mapped uint16, y byte, name bool) (byte
 		// pattern addresses do not contain enough information to find them
 		// again.
 		m.fetch.descriptorFetchesLeft = postNameFetchCount
-		m.fetch.tileTable = byte(mapped/ntBankSize) & ntSelectMask
+		m.fetch.tileTable = nametableSlot(mapped)
 		m.fetch.tileOffset = mapped & ntOffsetMask
 		m.fetch.tileFineY = y & fineYMask
 
@@ -270,7 +270,7 @@ func (m *Mapper) fetchPattern(address uint16) byte {
 }
 
 func (m *Mapper) fetchMetatile(address uint16, fineY byte) {
-	selector := m.metatileTables[address/ntBankSize&ntSelectMask]
+	selector := m.metatileTables[nametableSlot(address)]
 	base := metatileFallbackTable
 	if int(selector) < len(metatileTableBases) {
 		base = metatileTableBases[selector]
@@ -326,7 +326,7 @@ func (m *Mapper) mappedVRAM(address uint16) byte {
 	}
 
 	if address < register.PALETTE_START {
-		w := m.ntWindows[address/ntBankSize&ntSelectMask]
+		w := m.ntWindows[nametableSlot(address)]
 		if w.data != nil {
 			return readWrapped(w.data, w.offset+int(address&ntOffsetMask), byte(address))
 		}

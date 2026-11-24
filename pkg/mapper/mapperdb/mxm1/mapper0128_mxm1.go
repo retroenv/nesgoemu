@@ -167,36 +167,11 @@ func (m *mapper128) Reset() {
 
 // Read returns PRG, PPU pattern data, or a register value.
 func (m *mapper128) Read(address uint16) byte {
-	switch address {
-	case reg128FIFO:
-		return m.fifo.readResponse()
-
-	case reg128FIFOStatus:
-		if m.fifo.responseLength == 0 {
-			return fifoStatusBase | fifoResponseEmptyBit
-		}
-		return fifoStatusBase
-
-	case reg128TransferStatus:
-		return transferReady
-
-	case reg128Palette:
-		value := m.paletteByte()
-		m.paletteCursor = (m.paletteCursor + 1) % framePaletteSize
-		if m.paletteCursor == 0 {
-			m.paletteSlot = (m.paletteSlot + 1) % frameSlotCount
-		}
-
+	if value, ok := m.readPort(address, false); ok {
 		return value
-
-	case reg128PCMData:
-		return m.pcm.sample
 	}
 
 	switch {
-	case address >= regIdentityStart && address <= regIdentityEnd:
-		return fpgaIdentityResponse[address-regIdentityStart]
-
 	case m.streamedPattern(address):
 		return m.work[m.backgroundPatternOffset(address)]
 
@@ -261,19 +236,8 @@ func (m *mapper128) ClockCPU(cycles uint64) {
 
 // InspectCPU returns the CPU data without changing the FIFO or palette cursor.
 func (m *mapper128) InspectCPU(address uint16) (byte, bool) {
-	if address >= regIdentityStart && address <= regIdentityEnd {
-		return fpgaIdentityResponse[address-regIdentityStart], true
-	}
-
-	switch address {
-	case reg128FIFO:
-		return m.fifo.response[0], true
-
-	case reg128FIFOStatus, reg128TransferStatus, reg128PCMData:
-		return m.Read(address), true
-
-	case reg128Palette:
-		return m.paletteByte(), true
+	if value, ok := m.readPort(address, true); ok {
+		return value, true
 	}
 
 	if offset, ok := m.PRGROMOffset(address); ok {
@@ -334,6 +298,42 @@ func (m *mapper128) lowPRGOffset(address uint16) int {
 	return m.PRGLowBank()*prgBankSize + int(address&prgOffsetMask)
 }
 
+func (m *mapper128) readPort(address uint16, peek bool) (byte, bool) {
+	switch address {
+	case reg128FIFO:
+		if peek {
+			return m.fifo.response[0], true
+		}
+		return m.fifo.readResponse(), true
+
+	case reg128FIFOStatus:
+		if m.fifo.responseLength == 0 {
+			return fifoStatusBase | fifoResponseEmptyBit, true
+		}
+		return fifoStatusBase, true
+
+	case reg128TransferStatus:
+		return transferReady, true
+
+	case reg128Palette:
+		value := m.paletteByte()
+		if !peek {
+			m.paletteCursor = (m.paletteCursor + 1) % framePaletteSize
+			if m.paletteCursor == 0 {
+				m.paletteSlot = (m.paletteSlot + 1) % frameSlotCount
+			}
+		}
+
+		return value, true
+
+	case reg128PCMData:
+		return m.pcm.sample, true
+
+	default:
+		return read5000(address, n8ProCompatibilityReadback)
+	}
+}
+
 func (m *mapper128) writeBanks(address uint16, value byte) {
 	switch address {
 	case regPRGSelect:
@@ -364,7 +364,7 @@ func (m *mapper128) readNameTable(address uint16) (byte, bool) {
 			m.nameAddress = address
 		} else {
 			tile := m.nameAddress & ntOffsetMask
-			bank := m.descriptor.banks[m.nameAddress/ntBankSize&ntSelectMask]
+			bank := m.descriptor.banks[nametableSlot(m.nameAddress)]
 			index := descriptorOffset(bank, tile) + descriptorPaletteOffset
 			if index < len(m.work) {
 				return mapperbase.RepeatAttributePalette(m.work[index] >> descriptorPaletteShift), true
@@ -393,7 +393,7 @@ func (m *mapper128) writeNameTable(address uint16, value byte) bool {
 }
 
 func (m *mapper128) nameTableOffset(address uint16) (int, bool) {
-	bank := m.nametable.banks[address/ntBankSize&ntSelectMask]
+	bank := m.nametable.banks[nametableSlot(address)]
 	index := int(bank)*ntBankSize + int(address&ntOffsetMask)
 	return index, m.nametable.enabled && index < len(m.work)
 }

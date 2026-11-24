@@ -8,8 +8,10 @@ func (m *Mapper) writeRegister(address uint16, value byte) {
 	}
 
 	switch address & registerGroupMask {
-	case regIdentityStart:
-		m.writeStatus(address, value)
+	case regStateCursor & registerGroupMask:
+		if address == regStateCursor {
+			m.streamCursor = value
+		}
 
 	case regPRGMode:
 		m.writeCPURegisters(address, value)
@@ -37,12 +39,6 @@ func (m *Mapper) writeRegister(address uint16, value byte) {
 
 	case regRemapMode:
 		m.writeRemapRegisters(address, value)
-	}
-}
-
-func (m *Mapper) writeStatus(address uint16, value byte) {
-	if address == regStateCursor {
-		m.streamCursor = value
 	}
 }
 
@@ -327,6 +323,15 @@ func (m *Mapper) markGraphicsModes() {
 }
 
 func (m *Mapper) readRegister(address uint16) byte {
+	readback := emulatorReadback
+	if m.isMapper801 {
+		readback = n8ProCompatibilityReadback
+	}
+
+	if value, ok := read5000(address, readback); ok {
+		return value
+	}
+
 	if value, ok := m.readBankStatus(address); ok {
 		return value
 	}
@@ -367,10 +372,6 @@ func (m *Mapper) readRegister(address uint16) byte {
 func (m *Mapper) readBankStatus(address uint16) (byte, bool) {
 	if m.isMapper801 {
 		return m.readBankStatus801(address)
-	}
-
-	if address >= regIdentityStart && address <= regIdentityEnd {
-		return emulatorIdentityResponse[address-regIdentityStart], true
 	}
 
 	if address >= regPRGReadback && address <= regPRGReadbackEnd {
@@ -472,6 +473,15 @@ func (m *Mapper) streamValue(cursor byte) byte {
 	default:
 		return stateUnavailable
 	}
+}
+
+func read5000(address uint16, readback string) (byte, bool) {
+	offset := int(address) - regReadbackStart
+	if offset < 0 || offset >= len(readback) {
+		return 0, false
+	}
+
+	return readback[offset], true
 }
 
 func setBankByte(bank *uint16, high bool, value byte) {

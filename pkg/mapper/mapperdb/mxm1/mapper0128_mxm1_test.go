@@ -49,23 +49,54 @@ func TestMapper128RequiresMediaOpener(t *testing.T) {
 	assert.ErrorContains(t, err, "requires a cartridge media opener")
 }
 
-func TestMapper128IdentityReadback(t *testing.T) {
-	const identityRegisterStart = 0x5000
+func TestMXM1Readback5000(t *testing.T) {
+	const (
+		beforeReadback = 0x4fff
+		readbackStart  = 0x5000
+		stateData      = 0x5006
+		stateCursor    = 0x5007
+	)
 
-	b := mappertest.NewBus(mapper128Cartridge())
-	b.OpenCartridgeMedia = func(string) (io.ReaderAt, error) {
-		return bytes.NewReader(nil), nil
-	}
-	m, err := mapper.New(b)
-	assert.NoError(t, err)
+	for _, test := range []struct {
+		mapper uint16
+		name   string
+		want   [6]byte
+	}{
+		{mapper: 128, name: "Bad Apple", want: [6]byte{0x8c}},
+		{mapper: 800, name: "Former Dawn v3.2", want: [6]byte{0x9f, 0x00, 0x17, 0x14, 0x17, 0x14}},
+		{mapper: 801, name: "Hover Boots", want: [6]byte{0x8c}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			cart := mapper128Cartridge()
+			cart.Mapper = test.mapper
+			b := mappertest.NewBus(cart)
+			b.OpenCartridgeMedia = func(string) (io.ReaderAt, error) {
+				return bytes.NewReader(nil), nil
+			}
+			m, err := mapper.New(b)
+			assert.NoError(t, err)
 
-	inspector := m.(bus.CPUMemoryInspector)
-	for index, want := range [6]byte{0x8c} {
-		address := identityRegisterStart + uint16(index)
-		assert.Equal(t, want, m.Read(address))
-		value, ok := inspector.InspectCPU(address)
-		assert.True(t, ok)
-		assert.Equal(t, want, value)
+			inspector := m.(bus.CPUMemoryInspector)
+			for index, want := range test.want {
+				address := readbackStart + uint16(index)
+				assert.Equal(t, want, m.Read(address))
+				value, ok := inspector.InspectCPU(address)
+				assert.Equal(t, test.mapper == 128, ok)
+				if ok {
+					assert.Equal(t, want, value)
+				}
+			}
+
+			_, ok := inspector.InspectCPU(beforeReadback)
+			assert.False(t, ok)
+			_, ok = inspector.InspectCPU(stateData)
+			assert.False(t, ok)
+			if test.mapper != 128 {
+				m.Write(stateCursor, 0xfe)
+				assert.Equal(t, byte(0xff), m.Read(stateData))
+				assert.Equal(t, byte(0xff), m.Read(stateCursor))
+			}
+		})
 	}
 }
 
@@ -74,6 +105,7 @@ func TestMapper128Transfer(t *testing.T) {
 		blocksPerFrame  = 4
 		fineY           = 2
 		mediaPath       = "video/frames.dat"
+		nametableSlot   = 3
 		streamedPattern = 0xe1
 		tileColumn      = 1
 
@@ -108,28 +140,52 @@ func TestMapper128Transfer(t *testing.T) {
 	assert.Equal(t, byte(bankedPRGByte), m.Read(nes.CodeBaseAddress))
 	assert.Equal(t, byte(resetVectorLow), m.Read(cpu6502.ResetAddress))
 
-	m.Write(reg128TransferEnable, 1)
-	writeFileOpen(m, fileReadOnlyMode, mediaPath)
-	assertMediaStatus(t, m, fileStatusOK)
-
-	for range blocksPerFrame {
-		transferNextMediaBlock(m)
-	}
+	streamMediaBlocks(t, m, mediaPath, blocksPerFrame)
 	transfer := m.(bus.MapperErrorSource)
-	assert.NoError(t, transfer.MapperError())
 
 	m.Write(regDescriptorMode, extendedModeEnable|attributeModePatternOnly)
+	m.Write(regDescriptorSelect, nametableSlot)
 	m.Write(regDescriptorBankLow, descriptorBank)
 	m.Write(reg128MediaSlot, 0)
 	m.(bus.PPUTicker).TickPPU(renderstate.FirstVisibleDot, 0, true)
-	_ = b.NameTable.Read(nameTableBase + tileColumn)
-	assert.Equal(t, byte(0xff), b.NameTable.Read(attributeTableBase))
+	_ = b.NameTable.Read(nameTableBase + nametableSlot*nametableSize + tileColumn)
+	assert.Equal(t, byte(0xff), b.NameTable.Read(attributeTableBase+nametableSlot*nametableSize))
 	assert.Equal(t, byte(streamedPattern), m.Read(patternPageSize+fineY))
 
 	transferNextMediaBlock(m)
 	assert.ErrorIs(t, transfer.MapperError(), io.EOF)
 	m.(bus.MapperResetter).Reset()
 	assert.NoError(t, transfer.MapperError())
+}
+
+func TestMapper128PaletteReadback(t *testing.T) {
+	const (
+		blocksToPalette = 2
+		paletteOffset   = 0x3c00
+		palettePort     = 0x5099
+	)
+	const (
+		first  = byte(0x17)
+		second = byte(0x21)
+	)
+
+	media := make([]byte, blocksToPalette*mediaBlockSize)
+	media[paletteOffset] = first
+	media[paletteOffset+1] = second
+	b := mappertest.NewBus(mapper128Cartridge())
+	b.OpenCartridgeMedia = func(string) (io.ReaderAt, error) {
+		return bytes.NewReader(media), nil
+	}
+	m, err := mapper.New(b)
+	assert.NoError(t, err)
+	streamMediaBlocks(t, m, "frames.dat", blocksToPalette)
+
+	inspector := m.(bus.CPUMemoryInspector)
+	palette, ok := inspector.InspectCPU(palettePort)
+	assert.True(t, ok)
+	assert.Equal(t, first, palette)
+	assert.Equal(t, first, m.Read(palettePort))
+	assert.Equal(t, second, m.Read(palettePort))
 }
 
 func TestMapper128OpenClearsPreviousStatus(t *testing.T) {
@@ -198,6 +254,13 @@ func assertMediaStatus(t *testing.T, m bus.Mapper, status byte) {
 	)
 
 	writeMediaCommand(m, fileStatusCommand, nil)
+	inspector := m.(bus.CPUMemoryInspector)
+	value, ok := inspector.InspectCPU(reg128FIFOStatus)
+	assert.True(t, ok)
+	assert.Equal(t, byte(responsePending), value)
+	value, ok = inspector.InspectCPU(reg128FIFOData)
+	assert.True(t, ok)
+	assert.Equal(t, byte(statusPrefix), value)
 	assert.Equal(t, byte(responsePending), m.Read(reg128FIFOStatus))
 	assert.Equal(t, byte(statusPrefix), m.Read(reg128FIFOData))
 	assert.Equal(t, status, m.Read(reg128FIFOData))
@@ -216,6 +279,17 @@ func writeMediaCommand(m bus.Mapper, command byte, payload []byte) {
 func writeFileOpen(m bus.Mapper, mode byte, path string) {
 	payload := binary.LittleEndian.AppendUint16([]byte{mode}, uint16(len(path)))
 	writeMediaCommand(m, fileOpenCommand, append(payload, path...))
+}
+
+func streamMediaBlocks(t *testing.T, m bus.Mapper, path string, blocks int) {
+	t.Helper()
+	m.Write(reg128TransferEnable, 1)
+	writeFileOpen(m, fileReadOnlyMode, path)
+	assertMediaStatus(t, m, fileStatusOK)
+	for range blocks {
+		transferNextMediaBlock(m)
+	}
+	assert.NoError(t, m.(bus.MapperErrorSource).MapperError())
 }
 
 func transferNextMediaBlock(m bus.Mapper) {

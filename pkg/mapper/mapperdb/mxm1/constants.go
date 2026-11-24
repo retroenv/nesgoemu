@@ -6,21 +6,20 @@ package mxm1
 const name = "MXM-1"
 
 const (
-	// The Former Dawn v3.2 MesenMXM release returns six fixed bytes at
-	// $5000-$5005. The released EverDrive FPGA configurations return a
-	// different set. See https://somethingnerdy.com/former-dawn-playable-demo-downloads/.
-	emulatorIdentityResponse = "\x9f\x00\x17\x14\x17\x14"
-	fpgaIdentityResponse     = "\x8c\x00\x00\x00\x00\x00"
+	// The emulator returns these bytes at $5000-$5005 for compatibility.
+	// In the Hover Boots FPGA, SPI configuration affects the read of $5000.
+	// The purpose of the six-byte readback is unknown.
+	emulatorReadback           = "\x9f\x00\x17\x14\x17\x14"
+	n8ProCompatibilityReadback = "\x8c\x00\x00\x00\x00\x00"
 
 	registerGroupMask = 0xfff0 // The decoder dispatches blocks of 16 addresses.
 
-	// The fixed-response registers ignore writes. A read of StateData returns a
-	// sparse snapshot and advances StateCursor. A write to StateCursor selects
-	// the next byte.
-	regIdentityStart = 0x5000
-	regIdentityEnd   = 0x5005
-	regStateData     = 0x5006
-	regStateCursor   = 0x5007
+	regReadbackStart = 0x5000
+
+	// A read of StateData returns one snapshot byte and advances StateCursor.
+	// A write to StateCursor selects the next byte.
+	regStateData   = 0x5006
+	regStateCursor = 0x5007
 
 	// Select a CPU window, its source flags, and then its 16-bit 8 KiB bank.
 	// The alternate bank replaces only the $C000 window for a time. The normal
