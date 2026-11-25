@@ -3,10 +3,12 @@ package uxrom
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/retroenv/nesgoemu/pkg/bus"
 	"github.com/retroenv/nesgoemu/pkg/feature"
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
+	"github.com/retroenv/retrogolib/arch/system/nes"
 )
 
 /*
@@ -16,6 +18,11 @@ PRG ROM window: 16K + 16K fixed
 CHR capacity: 8K
 */
 
+const (
+	prgBankMask  = 0x07
+	un1BankShift = 2
+)
+
 // NewOR returns a new mapper with the OR logic configuration.
 func NewOR(base *mapperbase.Base) (bus.Mapper, error) {
 	return newFixedLast(base, "UxROM", 0)
@@ -24,7 +31,7 @@ func NewOR(base *mapperbase.Base) (bus.Mapper, error) {
 // NewUN1 returns a new mapper with the UN1ROM configuration.
 // It is very similar to UxROM, but the register is shifted by two bits.
 func NewUN1(base *mapperbase.Base) (bus.Mapper, error) {
-	return newFixedLast(base, "UN1ROM", 2)
+	return newFixedLast(base, "UN1ROM", un1BankShift)
 }
 
 // NewAND returns a new mapper with the AND logic configuration.
@@ -76,7 +83,7 @@ func newMapperUxROM(base *mapperbase.Base) (*mapperUxROM, error) {
 		return nil, fmt.Errorf("initializing mapper: %w", err)
 	}
 
-	m.AddWriteHook(0x8000, 0xFFFF, m.setPrgWindow)
+	m.AddWriteHook(nes.CodeBaseAddress, math.MaxUint16, m.setPrgWindow)
 
 	return m, nil
 }
@@ -88,7 +95,7 @@ func (m *mapperUxROM) setPrgWindow(_ uint16, value uint8) error {
 	m.MarkFeature(feature.PRGBanking)
 
 	value >>= m.valueShift
-	value &= 0b0000_0111                      // UNROM uses bits 2-0; UOROM/UN1ROM uses bits 3-0
+	value &= prgBankMask
 	m.SetPrgWindow(m.windowIndex, int(value)) // select 16 KB PRG ROM bank
 
 	return nil

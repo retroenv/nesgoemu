@@ -21,6 +21,16 @@ CHR window: 8K
 */
 
 const (
+	prgWindowSize      = 0x8000
+	chrRAMSize         = 0x4000
+	nameTableBankCount = 2
+
+	prgBankMask        = 0x0f
+	chrBankShift       = 4
+	chrBankMask        = 0x01
+	nameTableBankShift = 5
+	nameTableBankMask  = 0x01
+
 	controlLowStart  = 0x5000
 	controlLowEnd    = 0x5fff
 	controlHighStart = 0x7000
@@ -40,9 +50,9 @@ func New(base *mapperbase.Base) (bus.Mapper, error) {
 	m.DeclareFeature(feature.CHRBanking)
 	m.DeclareFeature(feature.NameTableBanking)
 	m.DeclareFeature(feature.PRGBanking)
-	m.SetPrgWindowSize(0x8000) // 32K
-	m.SetNameTableCount(2)
-	m.SetChrRAM(make([]byte, 0x4000)) // 16K
+	m.SetPrgWindowSize(prgWindowSize)
+	m.SetNameTableCount(nameTableBankCount)
+	m.SetChrRAM(make([]byte, chrRAMSize))
 	if err := m.Initialize(); err != nil {
 		return nil, fmt.Errorf("initializing mapper: %w", err)
 	}
@@ -71,14 +81,14 @@ func (m *mapperGTROM) setBanks(_ uint16, value uint8) error {
 	m.MarkFeature(feature.CHRBanking)
 	m.MarkFeature(feature.NameTableBanking)
 
-	prgBank := value & 0b0000_1111
+	prgBank := value & prgBankMask
 
 	m.SetPrgWindow(0, int(prgBank)) // select 32 KB PRG ROM bank for CPU $8000-$FFFF
 
-	chrBank := int(value>>4) & 1
+	chrBank := int(value>>chrBankShift) & chrBankMask
 	m.SetChrWindow(0, chrBank)
 
-	nameTableBank := int(value>>5) & 1
+	nameTableBank := int(value>>nameTableBankShift) & nameTableBankMask
 	m.SetNameTableWindow(nameTableBank)
 
 	return nil

@@ -2,6 +2,7 @@ package mxm1
 
 import (
 	"github.com/retroenv/nesgoemu/pkg/bus"
+	"github.com/retroenv/retrogolib/arch/system/nes"
 	"github.com/retroenv/retrogolib/arch/system/nes/register"
 )
 
@@ -33,7 +34,7 @@ func (m *Mapper) InspectPRGRAM(offset int) (byte, bool) {
 
 // InspectCHR reads the ordinary mapping. It does not change the fetch or IRQ state.
 func (m *Mapper) InspectCHR(address uint16) byte {
-	return m.mappedVRAM(address & (patternTableEnd - 1))
+	return m.mappedVRAM(address & (nes.PatternTableEndExclusive - 1))
 }
 
 // PRGROMOffset returns the ROM offset of the effective CPU mapping, including
@@ -67,7 +68,7 @@ func (m *Mapper) InspectMemory(address uint16) (byte, bool) {
 // modes depend on the bus history and can generate bytes. WorkRam is not a
 // GraphicsMemory source kind. In these cases the function reports false.
 func (m *Mapper) PPUReadMapping(address uint16) (bus.GraphicsMapping, bool) {
-	if address >= nameTableStart || m.readInhibit != 0 || m.descriptor.enabled ||
+	if address >= nes.NameTableStart || m.readInhibit != 0 || m.descriptor.enabled ||
 		m.metatileEnabled || m.remapEnabled || (m.spriteMode && m.spriteSecondPlane) {
 
 		return bus.GraphicsMapping{}, false

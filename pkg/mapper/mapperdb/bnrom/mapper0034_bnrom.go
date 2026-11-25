@@ -18,14 +18,28 @@ package bnrom
 import (
 	"errors"
 	"fmt"
+	"math"
 
 	"github.com/retroenv/nesgoemu/pkg/bus"
 	"github.com/retroenv/nesgoemu/pkg/feature"
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
+	"github.com/retroenv/retrogolib/arch/system/nes"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 )
 
 const (
+	prgWindowSize = 0x8000
+	prgROMMaximum = 0x800000
+
+	bnromCHRSize = 0x2000
+
+	ninaPRGRAMSize    = 0x2000
+	ninaCHRWindowSize = 0x1000
+	ninaCHRROMMaximum = 0x100000
+
+	submapperNINA  = 1
+	submapperBNROM = 2
+
 	ninaPRGBankRegister  = 0x7ffd
 	ninaCHRBank0Register = 0x7ffe
 	ninaCHRBank1Register = 0x7fff
@@ -46,26 +60,26 @@ func New(base *mapperbase.Base) (bus.Mapper, error) {
 		Base: base,
 	}
 	m.DeclareFeature(feature.PRGBanking)
-	m.SetPrgWindowSize(0x8000)
+	m.SetPrgWindowSize(prgWindowSize)
 	if nina {
 		m.SetName("NINA-001")
-		m.SetPrgRAM(make([]byte, 0x2000))
+		m.SetPrgRAM(make([]byte, ninaPRGRAMSize))
 		m.SetChrRAM(nil)
-		m.SetChrWindowSize(0x1000)
+		m.SetChrWindowSize(ninaCHRWindowSize)
 		m.DeclareFeature(feature.CHRBanking)
 		// The default RAM write follows the register hook and keeps the full byte.
 		m.AddWriteHook(ninaPRGBankRegister, ninaCHRBank1Register, m.selectNINA).SetProxyOnly(true)
 	} else {
 		m.SetName("BNROM")
 		m.SetPrgRAM(nil)
-		m.SetChrWindowSize(0x2000)
+		m.SetChrWindowSize(bnromCHRSize)
 		if len(cart.CHR) == 0 {
-			m.SetChrRAM(make([]byte, 0x2000))
+			m.SetChrRAM(make([]byte, bnromCHRSize))
 		} else {
 			m.SetChrRAM(nil)
 		}
 
-		m.AddWriteHook(0x8000, 0xffff, m.selectBNROM)
+		m.AddWriteHook(nes.CodeBaseAddress, math.MaxUint16, m.selectBNROM)
 	}
 
 	if err := m.Initialize(); err != nil {
@@ -106,16 +120,16 @@ func ninaBoard(cart *cartridge.Cartridge) (bool, error) {
 	if cart.NES2 != nil {
 		switch cart.NES2.Submapper {
 		case 0:
-		case 1:
+		case submapperNINA:
 			return true, nil
-		case 2:
+		case submapperBNROM:
 			return false, nil
 		default:
 			return false, fmt.Errorf("unsupported mapper 34 submapper %d", cart.NES2.Submapper)
 		}
 	}
 
-	return len(cart.CHR) > 0x2000, nil
+	return len(cart.CHR) > bnromCHRSize, nil
 }
 
 func validateCartridge(cart *cartridge.Cartridge, nina bool) error {
@@ -123,7 +137,7 @@ func validateCartridge(cart *cartridge.Cartridge, nina bool) error {
 		return fmt.Errorf("checking mirroring: %w", err)
 	}
 
-	if err := mapperbase.ValidatePowerOfTwoSize("mapper 34 PRG ROM", len(cart.PRG), 0x8000, 0x800000); err != nil {
+	if err := mapperbase.ValidatePowerOfTwoSize("mapper 34 PRG ROM", len(cart.PRG), prgWindowSize, prgROMMaximum); err != nil {
 		return fmt.Errorf("checking ROM size: %w", err)
 	}
 	if nina {
@@ -134,12 +148,12 @@ func validateCartridge(cart *cartridge.Cartridge, nina bool) error {
 }
 
 func validateNINA(cart *cartridge.Cartridge) error {
-	if err := mapperbase.ValidatePowerOfTwoSize("NINA CHR ROM", len(cart.CHR), 0x1000, 0x100000); err != nil {
+	if err := mapperbase.ValidatePowerOfTwoSize("NINA CHR ROM", len(cart.CHR), ninaCHRWindowSize, ninaCHRROMMaximum); err != nil {
 		return fmt.Errorf("checking ROM size: %w", err)
 	}
 	if cart.NES2 != nil {
 		ram := cart.NES2.RAMSizes
-		if mapperbase.PrgRAMTotal(ram) != 0x2000 || mapperbase.ChrRAMTotal(ram) != 0 {
+		if mapperbase.PrgRAMTotal(ram) != ninaPRGRAMSize || mapperbase.ChrRAMTotal(ram) != 0 {
 			return errors.New("NINA requires 8 KiB PRG RAM and no CHR RAM")
 		}
 	}
@@ -162,10 +176,10 @@ func validateBNROM(cart *cartridge.Cartridge) error {
 	}
 
 	if len(cart.CHR) == 0 {
-		if mapperbase.ChrRAMSize(cart) != 0x2000 {
+		if mapperbase.ChrRAMSize(cart) != bnromCHRSize {
 			return errors.New("BNROM requires 8 KiB CHR RAM")
 		}
-	} else if len(cart.CHR) != 0x2000 {
+	} else if len(cart.CHR) != bnromCHRSize {
 		return fmt.Errorf("unsupported BNROM CHR ROM size %d", len(cart.CHR))
 	}
 

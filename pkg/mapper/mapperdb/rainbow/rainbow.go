@@ -13,25 +13,26 @@ import (
 	"github.com/retroenv/nesgoemu/pkg/bus"
 	"github.com/retroenv/nesgoemu/pkg/feature"
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
+	"github.com/retroenv/retrogolib/arch/cpu/cpu6502"
+	"github.com/retroenv/retrogolib/arch/system/nes"
 )
 
 const (
-	patternTableEnd      = 0x2000
-	fpgaRAMSize          = 8 * 1024
-	fpgaFixedRAMOffset   = 0x1800
-	fpgaFixedStart       = 0x4800
-	fpgaFixedEnd         = 0x4FFF
-	fpgaBankedStart      = 0x5000
-	fpgaBankedEnd        = 0x5FFF
-	prgROMStart          = 0x8000
-	nmiVectorLower       = 0xFFFA
-	nmiVectorUpper       = 0xFFFB
-	irqVectorLower       = 0xFFFE
-	irqVectorUpper       = 0xFFFF
+	fpgaRAMSize        = 8 * 1024
+	fpgaFixedRAMOffset = 0x1800
+	fpgaFixedStart     = 0x4800
+	fpgaFixedEnd       = 0x4FFF
+	fpgaBankedStart    = 0x5000
+	fpgaBankedEnd      = 0x5FFF
+
+	nmiVectorUpper = cpu6502.NMIAddress + 1
+	irqVectorUpper = cpu6502.IrqAddress + 1
+
 	cartridgeRAMBankSize = 8 * 1024
 	defaultRAMBlockSize  = 32 * 1024
 	maximumPRGRAMSize    = 512 * 1024
-	platformEmulatorV    = 0x21 // Emulator platform, mapper revision 1.
+
+	platformEmulatorV = 0x21 // Emulator platform, mapper revision 1.
 )
 
 // Mapper implements the Rainbow mapper.
@@ -152,7 +153,7 @@ func New(base *mapperbase.Base) (bus.Mapper, error) {
 // Read returns a byte from the given address.
 func (m *Mapper) Read(address uint16) uint8 {
 	switch {
-	case address < patternTableEnd:
+	case address < nes.PatternTableEndExclusive:
 		return m.readCHR(address)
 
 	case address >= oamRoutineStart && address < fpgaFixedStart:
@@ -171,10 +172,10 @@ func (m *Mapper) Read(address uint16) uint8 {
 	case address >= mapperbase.PRGRAMStart && address <= mapperbase.PRGRAMEnd:
 		return m.readPRGRAM(address)
 
-	case address >= nmiVectorLower:
+	case address >= cpu6502.NMIAddress:
 		return m.readVector(address)
 
-	case address >= prgROMStart:
+	case address >= nes.CodeBaseAddress:
 		return m.readPRG(address)
 
 	default:
@@ -185,7 +186,7 @@ func (m *Mapper) Read(address uint16) uint8 {
 // Write stores a byte at the given address.
 func (m *Mapper) Write(address uint16, value uint8) {
 	switch {
-	case address < patternTableEnd:
+	case address < nes.PatternTableEndExclusive:
 		m.writeCHR(address, value)
 
 	case address >= registerStart && address <= registerEnd:
@@ -201,7 +202,7 @@ func (m *Mapper) Write(address uint16, value uint8) {
 	case address >= mapperbase.PRGRAMStart && address <= mapperbase.PRGRAMEnd:
 		m.writePRGRAM(address, value)
 
-	case address >= prgROMStart:
+	case address >= nes.CodeBaseAddress:
 		m.writePRG(address, value)
 	}
 }
@@ -213,7 +214,7 @@ func (m *Mapper) MemorySizes() (prgRAM, chrRAM int) {
 
 // Specification: https://github.com/BrokeStudio/rainbow-net/blob/master/NES/mapper-doc.md#vector-redirection-416b-416f-write-only
 func (m *Mapper) readVector(address uint16) uint8 {
-	if address == nmiVectorLower || address == nmiVectorUpper {
+	if address == cpu6502.NMIAddress || address == nmiVectorUpper {
 		m.scanIRQ.inFrame = false
 		m.scanIRQ.counter = 0
 		m.scanIRQ.pending = false
@@ -225,7 +226,7 @@ func (m *Mapper) readVector(address uint16) uint8 {
 	}
 
 	switch address {
-	case nmiVectorLower:
+	case cpu6502.NMIAddress:
 		if m.nmiVectorEnabled {
 			return byte(m.nmiAddr)
 		}
@@ -235,7 +236,7 @@ func (m *Mapper) readVector(address uint16) uint8 {
 			return byte(m.nmiAddr >> registerByteShift)
 		}
 
-	case irqVectorLower:
+	case cpu6502.IrqAddress:
 		if m.irqVectorEnabled {
 			return byte(m.irqAddr)
 		}

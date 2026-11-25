@@ -4,6 +4,7 @@ import (
 	"image"
 
 	"github.com/retroenv/nesgoemu/pkg/ppu/renderstate"
+	"github.com/retroenv/retrogolib/arch/system/nes"
 	"github.com/retroenv/retrogolib/arch/system/nes/register"
 )
 
@@ -130,7 +131,7 @@ func (p *PPU) renderLine(cycle int, fetchCycle bool) {
 	// calls renderBackground only when background or sprite rendering is enabled.
 	// https://www.nesdev.org/wiki/PPU_rendering#Cycles_257-320
 	// https://www.nesdev.org/wiki/PPU_rendering#Cycles_337-340
-	nameTableAddress := 0x2000 | (address & 0x0FFF)
+	nameTableAddress := nes.NameTableStart | (address & 0x0FFF)
 	p.memory.Read(nameTableAddress)
 }
 
@@ -196,7 +197,7 @@ func (p *PPU) renderBackdrop(cycle, scanLine int, rendering bool) {
 
 	// During forced blank, a palette address in v selects the output color.
 	// https://www.nesdev.org/wiki/PPU_rendering#Rendering_disabled
-	address := p.addressing.Address() & addressMask
+	address := p.addressing.Address() & nes.PPUAddressMask
 	if address < register.PALETTE_START {
 		address = 0
 	}

@@ -39,6 +39,7 @@ import (
 	"github.com/retroenv/nesgoemu/pkg/bus"
 	"github.com/retroenv/nesgoemu/pkg/feature"
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
+	"github.com/retroenv/retrogolib/arch/system/nes"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 	"github.com/retroenv/retrogolib/arch/system/nes/register"
 )
@@ -61,7 +62,6 @@ const (
 	dimEntryIndex  = 1
 	dimEntry1Color = 0x1C
 
-	patternTableEnd = 0x2000
 	// Hardware decodes an attribute fetch from PPU A9-A6 only. PPU A13 selects
 	// the nametable space.
 	attributeMask = 0x03C0
@@ -139,9 +139,7 @@ func New(base *mapperbase.Base) (bus.Mapper, error) {
 	if err := m.Initialize(); err != nil {
 		return nil, fmt.Errorf("initializing mapper: %w", err)
 	}
-	if err := m.SetNameTableMirrorMode(cartridge.MirrorVertical); err != nil {
-		return nil, fmt.Errorf("setting mirror mode: %w", err)
-	}
+	m.NameTableMemory().SetMirrorMode(cartridge.MirrorVertical)
 
 	for _, id := range declaredFeatures {
 		m.DeclareFeature(id)
@@ -156,7 +154,7 @@ func New(base *mapperbase.Base) (bus.Mapper, error) {
 // Read handles pattern fetches, palette registers, and PRG ROM.
 func (m *Mapper) Read(address uint16) byte {
 	switch {
-	case address < patternTableEnd:
+	case address < nes.PatternTableEndExclusive:
 		return m.readPattern(address)
 	case address >= paletteRegFirst && address <= paletteRegLast:
 		return m.paletteByte(address)
@@ -208,7 +206,7 @@ func (*Mapper) InspectPRGRAM(int) (byte, bool) {
 // It reports false for nametable bytes and palette RAM.
 func (m *Mapper) InspectMemory(address uint16) (byte, bool) {
 	switch {
-	case address < patternTableEnd:
+	case address < nes.PatternTableEndExclusive:
 		return m.InspectCHR(address), true
 	case address >= register.PALETTE_START || !isAttribute(address):
 		return 0, false
@@ -219,7 +217,7 @@ func (m *Mapper) InspectMemory(address uint16) (byte, bool) {
 
 // PPUReadMapping reports the physical byte of a pattern fetch.
 func (m *Mapper) PPUReadMapping(address uint16) (bus.GraphicsMapping, bool) {
-	if address >= patternTableEnd {
+	if address >= nes.PatternTableEndExclusive {
 		return bus.GraphicsMapping{}, false
 	}
 

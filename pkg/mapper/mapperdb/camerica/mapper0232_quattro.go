@@ -2,16 +2,24 @@ package camerica
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/retroenv/nesgoemu/internal/stateio"
 	"github.com/retroenv/nesgoemu/pkg/bus"
 	"github.com/retroenv/nesgoemu/pkg/feature"
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
+	"github.com/retroenv/retrogolib/arch/system/nes"
 )
 
 const (
 	quattroPageRegisterStart = 0xc000
-	quattroPagesPerBlock     = 4
+
+	quattroPagesPerBlock = 4
+	quattroBlockShift    = 3
+	quattroBlockMask     = 3
+	quattroPageMask      = quattroPagesPerBlock - 1
+
+	aladdinSubmapper = 1
 )
 
 // NewQuattro creates a mapper 232 board after it checks the cartridge memory layout.
@@ -26,18 +34,18 @@ func NewQuattro(base *mapperbase.Base) (bus.Mapper, error) {
 
 	m := &mapper232{
 		Base:    base,
-		aladdin: cart.NES2 != nil && cart.NES2.Submapper == 1,
+		aladdin: cart.NES2 != nil && cart.NES2.Submapper == aladdinSubmapper,
 	}
 	m.SetName("Camerica Quattro")
 	m.SetPrgRAM(nil)
-	m.SetChrRAM(make([]byte, 0x2000))
-	m.SetPrgWindowSize(0x4000)
+	m.SetChrRAM(make([]byte, chrRAMSize))
+	m.SetPrgWindowSize(prgWindowSize)
 	m.DeclareFeature(feature.PRGBanking)
 	if err := m.Initialize(); err != nil {
 		return nil, fmt.Errorf("initializing mapper: %w", err)
 	}
 	m.updateBanks()
-	m.AddWriteHook(0x8000, 0xffff, m.selectPRG)
+	m.AddWriteHook(nes.CodeBaseAddress, math.MaxUint16, m.selectPRG)
 
 	return m, nil
 }
@@ -67,7 +75,7 @@ func (m *mapper232) TransferState(archive *stateio.Archive) error {
 
 func (m *mapper232) selectPRG(address uint16, value byte) error {
 	if address < quattroPageRegisterStart {
-		m.block = int(value >> 3 & 3)
+		m.block = int(value >> quattroBlockShift & quattroBlockMask)
 		if m.aladdin {
 			// Submapper 1 is the Aladdin Deck Enhancer variant. The outer bank
 			// number has its two bits swapped.
@@ -75,7 +83,7 @@ func (m *mapper232) selectPRG(address uint16, value byte) error {
 			m.block = (m.block >> 1) | (m.block << 1 & 2)
 		}
 	} else {
-		m.page = int(value & 3)
+		m.page = int(value & quattroPageMask)
 	}
 
 	m.updateBanks()

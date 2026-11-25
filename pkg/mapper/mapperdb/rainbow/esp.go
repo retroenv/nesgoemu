@@ -221,7 +221,7 @@ func (m *Mapper) configureServerSettings(message []byte) {
 	}
 
 	m.esp.server.port = uint16(message[1])<<registerByteShift | uint16(message[2])
-	m.esp.server.hostname = append(m.esp.server.hostname[:0], message[4:]...)
+	m.esp.server.hostname = append(m.esp.server.hostname[:0], message[espServerSettingsHeaderSize:]...)
 	m.esp.server.connected = false
 }
 

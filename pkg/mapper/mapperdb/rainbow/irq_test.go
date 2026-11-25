@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/retroenv/nesgoemu/pkg/bus"
+	"github.com/retroenv/retrogolib/arch/cpu/cpu6502"
 	"github.com/retroenv/retrogolib/assert"
 )
 
@@ -111,7 +112,7 @@ func TestPCMReadAcknowledgesCycleIRQ(t *testing.T) {
 }
 
 func TestNMIVectorReadWithoutRedirection(t *testing.T) {
-	for _, address := range []uint16{nmiVectorLower, nmiVectorUpper} {
+	for _, address := range []uint16{cpu6502.NMIAddress, nmiVectorUpper} {
 		m := newTestMapper(t, 0x8000, 0x2000)
 		m.scanIRQ.pending = true
 		m.scanIRQ.inFrame = true

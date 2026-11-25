@@ -12,18 +12,17 @@ import (
 // battery, trainer, PRG RAM, or nonvolatile CHR RAM. The name is the mapper
 // name that is used in error messages.
 func validateBoard(cart *cartridge.Cartridge, name string) error {
-	size := len(cart.PRG)
-	if size < 0x10000 || size > 0x40000 || size&(size-1) != 0 {
-		return fmt.Errorf("unsupported %s PRG ROM size %d", name, size)
+	if err := mapperbase.ValidatePowerOfTwoSize(name+" PRG ROM", len(cart.PRG), prgROMMinimum, prgROMMaximum); err != nil {
+		return fmt.Errorf("checking PRG ROM size: %w", err)
 	}
-	if len(cart.CHR) != 0 || mapperbase.ChrRAMSize(cart) != 0x2000 {
+	if len(cart.CHR) != 0 || mapperbase.ChrRAMSize(cart) != chrRAMSize {
 		return fmt.Errorf("%s requires 8 KiB CHR RAM and no CHR ROM", name)
 	}
-	if cart.Mirror != cartridge.MirrorHorizontal && cart.Mirror != cartridge.MirrorVertical {
-		return fmt.Errorf("%s requires horizontal or vertical initial mirroring", name)
+	if err := mapperbase.ValidateFixedMirroring(cart, name); err != nil {
+		return fmt.Errorf("checking initial mirroring: %w", err)
 	}
-	if cart.Battery != 0 || len(cart.Trainer) != 0 {
-		return fmt.Errorf("%s battery or trainer is not supported", name)
+	if err := mapperbase.ValidateNoBatteryTrainer(cart, name); err != nil {
+		return fmt.Errorf("checking battery and trainer: %w", err)
 	}
 	if cart.NES2 != nil &&
 		(mapperbase.PrgRAMTotal(cart.NES2.RAMSizes) != 0 || cart.NES2.RAMSizes.CHRNonvolatile != 0) {

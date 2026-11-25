@@ -15,17 +15,17 @@ func TestPRGROMOffsetBankSwitching(t *testing.T) {
 		writes [][2]uint16
 		want   [4]int
 	}{
-		{name: "NROM", id: 0, want: [4]int{0, 0x2000, 0x4000, 0x6000}},
-		{name: "CNROM", id: 3, writes: [][2]uint16{{0x8000, 1}}, want: [4]int{0, 0x2000, 0x4000, 0x6000}},
-		{name: "UxROM", id: 2, writes: [][2]uint16{{0x8000, 6}}, want: [4]int{0x8000, 0xa000, 0xc000, 0xe000}},
-		{name: "UN1ROM", id: 94, writes: [][2]uint16{{0x8000, 8}}, want: [4]int{0x8000, 0xa000, 0xc000, 0xe000}},
-		{name: "UxROM AND", id: 180, writes: [][2]uint16{{0x8000, 2}}, want: [4]int{0, 0x2000, 0x8000, 0xa000}},
-		{name: "AxROM", id: 7, writes: [][2]uint16{{0x8000, 1}}, want: [4]int{0x8000, 0xa000, 0xc000, 0xe000}},
-		{name: "UNROM512", id: 30, writes: [][2]uint16{{0x8000, 2}}, want: [4]int{0x8000, 0xa000, 0xc000, 0xe000}},
-		{name: "GTROM", id: 111, writes: [][2]uint16{{0x5000, 1}}, want: [4]int{0x8000, 0xa000, 0xc000, 0xe000}},
-		{name: "MMC1", id: 1, writes: [][2]uint16{{0xe000, 0}, {0xe000, 1}, {0xe000, 0}, {0xe000, 0}, {0xe000, 0}, {0x8000, 0}, {0x8000, 0}, {0x8000, 1}, {0x8000, 1}, {0x8000, 0}}, want: [4]int{0x8000, 0xa000, 0xc000, 0xe000}},
-		{name: "MMC3 mode 0", id: 4, writes: [][2]uint16{{0x8000, 6}, {0x8001, 3}, {0x8000, 7}, {0x8001, 4}}, want: [4]int{0x6000, 0x8000, 0xc000, 0xe000}},
-		{name: "MMC3 mode 1", id: 4, writes: [][2]uint16{{0x8000, 0x46}, {0x8001, 3}, {0x8000, 0x47}, {0x8001, 4}}, want: [4]int{0xc000, 0x8000, 0x6000, 0xe000}},
+		{name: "NROM", id: testMapperNROM, want: [4]int{0, 0x2000, 0x4000, 0x6000}},
+		{name: "CNROM", id: testMapperCNROM, writes: [][2]uint16{{0x8000, 1}}, want: [4]int{0, 0x2000, 0x4000, 0x6000}},
+		{name: "UxROM", id: testMapperUxROM, writes: [][2]uint16{{0x8000, 6}}, want: [4]int{0x8000, 0xa000, 0xc000, 0xe000}},
+		{name: "UN1ROM", id: testMapperUN1ROM, writes: [][2]uint16{{0x8000, 8}}, want: [4]int{0x8000, 0xa000, 0xc000, 0xe000}},
+		{name: "UxROM AND", id: testMapperUxROMAND, writes: [][2]uint16{{0x8000, 2}}, want: [4]int{0, 0x2000, 0x8000, 0xa000}},
+		{name: "AxROM", id: testMapperAxROM, writes: [][2]uint16{{0x8000, 1}}, want: [4]int{0x8000, 0xa000, 0xc000, 0xe000}},
+		{name: "UNROM512", id: testMapperUNROM512, writes: [][2]uint16{{0x8000, 2}}, want: [4]int{0x8000, 0xa000, 0xc000, 0xe000}},
+		{name: "GTROM", id: testMapperGTROM, writes: [][2]uint16{{0x5000, 1}}, want: [4]int{0x8000, 0xa000, 0xc000, 0xe000}},
+		{name: "MMC1", id: testMapperMMC1, writes: [][2]uint16{{0xe000, 0}, {0xe000, 1}, {0xe000, 0}, {0xe000, 0}, {0xe000, 0}, {0x8000, 0}, {0x8000, 0}, {0x8000, 1}, {0x8000, 1}, {0x8000, 0}}, want: [4]int{0x8000, 0xa000, 0xc000, 0xe000}},
+		{name: "MMC3 mode 0", id: testMapperMMC3, writes: [][2]uint16{{0x8000, 6}, {0x8001, 3}, {0x8000, 7}, {0x8001, 4}}, want: [4]int{0x6000, 0x8000, 0xc000, 0xe000}},
+		{name: "MMC3 mode 1", id: testMapperMMC3, writes: [][2]uint16{{0x8000, 0x46}, {0x8001, 3}, {0x8000, 0x47}, {0x8001, 4}}, want: [4]int{0xc000, 0x8000, 0x6000, 0xe000}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

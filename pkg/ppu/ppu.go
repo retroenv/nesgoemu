@@ -20,17 +20,11 @@ import (
 	"github.com/retroenv/nesgoemu/pkg/ppu/sprites"
 	"github.com/retroenv/nesgoemu/pkg/ppu/status"
 	"github.com/retroenv/nesgoemu/pkg/ppu/tiles"
+	"github.com/retroenv/retrogolib/arch/system/nes"
 	"github.com/retroenv/retrogolib/arch/system/nes/register"
 )
 
 const FPS = 60
-
-// The PPU uses a 14-bit address space. Nametables follow the pattern tables.
-// https://www.nesdev.org/wiki/PPU_memory_map
-const (
-	addressMask     = 0x3FFF
-	patternTableEnd = 0x2000
-)
 
 // PPU represents the Picture Processing Unit.
 type PPU struct {
@@ -106,7 +100,7 @@ func (p *PPU) OAM() [256]byte {
 // address returns the mirrored physical nametable memory and ignores the mapper
 // hooks. Palette addresses return the palette entry.
 func (p *PPU) InspectMemory(address uint16) (byte, bool) {
-	address &= addressMask
+	address &= nes.PPUAddressMask
 	if address < register.PALETTE_START {
 		if inspector, ok := p.bus.Mapper.(bus.PPUMemoryInspector); ok {
 			return inspector.InspectMemory(address)
@@ -114,7 +108,7 @@ func (p *PPU) InspectMemory(address uint16) (byte, bool) {
 	}
 
 	switch {
-	case address < patternTableEnd:
+	case address < nes.PatternTableEndExclusive:
 		inspector, ok := p.bus.Mapper.(bus.MemoryInspector)
 		if !ok {
 			return 0, false
@@ -191,7 +185,7 @@ func (p *PPU) reset() {
 
 func (p *PPU) readData() byte {
 	address := p.addressing.Address()
-	address &= addressMask
+	address &= nes.PPUAddressMask
 	p.observeCHRRead(address, false)
 
 	// when reading data, the contents of an internal read buffer is returned and the buffer

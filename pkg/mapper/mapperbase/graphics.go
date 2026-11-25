@@ -25,7 +25,7 @@ func (b *Base) notifyCHRMapping(window, bank int) {
 		Kind: bus.GraphicsCHRMapping,
 		Page: bus.GraphicsPage{
 			Memory: source,
-			Index:  uint32(bank * b.chrWindowSize / 1024),
+			Index:  uint32(bank * b.chrWindowSize / bus.GraphicsPageSize),
 		},
 		Slot: uint16(window * b.chrWindowSize),
 	})

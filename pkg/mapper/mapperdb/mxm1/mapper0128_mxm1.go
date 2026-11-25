@@ -283,7 +283,7 @@ func (m *mapper128) MemorySizes() (int, int) {
 // InspectMemory reads the current graphics data without a PPU fetch.
 func (m *mapper128) InspectMemory(address uint16) (byte, bool) {
 	switch {
-	case address < patternTableEnd:
+	case address < nes.PatternTableEndExclusive:
 		return m.Base.Read(address), true
 
 	case address < register.PALETTE_START:
@@ -399,7 +399,7 @@ func (m *mapper128) nameTableOffset(address uint16) (int, bool) {
 }
 
 func (m *mapper128) streamedPattern(address uint16) bool {
-	return address < patternTableEnd && m.backgroundFetch && m.descriptor.enabled && m.slot < frameSlotCount
+	return address < nes.PatternTableEndExclusive && m.backgroundFetch && m.descriptor.enabled && m.slot < frameSlotCount
 }
 
 func (m *mapper128) backgroundPatternOffset(address uint16) int {

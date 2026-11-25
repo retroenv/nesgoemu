@@ -8,6 +8,7 @@ import (
 	"github.com/retroenv/nesgoemu/internal/stateio"
 	"github.com/retroenv/nesgoemu/pkg/bus"
 	"github.com/retroenv/retrogolib/arch/cpu/cpu6502"
+	"github.com/retroenv/retrogolib/arch/system/nes"
 )
 
 // patternPlaneOffset is the byte offset of the high tile plane.
@@ -54,7 +55,7 @@ func (t *Tiles) FetchCycle(cycle int) {
 		// Nametable fetches use coarse X/Y and nametable bits, not fine Y.
 		// https://www.nesdev.org/wiki/PPU_scrolling#Tile_and_attribute_fetching
 		vramAddress := t.addressing.Address()
-		nameTableAddress := 0x2000 | (vramAddress & 0x0FFF)
+		nameTableAddress := nes.NameTableStart | (vramAddress & 0x0FFF)
 		t.nameTable.Fetch(nameTableAddress)
 
 	case 3:

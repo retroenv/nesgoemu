@@ -14,9 +14,14 @@ PRG ROM capacity: 16K or 32K
 CHR capacity: 8K
 */
 
+const (
+	prgBankSize   = 0x4000
+	prgROMMaximum = 0x8000
+)
+
 // New returns a new NROM mapper.
 func New(base *mapperbase.Base) (bus.Mapper, error) {
-	if err := mapperbase.ValidateSize("NROM PRG ROM", len(base.Cartridge().PRG), 0x4000, 0x8000, 0x4000); err != nil {
+	if err := mapperbase.ValidateSize("NROM PRG ROM", len(base.Cartridge().PRG), prgBankSize, prgROMMaximum, prgBankSize); err != nil {
 		return nil, fmt.Errorf("checking memory size: %w", err)
 	}
 

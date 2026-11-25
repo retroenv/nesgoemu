@@ -1,5 +1,7 @@
 package mxm1
 
+import "github.com/retroenv/retrogolib/arch/system/nes"
+
 // Register names describe mapper 800 in the demo package. The readback and
 // write layouts overlap but are not symmetric, so their ranges have separate
 // names. These addresses do not apply to the older mapper-220 minimapper.
@@ -201,11 +203,9 @@ const (
 	// PPU $2000-$2FFF contains the four nametables. The last 64 bytes of each
 	// 1 KiB page are attributes. $3000-$3EFF mirrors the nametable storage, but
 	// it is outside the name-fetch range of the IRQ and phase detector.
-	patternTableEnd       = 0x2000
-	nameTableStart        = 0x2000
 	nameTableFetchEnd     = 0x3000
 	attributeTableOffset  = 0x03c0
-	attributeTableBase    = nameTableStart | attributeTableOffset
+	attributeTableBase    = nes.NameTableStart | attributeTableOffset
 	nameTableSelectMask   = 0x0c00
 	attributeRowMask      = 0x38
 	verticalRemapKeepMask = 0xfc1f // Replace coarse Y (bits 9:5). Keep the other bits.

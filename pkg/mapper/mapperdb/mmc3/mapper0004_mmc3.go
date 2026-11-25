@@ -2,11 +2,13 @@ package mmc3
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/retroenv/nesgoemu/internal/stateio"
 	"github.com/retroenv/nesgoemu/pkg/bus"
 	"github.com/retroenv/nesgoemu/pkg/feature"
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
+	"github.com/retroenv/retrogolib/arch/system/nes"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 )
 
@@ -24,9 +26,6 @@ const (
 	chrWindowSize = 0x0400 // 1K
 	prgWindowSize = 0x2000 // 8K
 
-	registerRangeLow  = 0x8000
-	registerRangeHigh = 0xFFFF
-
 	// The register address decodes bits 14, 13, and 0 of the written address.
 	registerDecodeMask = 0xE001
 
@@ -42,7 +41,25 @@ const (
 	bankSelectMask = 0x07 // $8000 bits 0-2
 	prgModeMask    = 0x40 // $8000 bit 6
 	chrModeMask    = 0x80 // $8000 bit 7
-	ppuA12Mask     = 0x1000
+
+	chrPairBankMask      = 0xfe
+	chrPairSecondBankBit = 0x01
+	prgBankMask          = 0x3f
+
+	wramEnableBit       = 0x80
+	wramWriteProtectBit = 0x40
+
+	chrPairBank0Register   = 0
+	chrPairBank1Register   = 1
+	chrSingleBank0Register = 2
+	chrSingleBank1Register = 3
+	chrSingleBank2Register = 4
+	chrSingleBank3Register = 5
+	prgBank0Register       = 6
+	prgBank1Register       = 7
+	bankRegisterCount      = 8
+
+	ppuA12Mask = 0x1000
 
 	// Hardware filters A12 with three falling edges of M2. This filter uses
 	// nine elapsed PPU dots as an approximation. CPU/PPU phase is not modeled.
@@ -71,9 +88,9 @@ func New(base *mapperbase.Base) (bus.Mapper, error) {
 
 	m.wramReadHook = m.AddReadHook(mapperbase.PRGRAMStart, mapperbase.PRGRAMEnd, m.readWram)
 	m.wramWriteHook = m.AddWriteHook(mapperbase.PRGRAMStart, mapperbase.PRGRAMEnd, m.writeWram)
-	m.AddReadHook(0, 0x1FFF, m.observePatternRead).SetProxyOnly(true)
-	m.AddWriteHook(0, 0x1FFF, m.observePatternWrite).SetProxyOnly(true)
-	m.AddWriteHook(registerRangeLow, registerRangeHigh, m.writeRegister)
+	m.AddReadHook(0, nes.PatternTableEndExclusive-1, m.observePatternRead).SetProxyOnly(true)
+	m.AddWriteHook(0, nes.PatternTableEndExclusive-1, m.observePatternWrite).SetProxyOnly(true)
+	m.AddWriteHook(nes.CodeBaseAddress, math.MaxUint16, m.writeRegister)
 
 	// $A000 bit 0: 0 selects vertical, 1 selects horizontal mirroring.
 	translation := mapperbase.MirrorModeTranslation{
@@ -84,9 +101,7 @@ func New(base *mapperbase.Base) (bus.Mapper, error) {
 	m.NameTableMemory().SetReadHook(m.observeNameTableRead)
 	m.NameTableMemory().SetWriteHook(m.observeNameTableWrite)
 
-	if err := m.applyPowerOnState(); err != nil {
-		return nil, err
-	}
+	m.applyPowerOnState()
 
 	return m, nil
 }
@@ -94,7 +109,7 @@ func New(base *mapperbase.Base) (bus.Mapper, error) {
 type mapperMMC3 struct {
 	*mapperbase.Base
 
-	registers  [8]byte
+	registers  [bankRegisterCount]byte
 	bankSelect byte
 	prgMode    bool
 	chrMode    bool
@@ -168,8 +183,8 @@ func (m *mapperMMC3) writeRegister(address uint16, value uint8) error {
 
 	case regPrgRAM:
 		// Bit 7 enables the 8K PRG RAM, bit 6 protects it from writes.
-		m.wramEnabled = value&0x80 != 0
-		m.wramWriteProtect = value&0x40 != 0
+		m.wramEnabled = value&wramEnableBit != 0
+		m.wramWriteProtect = value&wramWriteProtectBit != 0
 		m.wramReadHook.SetProxyOnly(m.wramEnabled)
 		m.wramWriteHook.SetProxyOnly(m.wramEnabled && !m.wramWriteProtect)
 
@@ -199,15 +214,15 @@ func (m *mapperMMC3) writeBankRegister(value uint8) {
 	// Registers 0 and 1 select 2 KiB CHR banks, which can only be even
 	// numbered, so their low bit is ignored.
 	// https://www.nesdev.org/wiki/MMC3#CHR_Banks
-	if m.bankSelect <= 1 {
-		value &= 0xFE
-	} else if m.bankSelect >= 6 {
-		value &= 0x3F
+	if m.bankSelect <= chrPairBank1Register {
+		value &= chrPairBankMask
+	} else if m.bankSelect >= prgBank0Register {
+		value &= prgBankMask
 	}
 
 	m.registers[m.bankSelect] = value
 
-	if m.bankSelect <= 5 {
+	if m.bankSelect <= chrSingleBank3Register {
 		m.MarkFeature(feature.CHRBanking)
 		m.applyCHRMapping()
 		return
@@ -221,11 +236,11 @@ func (m *mapperMMC3) applyPRGMapping() {
 	if m.prgMode {
 		// $8000: bank fixed to the second-last bank.
 		m.SetPrgWindow(0, -2)
-		m.SetPrgWindow(1, int(m.registers[7]))
-		m.SetPrgWindow(2, int(m.registers[6]))
+		m.SetPrgWindow(1, int(m.registers[prgBank1Register]))
+		m.SetPrgWindow(2, int(m.registers[prgBank0Register]))
 	} else {
-		m.SetPrgWindow(0, int(m.registers[6]))
-		m.SetPrgWindow(1, int(m.registers[7]))
+		m.SetPrgWindow(0, int(m.registers[prgBank0Register]))
+		m.SetPrgWindow(1, int(m.registers[prgBank1Register]))
 		m.SetPrgWindow(2, -2)
 	}
 
@@ -240,24 +255,24 @@ func (m *mapperMMC3) applyPRGMapping() {
 func (m *mapperMMC3) applyCHRMapping() {
 	switch m.chrMode {
 	case false:
-		m.SetChrWindow(0, int(m.registers[0]&0xFE))
-		m.SetChrWindow(1, int(m.registers[0]|0x01))
-		m.SetChrWindow(2, int(m.registers[1]&0xFE))
-		m.SetChrWindow(3, int(m.registers[1]|0x01))
-		m.SetChrWindow(4, int(m.registers[2]))
-		m.SetChrWindow(5, int(m.registers[3]))
-		m.SetChrWindow(6, int(m.registers[4]))
-		m.SetChrWindow(7, int(m.registers[5]))
+		m.SetChrWindow(0, int(m.registers[chrPairBank0Register]&chrPairBankMask))
+		m.SetChrWindow(1, int(m.registers[chrPairBank0Register]|chrPairSecondBankBit))
+		m.SetChrWindow(2, int(m.registers[chrPairBank1Register]&chrPairBankMask))
+		m.SetChrWindow(3, int(m.registers[chrPairBank1Register]|chrPairSecondBankBit))
+		m.SetChrWindow(4, int(m.registers[chrSingleBank0Register]))
+		m.SetChrWindow(5, int(m.registers[chrSingleBank1Register]))
+		m.SetChrWindow(6, int(m.registers[chrSingleBank2Register]))
+		m.SetChrWindow(7, int(m.registers[chrSingleBank3Register]))
 
 	default:
-		m.SetChrWindow(0, int(m.registers[2]))
-		m.SetChrWindow(1, int(m.registers[3]))
-		m.SetChrWindow(2, int(m.registers[4]))
-		m.SetChrWindow(3, int(m.registers[5]))
-		m.SetChrWindow(4, int(m.registers[0]&0xFE))
-		m.SetChrWindow(5, int(m.registers[0]|0x01))
-		m.SetChrWindow(6, int(m.registers[1]&0xFE))
-		m.SetChrWindow(7, int(m.registers[1]|0x01))
+		m.SetChrWindow(0, int(m.registers[chrSingleBank0Register]))
+		m.SetChrWindow(1, int(m.registers[chrSingleBank1Register]))
+		m.SetChrWindow(2, int(m.registers[chrSingleBank2Register]))
+		m.SetChrWindow(3, int(m.registers[chrSingleBank3Register]))
+		m.SetChrWindow(4, int(m.registers[chrPairBank0Register]&chrPairBankMask))
+		m.SetChrWindow(5, int(m.registers[chrPairBank0Register]|chrPairSecondBankBit))
+		m.SetChrWindow(6, int(m.registers[chrPairBank1Register]&chrPairBankMask))
+		m.SetChrWindow(7, int(m.registers[chrPairBank1Register]|chrPairSecondBankBit))
 	}
 }
 
@@ -335,11 +350,11 @@ func (m *mapperMMC3) writeWram(_ uint16, _ uint8) error {
 // reset vector must point into $E000-$FFFF, and code must initialize the
 // mapper before it leaves that bank.
 // https://www.nesdev.org/wiki/MMC3#PRG_Banks
-func (m *mapperMMC3) applyPowerOnState() error {
+func (m *mapperMMC3) applyPowerOnState() {
 	m.bankSelect = 0
 	m.prgMode = false
 	m.chrMode = false
-	m.registers = [8]byte{}
+	m.registers = [bankRegisterCount]byte{}
 
 	m.wramEnabled = false
 	m.wramWriteProtect = false
@@ -359,9 +374,5 @@ func (m *mapperMMC3) applyPowerOnState() error {
 		mode = cartridge.Mirror4
 	}
 
-	if err := m.SetNameTableMirrorMode(mode); err != nil {
-		return fmt.Errorf("setting MMC3 mirror mode: %w", err)
-	}
-
-	return nil
+	m.NameTableMemory().SetMirrorMode(mode)
 }

@@ -243,7 +243,7 @@ func TestPPUBankingAndBankedWrites(t *testing.T) {
 		nametableSlot = 2
 		nametableBank = 0x21
 		tileOffset    = 5
-		nameAddress   = nameTableStart + nametableSlot*ntBankSize + tileOffset
+		nameAddress   = nes.NameTableStart + nametableSlot*ntBankSize + tileOffset
 		readOffset    = nametableBank*ntBankSize + tileOffset
 		uploadBank    = 0xa
 		uploadOffset  = uploadBank*(64*1024) + nameAddress
@@ -325,7 +325,7 @@ func TestBlockCopySourcesAndForwardOverlap(t *testing.T) {
 func TestDescriptorSourcesAndEightScanlinePalettes(t *testing.T) {
 	const (
 		tileColumn           = 5
-		nameAddress          = nameTableStart + tileColumn
+		nameAddress          = nes.NameTableStart + tileColumn
 		tileDescriptorOffset = tileColumn * descriptorSize
 		patternBank          = 3
 		lowPlaneAddress      = 0x420
@@ -399,7 +399,7 @@ func TestMetatilesAndAnimationIndirection(t *testing.T) {
 		m.Write(regPlaneMode, planeBackgroundBit)
 		m.Write(regPlaneSelect, planeSet)
 
-		assert.Equal(t, byte(0), b.NameTable.Read(nameTableStart+tileColumn))
+		assert.Equal(t, byte(0), b.NameTable.Read(nes.NameTableStart+tileColumn))
 		assert.Equal(t, []byte{0xaa, 0xff}[planeSet], b.NameTable.Read(attributeTableBase))
 		assert.Equal(t, []byte{0x10, 0x30}[planeSet], m.Read(lowPlaneAddress))
 		assert.Equal(t, []byte{0x20, 0x40}[planeSet], m.Read(highPlaneAddress))
@@ -431,7 +431,7 @@ func TestVerticalRemapAndReadInhibit(t *testing.T) {
 		rowsPerPage         = 256
 		remappedRow         = 57
 		tileColumn          = 5
-		nameAddress         = nameTableStart + tileColumn
+		nameAddress         = nes.NameTableStart + tileColumn
 		remappedNameAddress = nameAddress + (remappedRow/tileHeight)*tilesPerRow
 	)
 	m, b := newTestMapper(t)
@@ -486,14 +486,14 @@ func TestIRQFetchDetectorAcknowledgeAndNMIVector(t *testing.T) {
 	m.Write(regIRQTarget, 1)
 
 	for range 3 {
-		_ = b.NameTable.Read(nameTableStart)
+		_ = b.NameTable.Read(nes.NameTableStart)
 	}
 
 	assert.Equal(t, byte(0), m.Read(regScanline))
 
-	_ = b.NameTable.Read(nameTableStart + 1)
+	_ = b.NameTable.Read(nes.NameTableStart + 1)
 	for range 3 {
-		_ = b.NameTable.Read(nameTableStart)
+		_ = b.NameTable.Read(nes.NameTableStart)
 	}
 
 	assert.True(t, cpu.active)
@@ -512,7 +512,7 @@ func TestIRQFetchDetectorAcknowledgeAndNMIVector(t *testing.T) {
 	// Inspector queries do not start another scanline.
 	state := m.registers
 	_ = m.InspectCHR(0)
-	_, _ = m.InspectMemory(nameTableStart)
+	_, _ = m.InspectMemory(nes.NameTableStart)
 	assert.Equal(t, state, m.registers)
 }
 
@@ -551,7 +551,7 @@ func TestSpriteSlotDummyAttributeFetch(t *testing.T) {
 	// The 32 visible tiles each supply a name, attribute and two patterns.
 	for tile := range tilesPerRow {
 		m.TickPPU(renderstate.FirstVisibleDot+tile*dotsPerTile, visibleScanline, true)
-		_ = b.NameTable.Read(nameTableStart + uint16(tile))
+		_ = b.NameTable.Read(nes.NameTableStart + uint16(tile))
 		_ = b.NameTable.Read(attributeTableBase)
 		_ = m.Read(0)
 		_ = m.Read(tileHeight)
@@ -563,9 +563,9 @@ func TestSpriteSlotDummyAttributeFetch(t *testing.T) {
 	// an attribute address in the second read. It counts only one name read.
 	for slot := range spriteSlots {
 		m.TickPPU(firstSpriteFetchDot+dotsPerTile*slot, visibleScanline, true)
-		_ = b.NameTable.Read(nameTableStart)
+		_ = b.NameTable.Read(nes.NameTableStart)
 		m.TickPPU(dummyAttributeDot+dotsPerTile*slot, visibleScanline, true)
-		_ = b.NameTable.Read(nameTableStart)
+		_ = b.NameTable.Read(nes.NameTableStart)
 		assert.Equal(t, uint16(attributeTableBase), m.fetch.lastAddress)
 		m.TickPPU(firstSpritePatternDot+dotsPerTile*slot, visibleScanline, true)
 		_ = m.Read(0)
@@ -576,7 +576,7 @@ func TestSpriteSlotDummyAttributeFetch(t *testing.T) {
 
 	for tile := range prefetchTiles {
 		m.TickPPU(renderstate.FirstBackgroundPrefetchDot+tile*dotsPerTile, visibleScanline, true)
-		_ = b.NameTable.Read(nameTableStart + uint16(tile))
+		_ = b.NameTable.Read(nes.NameTableStart + uint16(tile))
 		_ = b.NameTable.Read(attributeTableBase)
 		_ = m.Read(0)
 		_ = m.Read(tileHeight)
@@ -585,8 +585,8 @@ func TestSpriteSlotDummyAttributeFetch(t *testing.T) {
 	assert.Equal(t, uint32(42), m.fetch.nameReads)
 
 	m.TickPPU(dummyAttributeDot, renderstate.VisibleScanlines+1, true)
-	_ = b.NameTable.Read(nameTableStart)
-	assert.Equal(t, uint16(nameTableStart), m.fetch.lastAddress)
+	_ = b.NameTable.Read(nes.NameTableStart)
+	assert.Equal(t, uint16(nes.NameTableStart), m.fetch.lastAddress)
 }
 
 func TestPhysicalMappingInspection(t *testing.T) {

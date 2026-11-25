@@ -11,7 +11,7 @@ import (
 
 func TestNewRejectsInvalidPRGBanks(t *testing.T) {
 	// Invalid PRG sizes must return an error before bank setup or memory access.
-	for _, id := range []uint16{0, 1, 2, 3, 7, 30, 94, 111, 180} {
+	for _, id := range []uint16{testMapperNROM, testMapperMMC1, testMapperUxROM, testMapperCNROM, testMapperAxROM, testMapperUNROM512, testMapperUN1ROM, testMapperGTROM, testMapperUxROMAND} {
 		for _, size := range []int{0, 0x2000, 0x8001} {
 			t.Run(fmt.Sprintf("mapper_%d_size_%d", id, size), func(t *testing.T) {
 				cart := &cartridge.Cartridge{
@@ -29,9 +29,9 @@ func TestNewRejectsInvalidPRGBanks(t *testing.T) {
 func TestNewRejectsGTROMWithCHRROM(t *testing.T) {
 	// GTROM used to accept CHR ROM and modify it through the CHR RAM write path.
 	cart := &cartridge.Cartridge{
-		Mapper: 111,
-		PRG:    make([]byte, 0x8000),
-		CHR:    make([]byte, 0x2000),
+		Mapper: testMapperGTROM,
+		PRG:    make([]byte, testDefaultPRGROMSize),
+		CHR:    make([]byte, testDefaultCHRROMSize),
 	}
 	m, err := New(mappertest.NewBus(cart))
 	assert.Error(t, err)
@@ -39,10 +39,10 @@ func TestNewRejectsGTROMWithCHRROM(t *testing.T) {
 }
 
 func TestNewRejectsInvalidRAMMetadata(t *testing.T) {
-	for _, id := range []uint16{0, 4, 682, 800} {
+	for _, id := range []uint16{testMapperNROM, testMapperMMC3, testMapperRainbow, testMapperMXM} {
 		cart := &cartridge.Cartridge{
 			Mapper: id,
-			PRG:    make([]byte, 0x8000),
+			PRG:    make([]byte, testDefaultPRGROMSize),
 			NES2: &cartridge.NES2Metadata{
 				RAMSizes: cartridge.RAMSizes{
 					PRGVolatile: -1,

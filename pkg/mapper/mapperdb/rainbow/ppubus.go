@@ -1,6 +1,9 @@
 package rainbow
 
-import "github.com/retroenv/nesgoemu/pkg/feature"
+import (
+	"github.com/retroenv/nesgoemu/pkg/feature"
+	"github.com/retroenv/retrogolib/arch/system/nes"
+)
 
 const (
 	ppuBusRepeatedReadCount    = 2
@@ -27,7 +30,7 @@ func (m *Mapper) observePPURead(address uint16) {
 
 	m.MarkFeature(feature.PPUBusTiming)
 	m.ppuBus.reads++
-	if address >= ntBaseAddress && address < ntBaseAddress+ntMirrorSize && address == m.ppuBus.lastAddress {
+	if address >= nes.NameTableStart && address < nes.NameTableStart+ntMirrorSize && address == m.ppuBus.lastAddress {
 		m.ppuBus.repeated++
 		if m.ppuBus.repeated == ppuBusRepeatedReadCount {
 			m.startBusScanline()
@@ -43,7 +46,7 @@ func (m *Mapper) observePPURead(address uint16) {
 
 	m.ppuBus.idle = ppuBusIdleClockCount
 	m.ppuBus.lastAddress = address
-	if m.scanIRQ.inFrame && address >= ntBaseAddress && address < ntBaseAddress+ntMirrorSize &&
+	if m.scanIRQ.inFrame && address >= nes.NameTableStart && address < nes.NameTableStart+ntMirrorSize &&
 		address&(ntSlotSize-1) < ntAttrOffset {
 
 		m.ppuBus.tiles++

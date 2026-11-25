@@ -8,6 +8,15 @@ import (
 	"github.com/retroenv/retrogolib/assert"
 )
 
+const (
+	benchmarkCamericaPRGROMSize = 0x20000
+	benchmarkNINAPRGROMSize     = 0x8000
+	benchmarkNINACHRROMSize     = 0x4000
+	benchmarkMMC3PRGROMSize     = 0x8000
+	benchmarkMMC3PRGRAMSize     = 0x2000
+	benchmarkMMC3CHRRAMSize     = 0x2000
+)
+
 func BenchmarkConstructionRAM(b *testing.B) {
 	for _, test := range []struct {
 		name    string
@@ -17,19 +26,19 @@ func BenchmarkConstructionRAM(b *testing.B) {
 	}{
 		{
 			name:    "Camerica",
-			id:      71,
-			prgSize: 0x20000,
+			id:      testMapperCamerica,
+			prgSize: benchmarkCamericaPRGROMSize,
 		},
 		{
 			name:    "NINA-001",
-			id:      34,
-			prgSize: 0x8000,
-			chrSize: 0x4000,
+			id:      testMapperBNROM,
+			prgSize: benchmarkNINAPRGROMSize,
+			chrSize: benchmarkNINACHRROMSize,
 		},
 		{
 			name:    "MMC3",
-			id:      4,
-			prgSize: 0x8000,
+			id:      testMapperMMC3,
+			prgSize: benchmarkMMC3PRGROMSize,
 		},
 	} {
 		b.Run(test.name, func(b *testing.B) {
@@ -39,11 +48,11 @@ func BenchmarkConstructionRAM(b *testing.B) {
 				CHR:    make([]byte, test.chrSize),
 				Mirror: cartridge.MirrorHorizontal,
 			}
-			if test.id == 4 {
+			if test.id == testMapperMMC3 {
 				cart.NES2 = &cartridge.NES2Metadata{
 					RAMSizes: cartridge.RAMSizes{
-						PRGVolatile: 0x2000,
-						CHRVolatile: 0x2000,
+						PRGVolatile: benchmarkMMC3PRGRAMSize,
+						CHRVolatile: benchmarkMMC3CHRRAMSize,
 					},
 				}
 			}

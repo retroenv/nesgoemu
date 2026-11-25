@@ -1,6 +1,9 @@
 package ppu
 
-import "github.com/retroenv/nesgoemu/pkg/bus"
+import (
+	"github.com/retroenv/nesgoemu/pkg/bus"
+	"github.com/retroenv/retrogolib/arch/system/nes"
+)
 
 // Snapshot is a side-effect-free copy of the PPU register and render state.
 // Read it while emulation is stopped, or from the emulation goroutine.
@@ -53,8 +56,8 @@ func (p *PPU) PeekVRAM(address uint16) (byte, bool) {
 // peekPatternTable reads a pattern table byte from CHR-ROM through the mapper
 // read mapping.
 func (p *PPU) peekPatternTable(address uint16) (byte, bool) {
-	address &= addressMask
-	if address >= patternTableEnd {
+	address &= nes.PPUAddressMask
+	if address >= nes.PatternTableEndExclusive {
 		return 0, false
 	}
 	inspector, ok := p.bus.Mapper.(bus.PPUMappingInspector)

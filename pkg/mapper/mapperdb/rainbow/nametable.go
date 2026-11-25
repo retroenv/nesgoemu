@@ -1,6 +1,10 @@
 package rainbow
 
-import "github.com/retroenv/nesgoemu/pkg/feature"
+import (
+	"github.com/retroenv/nesgoemu/pkg/feature"
+	"github.com/retroenv/retrogolib/arch/system/nes"
+	"github.com/retroenv/retrogolib/arch/system/nes/register"
+)
 
 // Nametable specification: https://github.com/BrokeStudio/rainbow-net/blob/master/NES/mapper-doc.md#nametables-control-412a-412d-412f-write-only
 // Window specification: https://github.com/BrokeStudio/rainbow-net/blob/master/NES/mapper-doc.md#window-split-mode-4170-4175
@@ -11,8 +15,6 @@ const (
 	ntSourceFPGARAM = 2 // FPGA-RAM, bank[1:0] selects 1 KB page
 	ntSourceCHRROM  = 3 // CHR-ROM, bank[7:0] selects 1 KB page
 
-	ntBaseAddress    = 0x2000 // start of PPU nametable space
-	ntEndAddress     = 0x3F00 // start of PPU palette space
 	ntMirrorSize     = 0x1000
 	ntSlotSize       = 0x400 // 1 KB per nametable slot
 	ntSlotShift      = 10
@@ -58,15 +60,15 @@ const (
 // It returns (value, true) if the Rainbow mapper handles this read;
 // (0, false) to fall through to the default CIRAM read.
 func (m *Mapper) readNametable(address uint16) (uint8, bool) {
-	if address < ntBaseAddress {
+	if address < nes.NameTableStart {
 		return 0, false
 	}
 
 	m.observePPURead(address)
 
 	// Normalize $3000–$3EFF mirrors down to $2000–$2EFF.
-	normalized := ntBaseAddress + (address-ntBaseAddress)%ntMirrorSize
-	offset := normalized - ntBaseAddress
+	normalized := nes.NameTableStart + (address-nes.NameTableStart)%ntMirrorSize
+	offset := normalized - nes.NameTableStart
 	slot := int(offset >> ntSlotShift)      // 0–3
 	slotOffset := offset & (ntSlotSize - 1) // 0x000–0x3FF
 
@@ -81,11 +83,11 @@ func (m *Mapper) readNametable(address uint16) (uint8, bool) {
 
 // writeNametable writes to the selected memory. CHR-ROM writes are ignored.
 func (m *Mapper) writeNametable(address uint16, value byte) bool {
-	if address < ntBaseAddress || address >= ntEndAddress {
+	if address < nes.NameTableStart || address >= register.PALETTE_START {
 		return false
 	}
 
-	offset := (address - ntBaseAddress) % ntMirrorSize
+	offset := (address - nes.NameTableStart) % ntMirrorSize
 	slot := offset / ntSlotSize
 	bank := m.ntBank[slot]
 	offset %= ntSlotSize

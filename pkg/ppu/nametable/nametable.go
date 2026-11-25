@@ -12,7 +12,6 @@ import (
 )
 
 const (
-	baseAddress = 0x2000 // $2000 contains the nametables
 	// VramSize is the size of the nametable buffer.
 	// It is normally mapped to the 2kB NES internal VRAM, providing 2 nametables with a mirroring configuration
 	// controlled by the cartridge, but it can be partly or fully remapped to RAM on the cartridge,
@@ -205,7 +204,7 @@ func (n *NameTable) UsesVRAM(data []byte) bool {
 }
 
 func (n *NameTable) mirroredNameTableAddressToBase(address uint16) uint16 {
-	address = (address - baseAddress) % (nes.NameTableCount * nes.NameTableSize)
+	address = (address - nes.NameTableStart) % (nes.NameTableCount * nes.NameTableSize)
 	table := address / nes.NameTableSize
 	offset := address % nes.NameTableSize
 

@@ -3,10 +3,12 @@ package unrom512
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/retroenv/nesgoemu/pkg/bus"
 	"github.com/retroenv/nesgoemu/pkg/feature"
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
+	"github.com/retroenv/retrogolib/arch/system/nes"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 )
 
@@ -21,11 +23,18 @@ Reference: https://www.nesdev.org/wiki/UNROM_512
 */
 
 const (
-	registerStart      = 0x8000
-	flashRegisterStart = 0xC000 // Boards with flash use $8000-$BFFF for flash writes.
-	registerEnd        = 0xFFFF
+	chrRAMSize = 0x8000
 
-	submapperSwitchable = 3 // Bit 7 selects horizontal or vertical mirroring.
+	prgBankMask      = 0x1f
+	chrBankShift     = 5
+	chrBankMask      = 0x03
+	mirroringBankBit = 0x80
+
+	flashRegisterStart = 0xC000 // Boards with flash use $8000-$BFFF for flash writes.
+
+	submapperNoBusConflicts = 1
+	submapperSwitchable     = 3 // Bit 7 selects horizontal or vertical mirroring.
+	submapperLEDs           = 4
 )
 
 // New returns a new UNROM-512 mapper.
@@ -36,7 +45,7 @@ func New(base *mapperbase.Base) (bus.Mapper, error) {
 	m.SetName("UNROM 512")
 	m.DeclareFeature(feature.CHRBanking)
 	m.DeclareFeature(feature.PRGBanking)
-	m.SetChrRAM(make([]byte, 0x8000)) // 32K
+	m.SetChrRAM(make([]byte, chrRAMSize))
 	if err := m.Initialize(); err != nil {
 		return nil, fmt.Errorf("initializing mapper: %w", err)
 	}
@@ -66,16 +75,16 @@ func New(base *mapperbase.Base) (bus.Mapper, error) {
 		mirrorMode = cartridge.MirrorSingle0
 	}
 
-	if err := m.SetNameTableMirrorMode(mirrorMode); err != nil {
-		return nil, fmt.Errorf("setting UNROM-512 mirror mode: %w", err)
-	}
+	m.NameTableMemory().SetMirrorMode(mirrorMode)
 
-	start := uint16(registerStart)
-	if cart.Battery != 0 || submapper == 1 || submapper == 3 || submapper == 4 {
+	start := uint16(nes.CodeBaseAddress)
+	if cart.Battery != 0 || submapper == submapperNoBusConflicts ||
+		submapper == submapperSwitchable || submapper == submapperLEDs {
+
 		start = flashRegisterStart
 	}
 
-	m.AddWriteHook(start, registerEnd, m.setBanks)
+	m.AddWriteHook(start, math.MaxUint16, m.setBanks)
 
 	m.SetPrgWindow(1, -1)
 
@@ -107,13 +116,13 @@ func (m *mapperUNROM512) setBanks(_ uint16, value uint8) error {
 	m.MarkFeature(feature.PRGBanking)
 	m.MarkFeature(feature.CHRBanking)
 
-	prgBank := value & 0b0001_1111
+	prgBank := value & prgBankMask
 	m.SetPrgWindow(0, int(prgBank)) // select 16 KB PRG ROM bank at $8000
 
-	chrBank := int(value>>5) & 0b0000_0011
+	chrBank := int(value>>chrBankShift) & chrBankMask
 	m.SetChrWindow(0, chrBank)
 
-	upper := value&0x80 != 0
+	upper := value&mirroringBankBit != 0
 	var mirrorMode cartridge.MirrorMode
 
 	switch m.mirroring {
@@ -135,9 +144,7 @@ func (m *mapperUNROM512) setBanks(_ uint16, value uint8) error {
 		return nil
 	}
 
-	if err := m.SetNameTableMirrorMode(mirrorMode); err != nil {
-		return fmt.Errorf("setting UNROM-512 mirror mode: %w", err)
-	}
+	m.NameTableMemory().SetMirrorMode(mirrorMode)
 
 	return nil
 }

@@ -1,11 +1,14 @@
 package rainbow
 
-import "github.com/retroenv/nesgoemu/pkg/bus"
+import (
+	"github.com/retroenv/nesgoemu/pkg/bus"
+	"github.com/retroenv/retrogolib/arch/system/nes"
+)
 
 // PPUReadMapping returns the physical byte for the current graphics context.
 // Flash identification data and absent memory return false.
 func (m *Mapper) PPUReadMapping(address uint16) (bus.GraphicsMapping, bool) {
-	if address >= patternTableEnd {
+	if address >= nes.PatternTableEndExclusive {
 		return bus.GraphicsMapping{}, false
 	}
 
@@ -25,7 +28,7 @@ func (m *Mapper) PPUReadMapping(address uint16) (bus.GraphicsMapping, bool) {
 // PPUWriteMapping returns the physical RAM or flash target.
 // Graphics read modes do not change the write mapping.
 func (m *Mapper) PPUWriteMapping(address uint16) (bus.GraphicsMapping, bool) {
-	if address >= patternTableEnd {
+	if address >= nes.PatternTableEndExclusive {
 		return bus.GraphicsMapping{}, false
 	}
 

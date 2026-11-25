@@ -1,5 +1,8 @@
 package bus
 
+// GraphicsPageSize is the size of a graphics page in bytes.
+const GraphicsPageSize = 1024
+
 // GraphicsEventKind identifies a mapper graphics operation.
 type GraphicsEventKind uint8
 

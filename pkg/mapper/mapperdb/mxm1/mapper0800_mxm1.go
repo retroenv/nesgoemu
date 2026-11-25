@@ -30,6 +30,7 @@ import (
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
 	"github.com/retroenv/nesgoemu/pkg/ppu/renderstate"
 	"github.com/retroenv/retrogolib/arch/cpu/cpu6502"
+	"github.com/retroenv/retrogolib/arch/system/nes"
 	"github.com/retroenv/retrogolib/arch/system/nes/register"
 )
 
@@ -225,7 +226,7 @@ func (m *Mapper) TickPPU(cycle, scanLine int, rendering bool) {
 // nametable hook, so they are not confused with the CPU register space at
 // $2000.
 func (m *Mapper) Read(address uint16) byte {
-	if address < patternTableEnd {
+	if address < nes.PatternTableEndExclusive {
 		return m.readVRAM(address)
 	}
 
@@ -260,7 +261,7 @@ func (m *Mapper) Read(address uint16) byte {
 
 // Write handles mapper registers, mapped cartridge RAM, and pattern writes.
 func (m *Mapper) Write(address uint16, value byte) {
-	if address < patternTableEnd {
+	if address < nes.PatternTableEndExclusive {
 		m.writeVRAM(address, value)
 		return
 	}

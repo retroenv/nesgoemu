@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/retroenv/nesgoemu/pkg/bus"
+	"github.com/retroenv/retrogolib/arch/cpu/cpu6502"
 	"github.com/retroenv/retrogolib/assert"
 )
 
@@ -60,7 +61,7 @@ func TestPRGROMOffsetVectorRegisters(t *testing.T) {
 	m.scanIRQ.counter = 9
 	before := *m
 
-	for _, address := range []uint16{nmiVectorLower, nmiVectorUpper, irqVectorLower, irqVectorUpper} {
+	for _, address := range []uint16{cpu6502.NMIAddress, nmiVectorUpper, cpu6502.IrqAddress, irqVectorUpper} {
 		_, ok := m.PRGROMOffset(address)
 		assert.False(t, ok)
 	}
@@ -76,7 +77,7 @@ func TestPRGROMOffsetVectorRegisters(t *testing.T) {
 	m.nmiVectorEnabled = false
 	m.irqVectorEnabled = false
 	before = *m
-	for _, address := range []uint16{nmiVectorLower, nmiVectorUpper, irqVectorLower, irqVectorUpper} {
+	for _, address := range []uint16{cpu6502.NMIAddress, nmiVectorUpper, cpu6502.IrqAddress, irqVectorUpper} {
 		physical, ok := m.PRGROMOffset(address)
 		assert.True(t, ok)
 		assert.Equal(t, int(address-0x8000), physical)

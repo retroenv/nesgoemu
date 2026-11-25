@@ -4,6 +4,7 @@ import (
 	"github.com/retroenv/nesgoemu/pkg/bus"
 	"github.com/retroenv/nesgoemu/pkg/feature"
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
+	"github.com/retroenv/retrogolib/arch/system/nes"
 	"github.com/retroenv/retrogolib/arch/system/nes/register"
 )
 
@@ -25,7 +26,7 @@ var metatileTableBases = [...]int{
 // Only tile-name reads increment nameReads. Attribute and pattern reads update
 // the repeated-address detector.
 func (m *Mapper) observeFetch(address uint16) bool {
-	name := address >= nameTableStart && address < nameTableFetchEnd && address&ntOffsetMask < attributeTableOffset
+	name := address >= nes.NameTableStart && address < nameTableFetchEnd && address&ntOffsetMask < attributeTableOffset
 	if name {
 		m.fetch.nameReads++
 		if !m.fetch.inFrame && m.fetch.frameStart {
@@ -65,7 +66,7 @@ func (m *Mapper) observeFetch(address uint16) bool {
 // two reads at the end of a scanline and the first tile read after them make
 // this sequence. The detector does not use a PPU scanline number.
 func (m *Mapper) trackRepeated(address uint16) {
-	if address < patternTableEnd || address >= nameTableFetchEnd || address != m.fetch.lastAddress {
+	if address < nes.PatternTableEndExclusive || address >= nameTableFetchEnd || address != m.fetch.lastAddress {
 		m.fetch.repeatCount = 0
 		return
 	}
@@ -94,7 +95,7 @@ func (m *Mapper) trackRepeated(address uint16) {
 }
 
 func (m *Mapper) readVRAM(address uint16) byte {
-	if m.fetch.dummyAttribute && address >= nameTableStart && address < nameTableFetchEnd {
+	if m.fetch.dummyAttribute && address >= nes.NameTableStart && address < nameTableFetchEnd {
 		address = attributeTableBase | address&nameTableSelectMask | address>>4&attributeRowMask | address>>2&fineYMask
 	}
 
@@ -320,7 +321,7 @@ func (m *Mapper) ramByte(offset int) byte {
 }
 
 func (m *Mapper) mappedVRAM(address uint16) byte {
-	if address < patternTableEnd {
+	if address < nes.PatternTableEndExclusive {
 		w := m.ppuWindows[address/chrBankSize]
 		return readWrapped(w.data, w.offset+int(address&chrOffsetMask), byte(address))
 	}
@@ -352,7 +353,7 @@ func (m *Mapper) writeVRAM(address uint16, value byte) {
 		return
 	}
 
-	if address < patternTableEnd {
+	if address < nes.PatternTableEndExclusive {
 		w := m.ppuWindows[address/chrBankSize]
 		if w.writable {
 			writeWrapped(w.data, w.offset+int(address&chrOffsetMask), value)
@@ -363,6 +364,6 @@ func (m *Mapper) writeVRAM(address uint16, value byte) {
 
 	// Write the default four-screen and mirroring data directly. Do not use
 	// the nametable hook of this mapper.
-	slot := (address - nameTableStart) / ntBankSize % ntWindowCount
+	slot := (address - nes.NameTableStart) / ntBankSize % ntWindowCount
 	m.NameTableMemory().Data()[slot][address&ntOffsetMask] = value
 }

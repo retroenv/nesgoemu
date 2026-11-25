@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/retroenv/nesgoemu/internal/stateio"
+	"github.com/retroenv/retrogolib/arch/system/nes"
 )
 
 type addressing interface {
@@ -55,7 +56,7 @@ func New(addressing addressing, nmi nmi, sprites sprites, tiles tiles) *Control 
 func (c *Control) Set(value byte) {
 	c.value = value
 
-	c.BaseNameTable = (uint16(value&CTRL_NT_2C00) << 10) + 0x2000
+	c.BaseNameTable = (uint16(value&CTRL_NT_2C00) << 10) + nes.NameTableStart
 
 	increment := (value & CTRL_INC_32) >> 2
 	if increment == 0 {

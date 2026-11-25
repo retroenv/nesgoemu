@@ -3,6 +3,7 @@ package rainbow
 import (
 	"testing"
 
+	"github.com/retroenv/retrogolib/arch/cpu/cpu6502"
 	"github.com/retroenv/retrogolib/assert"
 )
 
@@ -66,7 +67,7 @@ func TestFillDisabledOutsideFrame(t *testing.T) {
 // An NMI vector read ends the old frame. Two earlier nametable reads must not
 // combine with a later read to start a new frame.
 func TestNMIVectorBreaksScanlineSequence(t *testing.T) {
-	for _, vector := range []uint16{nmiVectorLower, nmiVectorUpper} {
+	for _, vector := range []uint16{cpu6502.NMIAddress, nmiVectorUpper} {
 		for _, redirect := range []byte{0, 1} {
 			m := newTestMapper(t, 0x8000, 0x2000)
 			m.EnableBusTiming()

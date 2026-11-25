@@ -39,7 +39,7 @@ func (p *audioPulse) clock() {
 	}
 
 	p.timer = p.period
-	p.sequence = (p.sequence - 1) & 0x0F
+	p.sequence = (p.sequence - 1) & audioPulseSequenceMask
 }
 
 func (p *audioPulse) output() byte {
@@ -57,14 +57,14 @@ func (p *audioPulse) writeControl(value byte) {
 }
 
 func (p *audioPulse) writeLow(value byte) {
-	p.period = p.period&0x0F00 | uint16(value)
+	p.period = p.period&audioPeriodHighByteMask | uint16(value)
 }
 
 func (p *audioPulse) writeHigh(value byte) {
-	p.period = p.period&0x00FF | uint16(value&audioPeriodHighMask)<<8
+	p.period = p.period&audioPeriodLowByteMask | uint16(value&audioPeriodHighMask)<<registerByteShift
 	p.enabled = value&audioEnableBit != 0
 	if !p.enabled {
-		p.sequence = 15
+		p.sequence = audioPulseSequenceMask
 		p.timer = p.period
 	}
 }
@@ -80,7 +80,7 @@ func (s *audioSaw) clock() {
 
 	s.timer = s.period
 	s.step++
-	if s.step >= 14 {
+	if s.step >= audioSawStepCount {
 		s.step = 0
 		s.accumulator = 0
 	} else if s.step&1 == 0 {
@@ -93,15 +93,15 @@ func (s *audioSaw) output() byte {
 		return 0
 	}
 
-	return s.accumulator >> 3
+	return s.accumulator >> audioSawOutputShift
 }
 
 func (s *audioSaw) writeLow(value byte) {
-	s.period = s.period&0x0F00 | uint16(value)
+	s.period = s.period&audioPeriodHighByteMask | uint16(value)
 }
 
 func (s *audioSaw) writeHigh(value byte) {
-	s.period = s.period&0x00FF | uint16(value&audioPeriodHighMask)<<8
+	s.period = s.period&audioPeriodLowByteMask | uint16(value&audioPeriodHighMask)<<registerByteShift
 	s.enabled = value&audioEnableBit != 0
 	if !s.enabled {
 		s.step = 0
@@ -119,12 +119,12 @@ func (a *audioState) pcmOutput() byte {
 	}
 
 	level := uint16(a.combinedOutput()) * uint16(a.masterVolume) / audioMasterVolumeMask
-	return byte(level * 2)
+	return byte(level * audioPCMScale)
 }
 
 func (a *audioState) valid() bool {
-	return a.pulse1.period <= 0x0FFF && a.pulse2.period <= 0x0FFF && a.saw.period <= 0x0FFF &&
-		a.pulse1.sequence <= 15 && a.pulse2.sequence <= 15 && a.saw.step < 14 &&
+	return a.pulse1.period <= audioPeriodMaximum && a.pulse2.period <= audioPeriodMaximum && a.saw.period <= audioPeriodMaximum &&
+		a.pulse1.sequence <= audioPulseSequenceMask && a.pulse2.sequence <= audioPulseSequenceMask && a.saw.step < audioSawStepCount &&
 		a.masterVolume <= audioMasterVolumeMask &&
 		a.outputControl&^(audioOutputEXP6|audioOutputEXP9|audioOutputIPCM|audioOutputEPSM) == 0
 }

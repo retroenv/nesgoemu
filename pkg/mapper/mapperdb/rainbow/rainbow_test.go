@@ -6,6 +6,8 @@ import (
 	"github.com/retroenv/nesgoemu/pkg/bus"
 	"github.com/retroenv/nesgoemu/pkg/mapper/internal/mappertest"
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
+	"github.com/retroenv/retrogolib/arch/cpu/cpu6502"
+	"github.com/retroenv/retrogolib/arch/system/nes"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 	"github.com/retroenv/retrogolib/assert"
 )
@@ -517,12 +519,12 @@ func TestVectorRedirection(t *testing.T) {
 	assert.Equal(t, uint16(0xC020), m.irqAddr)
 
 	// Read vectors: $FFFA/$FFFB should return redirected NMI address.
-	assert.Equal(t, byte(0x10), m.Read(nmiVectorLower)) // low byte
-	assert.Equal(t, byte(0x80), m.Read(nmiVectorUpper)) // high byte
+	assert.Equal(t, byte(0x10), m.Read(cpu6502.NMIAddress)) // low byte
+	assert.Equal(t, byte(0x80), m.Read(nmiVectorUpper))     // high byte
 
 	// $FFFE/$FFFF should return redirected IRQ address.
-	assert.Equal(t, byte(0x20), m.Read(irqVectorLower)) // low byte
-	assert.Equal(t, byte(0xC0), m.Read(irqVectorUpper)) // high byte
+	assert.Equal(t, byte(0x20), m.Read(cpu6502.IrqAddress)) // low byte
+	assert.Equal(t, byte(0xC0), m.Read(irqVectorUpper))     // high byte
 }
 
 func TestVectorRedirectionDisabled(t *testing.T) {
@@ -533,8 +535,8 @@ func TestVectorRedirectionDisabled(t *testing.T) {
 	m.Write(regNMIVectorLower, 0x10)
 
 	// Should fall through to normal PRG read (not redirected).
-	expected := m.readPRG(nmiVectorLower)
-	assert.Equal(t, expected, m.Read(nmiVectorLower))
+	expected := m.readPRG(cpu6502.NMIAddress)
+	assert.Equal(t, expected, m.Read(cpu6502.NMIAddress))
 }
 
 // --- Window Split Tests ---
@@ -820,7 +822,7 @@ func TestNMIVectorRead_ClearsInFrame(t *testing.T) {
 	m.scanIRQ.counter = 42
 	m.scanIRQ.pending = true
 
-	_ = m.Read(nmiVectorLower)
+	_ = m.Read(cpu6502.NMIAddress)
 
 	assert.False(t, m.scanIRQ.inFrame)
 	assert.Equal(t, int16(0), m.scanIRQ.counter)
@@ -907,8 +909,8 @@ func TestNametableCHRRAMBankUsesInstalledSize(t *testing.T) {
 		lastBank := size/ntSlotSize - 1
 		m.chrRAM[lastBank*ntSlotSize+testOffset] = 0xBB
 
-		assert.Equal(t, byte(0xBB), m.NameTableMemory().Read(ntBaseAddress+testOffset))
-		m.NameTableMemory().Write(ntBaseAddress+testOffset+1, 0xCC)
+		assert.Equal(t, byte(0xBB), m.NameTableMemory().Read(nes.NameTableStart+testOffset))
+		m.NameTableMemory().Write(nes.NameTableStart+testOffset+1, 0xCC)
 		assert.Equal(t, byte(0xCC), m.chrRAM[lastBank*ntSlotSize+testOffset+1])
 	}
 }

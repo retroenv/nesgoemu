@@ -3,10 +3,12 @@ package cnrom
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/retroenv/nesgoemu/pkg/bus"
 	"github.com/retroenv/nesgoemu/pkg/feature"
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
+	"github.com/retroenv/retrogolib/arch/system/nes"
 )
 
 /*
@@ -27,7 +29,7 @@ func New(base *mapperbase.Base) (bus.Mapper, error) {
 		return nil, fmt.Errorf("initializing mapper: %w", err)
 	}
 
-	m.AddWriteHook(0x8000, 0xFFFF, m.setChrWindow)
+	m.AddWriteHook(nes.CodeBaseAddress, math.MaxUint16, m.setChrWindow)
 
 	return m, nil
 }

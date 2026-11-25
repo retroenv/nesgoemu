@@ -22,16 +22,16 @@ func (b *Base) SetNameTableWindow(bank int) {
 	b.bus.NameTable.SetVRAM(nameTable.data)
 }
 
-// NameTable returns the nametable buffer of a specific bank. Used in tests.
+// NameTable returns the nametable buffer for the specified bank.
 func (b *Base) NameTable(bank int) []byte {
 	bank %= len(b.nameTableBanks)
 	nameTable := &b.nameTableBanks[bank]
 	return nameTable.data
 }
 
-// SetNameTableMirrorMode sets the nametable mirror mode.
+// SetNameTableMirrorMode sets the nametable mirror mode and returns nil.
 func (b *Base) SetNameTableMirrorMode(mirrorMode cartridge.MirrorMode) error {
-	b.bus.NameTable.SetMirrorMode(mirrorMode)
+	b.NameTableMemory().SetMirrorMode(mirrorMode)
 	return nil
 }
 

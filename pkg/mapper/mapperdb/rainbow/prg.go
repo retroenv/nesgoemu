@@ -3,6 +3,7 @@ package rainbow
 import (
 	"github.com/retroenv/nesgoemu/pkg/feature"
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
+	"github.com/retroenv/retrogolib/arch/system/nes"
 )
 
 // Specification: https://github.com/BrokeStudio/rainbow-net/blob/master/NES/mapper-doc.md#prg-banking-modes-4100-readwrite
@@ -150,7 +151,7 @@ func (m *Mapper) writeLowBank(bank uint16, offset, windowSize int, value uint8) 
 }
 
 func (m *Mapper) prgHighBankMapping(address uint16) (int, uint16, int) {
-	addr := address - prgROMStart
+	addr := address - nes.CodeBaseAddress
 
 	switch m.prgMode {
 	case prgMode32K:

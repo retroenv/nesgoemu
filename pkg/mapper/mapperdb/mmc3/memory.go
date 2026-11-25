@@ -6,6 +6,14 @@ import (
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
 )
 
+const (
+	prgROMMinimum    = 2 * prgWindowSize
+	prgROMMaximum    = 0x80000
+	prgRAMMaximum    = 0x2000
+	chrMemoryMinimum = 2 * chrWindowSize
+	chrMemoryMaximum = 0x40000
+)
+
 // validateCartridge checks the standard MMC3 memory limits before bank setup.
 // Mixed CHR ROM and RAM require mapper 119. Other explicit submappers use
 // different registers, IRQ behavior, or fixed mirroring.
@@ -31,10 +39,10 @@ func validateCartridge(base *mapperbase.Base) error {
 }
 
 func validateMemorySizes(prgROM, chrROM, prgRAM, chrRAM int) error {
-	if err := mapperbase.ValidateSize("MMC3 PRG ROM", prgROM, 2*prgWindowSize, 0x80000, prgWindowSize); err != nil {
+	if err := mapperbase.ValidateSize("MMC3 PRG ROM", prgROM, prgROMMinimum, prgROMMaximum, prgWindowSize); err != nil {
 		return fmt.Errorf("checking memory size: %w", err)
 	}
-	if prgRAM < 0 || prgRAM > 0x2000 {
+	if prgRAM < 0 || prgRAM > prgRAMMaximum {
 		return fmt.Errorf("unsupported MMC3 PRG RAM size %d", prgRAM)
 	}
 	if chrROM > 0 && chrRAM > 0 {
@@ -42,7 +50,7 @@ func validateMemorySizes(prgROM, chrROM, prgRAM, chrRAM int) error {
 	}
 
 	chrSize := chrROM + chrRAM
-	if err := mapperbase.ValidateSize("MMC3 CHR", chrSize, 2*chrWindowSize, 0x40000, chrWindowSize); err != nil {
+	if err := mapperbase.ValidateSize("MMC3 CHR", chrSize, chrMemoryMinimum, chrMemoryMaximum, chrWindowSize); err != nil {
 		return fmt.Errorf("checking CHR size: %w", err)
 	}
 

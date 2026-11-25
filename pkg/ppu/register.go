@@ -164,6 +164,6 @@ func mirroredRegisterAddressToBase(address uint16) uint16 {
 		return address
 	}
 
-	base := 0x2000 + address&0b0000_0111
+	base := register.PPU_CTRL + address&0b0000_0111
 	return base
 }

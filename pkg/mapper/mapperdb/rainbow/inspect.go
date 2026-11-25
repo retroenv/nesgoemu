@@ -1,11 +1,15 @@
 package rainbow
 
-import "github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
+import (
+	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
+	"github.com/retroenv/retrogolib/arch/cpu/cpu6502"
+	"github.com/retroenv/retrogolib/arch/system/nes"
+)
 
 // InspectCHR returns the pattern table byte at a PPU address as it is mapped
 // now, without PPU bus observation or feature marking.
 func (m *Mapper) InspectCHR(address uint16) byte {
-	address = m.chrReadAddress(address & (patternTableEnd - 1))
+	address = m.chrReadAddress(address & (nes.PatternTableEndExclusive - 1))
 	switch m.chrSource {
 	case chrSourceNT:
 		return m.NameTableMemory().ReadCIRAM(address & ciramAddressMask)
@@ -47,7 +51,7 @@ func (m *Mapper) InspectCPU(address uint16) (byte, bool) {
 		return value, true
 	}
 
-	if address >= prgROMStart {
+	if address >= nes.CodeBaseAddress {
 		index, offset, size := m.prgHighBankMapping(address)
 		bank := m.highBanks[index]
 		physical := int(bank&prgHighBankIndexMask)*size + int(offset)
@@ -104,7 +108,7 @@ func (m *Mapper) WritePRGRAM(offset int, value byte) bool {
 
 func (m *Mapper) inspectVector(address uint16) (byte, bool) {
 	switch address {
-	case nmiVectorLower:
+	case cpu6502.NMIAddress:
 		if m.nmiVectorEnabled {
 			return byte(m.nmiAddr), true
 		}
@@ -114,7 +118,7 @@ func (m *Mapper) inspectVector(address uint16) (byte, bool) {
 			return byte(m.nmiAddr >> registerByteShift), true
 		}
 
-	case irqVectorLower:
+	case cpu6502.IrqAddress:
 		if m.irqVectorEnabled {
 			return byte(m.irqAddr), true
 		}

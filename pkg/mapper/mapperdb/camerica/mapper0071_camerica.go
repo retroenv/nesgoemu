@@ -3,6 +3,7 @@ package camerica
 import (
 	"errors"
 	"fmt"
+	"math"
 
 	"github.com/retroenv/nesgoemu/pkg/bus"
 	"github.com/retroenv/nesgoemu/pkg/feature"
@@ -10,7 +11,19 @@ import (
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 )
 
-const legacyMirroringRegisterStart = 0x9000
+const (
+	prgBankMask      = 0x0f
+	mirroringBankBit = 0x10
+
+	fireHawkSubmapper     = 1
+	fireHawkPRGROMMaximum = 0x20000
+	fireHawkPRGBankMask   = 0x07
+
+	prgRegisterStart             = 0xc000
+	mirroringRegisterStart       = 0x8000
+	mirroringRegisterEnd         = 0x9fff
+	legacyMirroringRegisterStart = 0x9000
+)
 
 // New creates a mapper 71 board after it checks the cartridge memory layout.
 func New(base *mapperbase.Base) (bus.Mapper, error) {
@@ -21,28 +34,28 @@ func New(base *mapperbase.Base) (bus.Mapper, error) {
 
 	m := &mapper71{
 		Base:            base,
-		bankMask:        0x0f,
+		bankMask:        prgBankMask,
 		legacyMirroring: cart.NES2 == nil,
 	}
 	m.SetName("Camerica")
 	m.SetPrgRAM(nil)
-	m.SetChrRAM(make([]byte, 0x2000))
-	m.SetPrgWindowSize(0x4000)
+	m.SetChrRAM(make([]byte, chrRAMSize))
+	m.SetPrgWindowSize(prgWindowSize)
 	m.DeclareFeature(feature.PRGBanking)
 	if err := m.Initialize(); err != nil {
 		return nil, fmt.Errorf("initializing mapper: %w", err)
 	}
 	m.SetPrgWindow(1, -1)
-	m.AddWriteHook(0xc000, 0xffff, m.selectPRG)
-	fireHawk := cart.NES2 != nil && cart.NES2.Submapper == 1
+	m.AddWriteHook(prgRegisterStart, math.MaxUint16, m.selectPRG)
+	fireHawk := cart.NES2 != nil && cart.NES2.Submapper == fireHawkSubmapper
 	if fireHawk {
-		m.bankMask = 7
+		m.bankMask = fireHawkPRGBankMask
 	}
 
 	if m.legacyMirroring || fireHawk {
 		m.DeclareFeature(feature.Mirroring)
 		m.DeclareFeature(feature.SingleScreenMirroring)
-		m.AddWriteHook(0x8000, 0x9fff, m.selectMirroring)
+		m.AddWriteHook(mirroringRegisterStart, mirroringRegisterEnd, m.selectMirroring)
 	}
 
 	return m, nil
@@ -71,16 +84,14 @@ func (m *mapper71) selectMirroring(address uint16, value byte) error {
 	}
 
 	mode := cartridge.MirrorSingle0
-	if value&0x10 != 0 {
+	if value&mirroringBankBit != 0 {
 		mode = cartridge.MirrorSingle1
 	}
 
 	m.MarkFeature(feature.Mirroring)
 	m.MarkFeature(feature.SingleScreenMirroring)
 
-	if err := m.SetNameTableMirrorMode(mode); err != nil {
-		return fmt.Errorf("setting mapper 71 mirroring: %w", err)
-	}
+	m.NameTableMemory().SetMirrorMode(mode)
 
 	return nil
 }
@@ -92,7 +103,7 @@ func validateCartridge(cart *cartridge.Cartridge) error {
 	if err := validateSubmapper(cart, "mapper 71"); err != nil {
 		return err
 	}
-	if cart.NES2 != nil && cart.NES2.Submapper == 1 && len(cart.PRG) > 0x20000 {
+	if cart.NES2 != nil && cart.NES2.Submapper == fireHawkSubmapper && len(cart.PRG) > fireHawkPRGROMMaximum {
 		return errors.New("mapper 71 Fire Hawk PRG ROM exceeds 128 KiB")
 	}
 

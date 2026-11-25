@@ -4,11 +4,13 @@ package mmc1
 import (
 	"errors"
 	"fmt"
+	"math"
 
 	"github.com/retroenv/nesgoemu/internal/stateio"
 	"github.com/retroenv/nesgoemu/pkg/bus"
 	"github.com/retroenv/nesgoemu/pkg/feature"
 	"github.com/retroenv/nesgoemu/pkg/mapper/mapperbase"
+	"github.com/retroenv/retrogolib/arch/system/nes"
 	"github.com/retroenv/retrogolib/arch/system/nes/cartridge"
 )
 
@@ -23,23 +25,38 @@ CHR window: 4K + 4K or 8K
 */
 
 const (
-	// prgModeFixLast is the control register value of PRG mode 3, which fixes the
-	// last bank at $C000.
-	prgModeFixLast = 0x0C
-
-	shiftRegisterBits = 5
+	prgRAMSize    = 0x8000
+	chrWindowSize = 0x1000
 
 	chrBank0RegisterStart = 0xa000
 	chrBank1RegisterStart = 0xc000
 	prgBankRegisterStart  = 0xe000
+
+	shiftRegisterBits = 5
+	shiftResetBit     = 0x80
+
+	mirrorModeMask        = 0x03
+	singleScreenModeCount = 2
+	prgModeShift          = 2
+	prgModeMask           = 0x03
+	prgModeFixedFirst     = 2
+	prgModeFixedLast      = 3
+	chrModeShift          = 4
+	chrModeMask           = 0x01
+
+	// prgModeFixLast is the control register value of PRG mode 3, which fixes the
+	// last bank at $C000.
+	prgModeFixLast = 0x0C
+
+	prgBankMask = 0x0f
 )
 
 // New returns a new MMC1 mapper.
 func New(base *mapperbase.Base) (bus.Mapper, error) {
 	m := &mapperMMC1{
 		Base:    base,
-		ram:     make([]byte, 0x8000), // 32K
-		control: prgModeFixLast,       // the MMC1 powers on with the last bank at $C000
+		ram:     make([]byte, prgRAMSize),
+		control: prgModeFixLast, // the MMC1 powers on with the last bank at $C000
 	}
 	m.SetName("MMC1")
 	m.DeclareFeature(feature.CHRBanking)
@@ -47,13 +64,13 @@ func New(base *mapperbase.Base) (bus.Mapper, error) {
 	m.DeclareFeature(feature.PRGBanking)
 	m.DeclareFeature(feature.ShiftRegister)
 	m.DeclareFeature(feature.SingleScreenMirroring)
-	m.SetChrWindowSize(0x1000) // 4K
+	m.SetChrWindowSize(chrWindowSize)
 	m.SetPrgRAM(m.ram)
 	if err := m.Initialize(); err != nil {
 		return nil, fmt.Errorf("initializing mapper: %w", err)
 	}
 
-	m.AddWriteHook(0x8000, 0xFFFF, m.writeShiftBit)
+	m.AddWriteHook(nes.CodeBaseAddress, math.MaxUint16, m.writeShiftBit)
 
 	m.SetPrgWindow(1, -1)
 
@@ -124,7 +141,7 @@ func (m *mapperMMC1) writeShiftBit(address uint16, value uint8) error {
 	m.lastWriteCycle = cycle
 	m.lastWriteValid = ok
 
-	if value&0x80 != 0 {
+	if value&shiftResetBit != 0 {
 		m.control |= prgModeFixLast
 		return m.resetShift()
 	}
@@ -152,7 +169,7 @@ func (m *mapperMMC1) writeShiftBit(address uint16, value uint8) error {
 		m.chrBank1 = int(m.shiftRegister)
 
 	case address >= prgBankRegisterStart: // $E000-$FFFF
-		m.prgBank = int(m.shiftRegister) & 0b0000_1111
+		m.prgBank = int(m.shiftRegister) & prgBankMask
 	}
 
 	return m.resetShift()
@@ -164,8 +181,8 @@ func (m *mapperMMC1) applyControl() error {
 
 	// Control bits 1-0: 0 and 1 select one-screen A and B, 2 and 3 select
 	// vertical and horizontal mirroring. https://www.nesdev.org/wiki/MMC1
-	mirrorMode := m.control & 0b0000_0011
-	if mirrorMode < 2 {
+	mirrorMode := m.control & mirrorModeMask
+	if mirrorMode < singleScreenModeCount {
 		m.MarkFeature(feature.SingleScreenMirroring)
 	} else {
 		m.MarkFeature(feature.Mirroring)
@@ -175,26 +192,26 @@ func (m *mapperMMC1) applyControl() error {
 		return fmt.Errorf("setting MMC1 mirror mode: %w", err)
 	}
 
-	prgMode := (m.control >> 2) & 0b0000_0011
+	prgMode := (m.control >> prgModeShift) & prgModeMask
 	switch prgMode {
 	case 0, 1:
 		// switch 32 KB at $8000, ignoring low bit of bank number
 		m.SetPrgWindow(0, m.prgBank&^1)
 		m.SetPrgWindow(1, m.prgBank|1)
 
-	case 2:
+	case prgModeFixedFirst:
 		// fix first bank at $8000 and switch 16 KB bank at $C000
 		m.SetPrgWindow(0, 0)
 		m.SetPrgWindow(1, m.prgBank)
 
-	case 3:
+	case prgModeFixedLast:
 		// fix last bank at $C000 and switch 16 KB bank at $8000
 		m.SetPrgWindow(0, m.prgBank)
 		m.SetPrgWindow(1, -1)
 	}
 
 	m.SetChrWindow(0, m.chrBank0)
-	chrMode := (m.control >> 4) & 1
+	chrMode := (m.control >> chrModeShift) & chrModeMask
 	if chrMode == 0 {
 		// switch 8 KB at a time
 		m.SetChrWindow(1, m.chrBank0+1)
