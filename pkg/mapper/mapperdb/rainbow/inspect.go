@@ -54,7 +54,7 @@ func (m *Mapper) InspectCPU(address uint16) (byte, bool) {
 	if address >= nes.CodeBaseAddress {
 		index, offset, size := m.prgHighBankMapping(address)
 		bank := m.highBanks[index]
-		physical := int(bank&prgHighBankIndexMask)*size + int(offset)
+		physical := int(bank&prgBankIndexMask)*size + int(offset)
 		if bank&prgHighBankRAMBit != 0 {
 			return inspectByte(m.prgRAM, physical)
 		}
@@ -69,7 +69,7 @@ func (m *Mapper) InspectCPU(address uint16) (byte, bool) {
 		return 0, false
 	}
 
-	physical := int(bank&prgLowBankIndexMask)*size + offset
+	physical := int(bank&prgBankIndexMask)*size + offset
 	switch (bank >> prgLowBankSourceShift) & prgLowBankSourceMask {
 	case prgLowBankSourceROM0, prgLowBankSourceROM1:
 		if len(m.prgROM) == 0 {
@@ -93,7 +93,7 @@ func (m *Mapper) CPURAMOffset(address uint16) (int, bool) {
 		return 0, false
 	}
 
-	return (int(bank&prgLowBankIndexMask)*size + offset) % len(m.prgRAM), true
+	return (int(bank&prgBankIndexMask)*size + offset) % len(m.prgRAM), true
 }
 
 // WritePRGRAM changes one physical RAM byte without mapper bus effects.

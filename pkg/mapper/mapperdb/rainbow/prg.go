@@ -8,6 +8,9 @@ import (
 
 // Specification: https://github.com/BrokeStudio/rainbow-net/blob/master/NES/mapper-doc.md#prg-banking-modes-4100-readwrite
 
+// The register definitions use three upper bank bits for both PRG windows.
+// https://github.com/BrokeStudio/rainbow-net/blob/f50f8ea8711da820da6ca13b0cdd39fd7c9a5319/NES/mapper-doc.md#prg-ram-banking-4106-4107-and-4116-4117-write-only
+
 // PRG banking mode window configurations for $8000-$FFFF:
 //
 // Mode 0: 1×32K window at $8000-$FFFF → highBanks[0].
@@ -28,9 +31,8 @@ const (
 	prgWindowSize8K  = 0x2000
 	prgWindowSize4K  = 0x1000
 
-	prgHighBankIndexMask  = 0x07FF
+	prgBankIndexMask      = 0x07FF
 	prgHighBankRAMBit     = 0x8000
-	prgLowBankIndexMask   = 0x0FFF
 	prgLowBankSourceMask  = 0x03
 	prgLowBankSourceShift = 14
 
@@ -54,7 +56,7 @@ func (m *Mapper) readPRG(address uint16) uint8 {
 	regIdx, offset, windowSize := m.prgHighBankMapping(address)
 	bank := m.highBanks[regIdx]
 
-	bankIndex := int(bank & prgHighBankIndexMask)
+	bankIndex := int(bank & prgBankIndexMask)
 	byteOffset := bankIndex*windowSize + int(offset)
 
 	if bank&prgHighBankRAMBit == 0 {
@@ -69,10 +71,10 @@ func (m *Mapper) writePRG(address uint16, value uint8) {
 	bank := m.highBanks[regIdx]
 	if bank&prgHighBankRAMBit != 0 {
 		m.MarkFeature(feature.PRGRAM)
-		m.writeToRAM(m.prgRAM, int(bank&prgHighBankIndexMask)*windowSize+int(offset), value)
+		m.writeToRAM(m.prgRAM, int(bank&prgBankIndexMask)*windowSize+int(offset), value)
 	} else {
 		m.MarkFeature(feature.FlashProgramming)
-		m.prgFlash.write(m.prgROM, int(bank&prgHighBankIndexMask)*windowSize+int(offset), value)
+		m.prgFlash.write(m.prgROM, int(bank&prgBankIndexMask)*windowSize+int(offset), value)
 	}
 }
 
@@ -106,7 +108,7 @@ func (m *Mapper) writePRGRAM(address uint16, value uint8) {
 func (m *Mapper) readLowBank(bank uint16, offset, windowSize int) uint8 {
 	m.MarkFeature(feature.LowBankMapping)
 
-	bankIndex := int(bank & prgLowBankIndexMask)
+	bankIndex := int(bank & prgBankIndexMask)
 	byteOffset := bankIndex*windowSize + offset
 
 	switch (bank >> prgLowBankSourceShift) & prgLowBankSourceMask {
@@ -130,7 +132,7 @@ func (m *Mapper) readLowBank(bank uint16, offset, windowSize int) uint8 {
 func (m *Mapper) writeLowBank(bank uint16, offset, windowSize int, value uint8) {
 	m.MarkFeature(feature.LowBankMapping)
 
-	bankIndex := int(bank & prgLowBankIndexMask)
+	bankIndex := int(bank & prgBankIndexMask)
 	byteOffset := bankIndex*windowSize + offset
 
 	switch (bank >> prgLowBankSourceShift) & prgLowBankSourceMask {

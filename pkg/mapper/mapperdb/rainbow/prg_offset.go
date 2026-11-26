@@ -25,7 +25,7 @@ func (m *Mapper) PRGROMOffset(address uint16) (int, bool) {
 		return 0, false
 	}
 
-	physical := int(bank&prgHighBankIndexMask)*windowSize + int(offset)
+	physical := int(bank&prgBankIndexMask)*windowSize + int(offset)
 
 	return physical % len(m.prgROM), true
 }
