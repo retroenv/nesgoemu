@@ -44,6 +44,12 @@ func TestWindowScrollAndPalette(t *testing.T) {
 	assert.Equal(t, byte(4), m.NameTableMemory().Read(0x2000))
 	m.chrROM[0x45] = 0xAB
 	assert.Equal(t, byte(0xAB), m.Read(0x40))
+	m.Write(regWindowSplitEnd, 0xFF)
+	m.fpgaRAM[33] = 4
+	assert.Equal(t, byte(4), m.NameTableMemory().Read(0x2000))
+	m.chrROM[0x47] = 0xBC
+	assert.Equal(t, byte(0xBC), m.Read(0x40))
+	m.Write(regWindowSplitEnd, 5)
 	m.Write(regNTWindowControl, 0x0E)
 	m.fpgaRAM[3*1024+65] = 2
 	m.chrROM[0x2045] = 0xCD
