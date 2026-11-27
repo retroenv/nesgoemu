@@ -113,18 +113,19 @@ func (a *audioState) combinedOutput() byte {
 	return a.pulse1.output() + a.pulse2.output() + a.saw.output()
 }
 
+// The master volume controls the expansion pins. IPCM uses the channel sum.
+// https://github.com/BrokeStudio/rainbow-net/blob/master/NES/mapper-doc.md#ipcm-sample-4011-read-only
 func (a *audioState) pcmOutput() byte {
 	if a.outputControl&audioOutputIPCM == 0 {
 		return 0
 	}
 
-	level := uint16(a.combinedOutput()) * uint16(a.masterVolume) / audioMasterVolumeMask
-	return byte(level * audioPCMScale)
+	return a.combinedOutput() * audioPCMScale
 }
 
 func (a *audioState) valid() bool {
 	return a.pulse1.period <= audioPeriodMaximum && a.pulse2.period <= audioPeriodMaximum && a.saw.period <= audioPeriodMaximum &&
 		a.pulse1.sequence <= audioPulseSequenceMask && a.pulse2.sequence <= audioPulseSequenceMask && a.saw.step < audioSawStepCount &&
 		a.masterVolume <= audioMasterVolumeMask &&
-		a.outputControl&^(audioOutputEXP6|audioOutputEXP9|audioOutputIPCM|audioOutputEPSM) == 0
+		a.outputControl&^(audioOutputMask|audioLegacyEPSMBit) == 0
 }

@@ -48,6 +48,6 @@ var resetRegisters = [...]struct {
 	{regCycleIRQControl, 0},
 	{regVectorControl, 0},
 	{regESPControl, 0},
-	{regAudioOutputControl, audioOutputEXP6 | audioOutputEXP9},
+	{regAudioOutputControl, 0},
 	{regAudioMasterVolume, audioMasterVolumeMask},
 }

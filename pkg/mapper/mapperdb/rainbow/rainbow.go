@@ -269,7 +269,6 @@ func (m *Mapper) applyPowerUpDefaults() {
 
 	// Default FPGA auto-increment to 1.
 	m.fpgaAutoInc = 1
-	m.audio.outputControl = audioOutputEXP6 | audioOutputEXP9
 	m.audio.masterVolume = audioMasterVolumeMask
 
 	// No active sprite fetch at power-up.

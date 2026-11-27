@@ -7,10 +7,14 @@ import (
 	"github.com/retroenv/retrogolib/assert"
 )
 
-func TestAudioPowerUpRoutesBothPhysicalOutputs(t *testing.T) {
+func TestAudioPowerUpAndResetDisableOutputs(t *testing.T) {
 	m := newTestMapper(t, 0x8000, 0x2000)
 
-	assert.Equal(t, byte(audioOutputEXP6|audioOutputEXP9), m.audio.outputControl)
+	assert.Equal(t, byte(0), m.audio.outputControl)
+	m.Write(regAudioOutputControl, audioOutputMask|audioLegacyEPSMBit)
+	assert.Equal(t, byte(audioOutputMask), m.audio.outputControl)
+	m.Reset()
+	assert.Equal(t, byte(0), m.audio.outputControl)
 	assert.Equal(t, byte(audioMasterVolumeMask), m.audio.masterVolume)
 }
 
@@ -64,6 +68,7 @@ func TestAudioOutputRoutingAndMasterVolume(t *testing.T) {
 	m.Write(regAudioPulse1Control, audioPulseModeBit|audioPulseVolumeMask)
 	m.Write(regAudioPulse1High, audioEnableBit)
 
+	m.Write(regAudioOutputControl, audioOutputEXP6)
 	full := m.ExpansionAudioOutput()
 	assert.True(t, math.Abs(full-audioPulseFullScale) < 0.000001)
 
@@ -72,7 +77,9 @@ func TestAudioOutputRoutingAndMasterVolume(t *testing.T) {
 
 	m.Write(regAudioOutputControl, audioOutputIPCM)
 	assert.Equal(t, 0.0, m.ExpansionAudioOutput(), "IPCM alone does not drive a physical expansion pin")
-	assert.Equal(t, byte(14), m.ReadPCM(), "IPCM returns the master-volume-scaled six-bit DAC value times two")
+	assert.Equal(t, byte(30), m.ReadPCM())
+	m.Write(regAudioMasterVolume, 0)
+	assert.Equal(t, byte(30), m.ReadPCM())
 }
 
 func TestAudioDisableResetsChannelPhase(t *testing.T) {

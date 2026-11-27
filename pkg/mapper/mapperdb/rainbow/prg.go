@@ -9,7 +9,7 @@ import (
 // Specification: https://github.com/BrokeStudio/rainbow-net/blob/master/NES/mapper-doc.md#prg-banking-modes-4100-readwrite
 
 // The register definitions use three upper bank bits for both PRG windows.
-// https://github.com/BrokeStudio/rainbow-net/blob/f50f8ea8711da820da6ca13b0cdd39fd7c9a5319/NES/mapper-doc.md#prg-ram-banking-4106-4107-and-4116-4117-write-only
+// https://github.com/BrokeStudio/rainbow-net/blob/master/NES/mapper-doc.md#prg-ram-banking-4106-4107-and-4116-4117-write-only
 
 // PRG banking mode window configurations for $8000-$FFFF:
 //

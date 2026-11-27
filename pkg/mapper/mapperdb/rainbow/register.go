@@ -257,7 +257,7 @@ func (m *Mapper) writeVectorRegisters(address uint16, value uint8) {
 }
 
 // Clamp the fine Y offset before calculating the source row.
-// https://github.com/BrokeStudio/rainbow-net/blob/f50f8ea8711da820da6ca13b0cdd39fd7c9a5319/NES/mapper-doc.md#window-split-mode-4170-4175
+// https://github.com/BrokeStudio/rainbow-net/blob/master/NES/mapper-doc.md#window-split-mode-4170-4175
 func (m *Mapper) writeWindowSplit(address uint16, value uint8) {
 	m.MarkFeature(feature.WindowSplit)
 

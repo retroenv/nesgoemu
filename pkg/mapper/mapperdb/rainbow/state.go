@@ -66,6 +66,7 @@ func (m *Mapper) LoadState(reader io.Reader) error {
 		return errSaveData
 	}
 
+	next.audio.outputControl &= audioOutputMask
 	next.windowSplitRegs[windowSplitYScrollIndex] = min(next.windowSplitRegs[windowSplitYScrollIndex], ppuVisibleHeight-1)
 	*m = next
 	m.updateIRQStatus()

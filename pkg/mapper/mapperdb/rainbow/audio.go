@@ -26,7 +26,8 @@ const (
 	audioOutputEXP6       = 0x01
 	audioOutputEXP9       = 0x02
 	audioOutputIPCM       = 0x04
-	audioOutputEPSM       = 0x80
+	audioLegacyEPSMBit    = 0x80
+	audioOutputMask       = audioOutputEXP6 | audioOutputEXP9 | audioOutputIPCM
 	audioMasterVolumeMask = 0x0F
 	audioPCMScale         = 2
 
@@ -96,7 +97,7 @@ func (m *Mapper) writeAudioRegister(address uint16, value byte) {
 	case regAudioSawHigh:
 		m.audio.saw.writeHigh(value)
 	case regAudioOutputControl:
-		m.audio.outputControl = value & (audioOutputEXP6 | audioOutputEXP9 | audioOutputIPCM | audioOutputEPSM)
+		m.audio.outputControl = value & audioOutputMask
 	case regAudioMasterVolume:
 		m.audio.masterVolume = value & audioMasterVolumeMask
 	}
